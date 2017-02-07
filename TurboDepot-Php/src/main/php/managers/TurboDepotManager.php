@@ -12,6 +12,9 @@
 namespace org\turbodepot\src\main\php\managers;
 
 use org\turbocommons\src\main\php\model\BaseSingletonClass;
+use org\turbocommons\src\main\php\managers\FilesManager;
+use org\turbocommons\src\main\php\utils\SerializationUtils;
+
 
 /**
  * SINGLETON class that contains the full turbodepot api. Use it to save, read, list and operate with stored objects
@@ -35,6 +38,33 @@ class TurboDepotManager extends BaseSingletonClass{
 
 
 	/**
+	 * A text that will be appended at the beginning of all tables created by this class at the target db.
+	 * This is used to prevent the auto generated tables from colliding with any possible existing db tables
+	 * or any ones that are created by another library or application. If you know for sure that no name collisions
+	 * will happen, you can clear this prefix to get a cleaner database schema. Make sure to rename any existing
+	 * tables which already have this prefix before changing this value.
+	 */
+	public $dataBasePrefix = 'turbodepot_';
+
+
+	/**
+	 * Stores the global database manager object that is used to operate and perform queries
+	 */
+	private $_dataBaseManager = new DataBaseManager();
+
+
+	/**
+	 * TODO
+	 */
+	public function loadSetup($path){
+
+		// TODO
+		$setup = SerializationUtils::stringToXML(FilesManager::getInstance()->readFile($path));
+
+	}
+
+
+	/**
 	 * TODO
 	 */
 	public function connect(){
@@ -53,119 +83,26 @@ class TurboDepotManager extends BaseSingletonClass{
 	 */
 	public function save(EntityGeneric $entity){
 
-		// Get global server database connection
-		$db = Server::getDb(get_class().'_'.__FUNCTION__);
 
-		// Store the name for the received class
-		$className = get_class($entity);
-
-		// Set the creation and modification dates if required
-		$entity->modificationDate = date('Y-m-d H:i:s');
-
-		if($entity->id == ''){
-
-			$entity->creationDate = date('Y-m-d H:i:s');
-
-			// Verify that the specified category id is created with the same className as the generic entity we want to save.
-			// This is important to prevent developers from making errors when storing entities inside categories that are not made for their class.
-			if($db->countByQuery("SELECT categoryId FROM generic_category WHERE className = '".$className."' AND categoryid = ".$entity->categoryId) <= 0){
-
-				return ServerResultsUtils::generateErrorResult('Error creating generic: Specified category ('.$entity->categoryId.') does not match entity className ('.$className.')');
-			}
-		}
-
-		// Begin the transaction
-		$db->transactionBegin();
-
-		// Create the generic
-		if(!$db->query(SqlGenerationUtils::insertUpdateFromClass($entity, 'id', 'generic', implode(',', GenericsUtils::getFixedProperties()), array('className' => $className)))){
-
-			$db->transactionRollback();
-			return ServerResultsUtils::generateErrorResult('Could not execute save operation'.$db->lastError);
-		}
-
-		// Get the autonumeric generated id value.
-		if($entity->id == ''){
-
-			$entity->id = $db->getLastInsertId();
-
-		}else{
-
-			// Clear all previously existing localized and non localized properties for this generic
-			if(!$db->query('DELETE FROM generic_value where genericId = '.$entity->id)){
-
-				$db->transactionRollback();
-				return ServerResultsUtils::generateErrorResult('Could not delete generic properties'.$db->lastError);
-			}
-		}
-
-		$insertValues = array();
-
-		// Generate an INSERT query part for all the NON LOCALIZED properties that have some value
-		$props = GenericsUtils::getNonLocalizedProperties($entity);
-
-		foreach ($props as $name){
-
-			if($entity->{$name} != ''){
-
-				array_push($insertValues, "('".$entity->id."','".$name."','', '".addslashes($entity->{$name})."')");
-			}
-		}
-
-		// Generate an INSERT query part for all the LOCALIZED properties that have some value
-		$props = GenericsUtils::getLocalizedProperties($entity);
-
-		foreach ($entity->locales as $l){
-
-			foreach ($props as $name){
-
-				if($l->{$name} != ''){
-
-					array_push($insertValues, "('".$entity->id."','".$name."','".$l->locale."', '".addslashes($l->{$name})."')");
-				}
-			}
-		}
-
-		// Insert all the property values
-		if(count($insertValues) > 0){
-
-			if(!$db->query('INSERT INTO generic_value (genericId,propertyName,locale,value) VALUES '.implode(',', $insertValues))){
-
-				$db->transactionRollback();
-				return ServerResultsUtils::generateErrorResult('Could not save generic properties '.$db->lastError);
-			}
-		}else{
-
-			// If there are no values on the entity, we will not save it. An error will happen
-			$db->transactionRollback();
-			return ServerResultsUtils::generateErrorResult('Generic entity is Empty');
-		}
+	}
 
 
-		// Add the links for the pictures that are related to this entity
-		if($msg = ControllerUtils::savePictureLinksToEntity($db, 'genericId', $entity->id, 'generic_picture', $entity->pictures)){
+	/**
+	 * TODO
+	 */
+	public function listAsTable(){
 
-			$db->transactionRollback();
-			return ServerResultsUtils::generateErrorResult($msg);
-		}
+		// TODO
 
-		// Add the links for the videos that are related to this entity
-		if($msg = ControllerUtils::saveVideoLinksToEntity($db, 'genericId', $entity->id, 'generic_video', $entity->videos)){
+	}
 
-			$db->transactionRollback();
-			return ServerResultsUtils::generateErrorResult($msg);
-		}
 
-		// Add the links for the files that are related to this entity
-		if($msg = ControllerUtils::saveFileLinksToEntity($db, 'genericId', $entity->id, 'generic_file', $entity->files)){
+	/**
+	 * TODO
+	 */
+	public function listAsInstances(){
 
-			$db->transactionRollback();
-			return ServerResultsUtils::generateErrorResult($msg);
-		}
-
-		$db->transactionCommit();
-
-		return ServerResultsUtils::generateOkResult('Save complete', array('id' => $entity->id));
+		// TODO
 
 	}
 
@@ -175,8 +112,7 @@ class TurboDepotManager extends BaseSingletonClass{
 	 */
 	public function disconnect(){
 
-		// TODO: Connect to database
-
+		// TODO
 	}
 }
 

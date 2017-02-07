@@ -12,15 +12,15 @@
 namespace org\turbodepot\src\test\php\managers;
 
 use PHPUnit_Framework_TestCase;
-use org\turbodepot\src\main\php\managers\TurboDepotManager;
+use org\turbodepot\src\main\php\managers\DataBaseManager;
 
 
 /**
- * TurboDepotManagerTest
+ * DataBaseManagerTest
  *
  * @return void
  */
-class TurboDepotManagerTest extends PHPUnit_Framework_TestCase {
+class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 
 
 	/**
@@ -30,11 +30,10 @@ class TurboDepotManagerTest extends PHPUnit_Framework_TestCase {
 	 */
 	public function testConnect(){
 
-		$turboDepotManager = TurboDepotManager::getInstance();
+		$db = new DataBaseManager();
 
-		$turboDepotManager->connect();
-
-		//$this->assertTrue($filesManager->isFile('https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js'), 'Could not load url. Internet connection must be available');
+		// TODO
+		// $db->connectMysql('localhost', 'test', 'root', '1234');
 	}
 }
 
