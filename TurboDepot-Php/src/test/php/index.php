@@ -4,7 +4,7 @@
 require_once __DIR__.'/../../main/php/AutoLoader.php';
 require_once __DIR__.'/AutoLoader.php';
 require_once __DIR__.'/libs/phpunit.phar';
-require_once __DIR__.'/libs/TurboCommons-Php-0.3.1164.phar';
+require_once __DIR__.'/libs/TurboCommons-Php-0.3.1244.phar';
 
 
 $phpunit = new PHPUnit_TextUI_TestRunner();

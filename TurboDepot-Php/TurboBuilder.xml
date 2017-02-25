@@ -17,5 +17,15 @@
 			 mode="commandLine" />	
 			 	  
 	</Test>
+	
+	<DataBase>
+	
+		<MySql host="localhost"
+			   dataBaseName="turbodepot_test"
+			   userName="root"
+			   password="1234"
+			   createIfNotExists="true" />
+	
+	</DataBase>
 			
 </TurboBuilder>

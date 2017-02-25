@@ -1,7 +1,7 @@
 <?php
 
 /**
- * TurboDepot is a cross language ORM library that allows saving, listing and retrieving multiple kinds of objects
+ * TurboDepot is a cross language ORM library that allows saving, retrieving, listing, filtering and more with complex class data instances
  *
  * Website : -> http://www.turbodepot.org
  * License : -> Licensed under the Apache License, Version 2.0. You may not use this file except in compliance with the License.

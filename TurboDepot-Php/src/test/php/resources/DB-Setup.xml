@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DBSetup>
+	
+	<MySql host="localhost"
+		   dataBaseName="turbodepot_test"
+		   userName="root"
+		   password="1234"
+		   createIfNotExists="true" />
+			
+</DBSetup>

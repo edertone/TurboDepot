@@ -1,7 +1,7 @@
 <?php
 
 /**
- * TurboDepot is a cross language ORM library that allows saving, listing and retrieving multiple kinds of objects
+ * TurboDepot is a cross language ORM library that allows saving, retrieving, listing, filtering and more with complex class data instances
 *
 * Website : -> http://www.turbodepot.org
 * License : -> Licensed under the Apache License, Version 2.0. You may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 namespace org\turbodepot\src\main\php\managers;
 
 use org\turbocommons\src\main\php\model\BaseStrictClass;
+use org\turbocommons\src\main\php\utils\StringUtils;
 
 
 /**
@@ -26,11 +27,9 @@ class DataBaseManager extends BaseStrictClass {
 
 
 	/**
-	 * Contains the last error that happened on the database (if any).
-	 * Note: Any error that is raised by a db operation or query that is performed outside this class will not
-	 * appear here.
+	 * Defines the mysql database engine name
 	 */
-	public $lastError = '';
+	const MYSQL = 'mysql';
 
 
 	/**
@@ -41,27 +40,35 @@ class DataBaseManager extends BaseStrictClass {
 
 
 	/**
-	 *
 	 * The class will throw a PHP warning if the total accumulated query execution time exceeds the specified seconds (Set it to 0 to disable any warning).
 	 */
 	public $warnForSlowQueriesTotal = 0;
 
 
 	/**
-	 * Array containing all the queries (either succeeded or failed) that have been executed on this instance since it was created.
-	 * Each array entry contains another array with the following values:<br>
-	 * - query: the SQL query<br>
-	 * - querySeconds: the time it took to execute it in seconds (with ms precision)<br>
-	 * - querySecondsAccumulated: The total time spent on db queries plus the time of this query<br>
-	 * - queryCount: The number of times the same exact query has been executed since the first connection<br>
+	 * Stores the total accumulated time for all the executed queries since first connection
 	 */
-	public $queryHistory = [];
+	private $_accumulatedQueryTime = 0;
 
 
 	/**
-	 * Stores the total accumulated time for all the executed queries since first connection
+	 * Tells if the last executed query was successful or not
 	 */
-	public $accumulatedQueryTime = 0;
+	private $_lastQuerySucceeded = false;
+
+
+	/**
+	 * @see $this->getQueryHistory()
+	 */
+	private $_queryHistory = [];
+
+
+	/**
+	 * Contains the last error that happened on the database (if any).
+	 * Note: Any error that is raised by a db operation or query that is performed outside this class will not
+	 * appear here.
+	 */
+	private $_lastError = '';
 
 
 	/** Stores the database engine to which this class is currently being connected */
@@ -80,13 +87,13 @@ class DataBaseManager extends BaseStrictClass {
 	 * Initialize a mysql database connection with the specified parameters
 	 *
 	 * @param string $host Path to the mysql server (possible values: an ip, a hostname, 'localhost', etc ...)
-	 * @param string $dataBaseName The name for the database to which we want to connect
 	 * @param string $userName The database user we will use for the connection
 	 * @param string $psw The database user password
+	 * @param string $dataBaseName The name for the database to which we want to connect. leave it empty if we are connecting only to the mysql host.
 	 *
 	 * @return boolean True on success or false if connection was not possible
 	 */
-	public function connectMysql($host, $dataBaseName, $userName, $psw){
+	public function connectMysql($host, $userName, $psw, $dataBaseName = null){
 
 		$id = mysqli_connect($host, $userName, $psw, $dataBaseName);
 
@@ -101,7 +108,7 @@ class DataBaseManager extends BaseStrictClass {
 			throw new Exception('Could not set connection encoding', E_USER_ERROR);
 		}
 
-		$this->_engine = 'mysql';
+		$this->_engine = self::MYSQL;
 		$this->_mysqlConnectionId = $id;
 
 		return true;
@@ -117,40 +124,125 @@ class DataBaseManager extends BaseStrictClass {
 	}
 
 
+	/**
+	 * Tells if the database manager is correctly connected to a dababase engine at this moment.
+	 *
+	 * @return boolean True if there is an active database connection, false if not.
+	 */
+	public function isConnected(){
+
+		return $this->_mysqlConnectionId !== null;
+	}
+
+
+	/**
+	 * Creates a new empty database with the specified name
+	 *
+	 * @param string $dataBaseName the name of the database to create
+	 *
+	 * @return boolean True if the database could be created, false otherwise
+	 */
+	public function createDataBase($dataBaseName){
+
+		if($this->_engine == self::MYSQL){
+
+			return $this->query('CREATE DATABASE '.$dataBaseName);
+		}
+
+		return false;
+	}
+
+
+	/**
+	 * Drops the specified database. Use with caution.
+	 *
+	 * @param string $dataBaseName the name of the database
+	 *
+	 * @return boolean True if the database was successfully deleted, false if deletion failed.
+	 */
+	public function deleteDataBase($dataBaseName){
+
+		if($this->_engine == self::MYSQL){
+
+			return $this->query('DROP DATABASE '.$dataBaseName);
+		}
+
+		return false;
+	}
+
+
+	/**
+	 * Detect if the specified database exists on the current connection
+	 *
+	 * @param string $dataBaseName the name of the database
+	 *
+	 * @return boolean True if the specified database exists, false otherwise
+	 */
+	public function dataBaseExists($dataBaseName) {
+
+		if($this->_engine == self::MYSQL){
+
+			return (mysqli_num_rows(mysqli_query($this->_mysqlConnectionId, "SHOW DATABASES LIKE '".$dataBaseName."'")) == 1);
+		}
+	}
+
+
     /**
-     * Get the result for the specified SQL query as an associative array.
+     * Execute the specified query against the current database connection.<br><br>
+     * If the query generates an error, the full description will be available by calling $this->getLastError().<br>
+     * Also, a detailed history of all the executed queries can be obtained by calling $this->getQueryHistory()
      *
      * @param string $query The SQL query to execute
      *
-     * @return The result of the query as an associative array or null if there's a query error.
+     * @see $this->getLastError
+     * @see $this->getQueryHistory
+     *
+     * @return boolean|array <br>
+     * - An associative array with the query data for queries that generate values (like a SELECT).<br>
+     * - True for successful queries that do not generate vaules.<br>
+     * - False for any query that generates an error.
      */
-    public function queryToArray($query){
+    public function query($query){
+
+    	$result = false;
 
     	$queryStart = microtime(true);
 
-    	$a = [];
+    	if($this->_engine == self::MYSQL){
 
-    	switch($this->_engine){
+    		$mysqlResult = mysqli_query($this->_mysqlConnectionId, $query);
 
-			case 'mysql':
-				$result = mysqli_query($this->_mysqlConnectionId, $query);
+    		if($mysqlResult === false){
 
-				if(!$result){
+    			$errorMessage = mysqli_error($this->_mysqlConnectionId);
 
-					$this->lastError = mysqli_error($this->_mysqlConnectionId);
-					return null;
-				}
+    			$this->_lastError = StringUtils::isEmpty($errorMessage) ? 'unknown sql error' : $errorMessage;
 
-				while($line = mysqli_fetch_assoc($result)){
+    		}else{
 
-					array_push($a, $line);
-				}
-				break;
-		}
+    			if($mysqlResult === true){
 
-		$this->_addQueryHistoryValue($query, $queryStart);
+    				$result = true;
 
-    	return $a;
+    			}else{
+
+    				$result = [];
+
+    				while($line = mysqli_fetch_assoc($mysqlResult)){
+
+    					array_push($result, $line);
+    				}
+    			}
+    		}
+    	}
+
+    	// Save the query information to history
+    	$this->_addQueryToHistory($query, $queryStart, $result);
+
+    	// Store if the last query was successful or not
+    	$this->_lastQuerySucceeded = ($result !== false);
+
+    	return $result;
     }
 
 
@@ -161,261 +253,148 @@ class DataBaseManager extends BaseStrictClass {
 	 */
 	public function getLastInsertId(){
 
-		switch($this->_engine){
+		if($this->_engine == self::MYSQL){
 
-			case 'mysql':
-				return mysqli_insert_id($this->_mysqlConnectionId);
-				break;
+			return mysqli_insert_id($this->_mysqlConnectionId);
 		}
 	}
 
 
 	/**
-	 * Gets all the values for one field in the specified table from the database,
-	 * as a String separated with comas. Note that this is usefull when not many results are expected,
-	 * as it probably will overflow the resultin string.
+	 * Contains the result of the last executed query.
 	 *
-	 * @param string $field table field
-	 * @param string $table specified table
-	 *
-	 * @return values TODO
+	 * @return boolean True if the last executed query succeeded without error, false if any error happened
 	 */
-	public function getAllFieldValuesString($field, $table){
+	public function getLastQuerySucceeded(){
 
-		// TODO - tornem un array. Reescriure funcio!
-
-		$result = $this->queryToArray('SELECT '.$field.' FROM '.$table);
-
-		if($result === null){
-
-			$this->lastError = mysqli_error($this->_mysqlConnectionId);
-			return null;
-		}
-
-		$returndata = '';
-
-		if (!$result){
-
-			return '';
-		}
-
-		// EMPTY result
-		if (mysqli_num_rows($result) == 0){
-
-			return '';
-		}
-
-    	$line = $this->getNextLine ($result);
-    	$returndata = $line[$field];
-
-		while ($line = $this->getNextLine ($result)){
-
-			$returndata = $returndata.','.$line[$field];
-		}
-
-		return $returndata;
+		return $this->_lastQuerySucceeded;
 	}
 
 
 	/**
-	 * Gets the maximum value for a specified field on the specified table.
+	 * Contains the last error that happened on the database (if any).
 	 *
-	 * @param string $field table field
-	 * @param string $table specified table
-	 * @param string $wheresection restriction
+	 * Note: Only database errors that are caused by operations made with this class are tracked here.
 	 *
-	 * @return the maxium value
+	 * @return string The last error that happened (if any)
 	 */
-	public function getFieldMaxValue($field, $table, $wheresection = ''){
+	public function getLastError(){
 
-		$result = $this->query('SELECT CAST('.$field.' AS SIGNED) AS '.$field.' FROM '.$table.' '.$wheresection.' ORDER BY '.$field.' DESC');
-
-		// ERROR in query
-		if(!$result){
-
-			$this->lastError = mysqli_error($this->_mysqlConnectionId);
-			return -1;
-		}
-
-		// EMPTY result
-		if (mysqli_num_rows($result) == 0){
-
-			return 0;
-		}
-
-    	$line = $this->getNextLine($result);
-    	return $line[$field];
-
+		return $this->_lastError;
 	}
 
 
 	/**
-	 * Gives an array with all the names for the columns of the selected table, sorted as they are defined in the table.
+	 * Outputs an array containing all the queries that have been executed for the current connection.
+	 * Each array entry contains another associative array with the following values:<br><br>
+	 * - query: the SQL query<br>
+	 * - queryDate: The date and time when the query was executed<br>
+	 * - queryError: Error message for the query in case it failed execution.<br>
+	 * - querySeconds: The time it took to execute it in seconds (with ms decimal precision)<br>
+	 * - querySecondsAccumulated: The total time spent on db queries plus the time of this query<br>
+	 * - queryCount: The number of times the same exact query has been executed since the first connection<br>
+	 *
+	 * @return array The query history information
+	 */
+	public function getQueryHistory(){
+
+		return $this->_queryHistory;
+	}
+
+
+	/**
+	 * Gets all the values for a given table column, sorted as they are on the table rows.
+	 * This should be used when we are listing values from a table column that does not have many lines,
+	 * otherwise we may overflow the result and get performance problems
+	 *
+	 * @param string $tableName Table that contains the requested column
+	 * @param string $columnName Name for the table column we want to list
+	 *
+	 * @return boolean|array <br>
+     * - A list with all the values that can be found on the specified table and column. Note that list is unique, repeated values are removed.<br>
+     * - False if an error happened
+	 */
+	public function getTableColumnValues($tableName, $columnName){
+
+		$mysqlResult = $this->query('SELECT DISTINCT '.$columnName.' FROM '.$tableName);
+
+		if(!$mysqlResult){
+
+			return false;
+		}
+
+		$result = [];
+
+		foreach ($mysqlResult as $value) {
+
+			array_push($result, $value[$columnName]);
+		}
+
+		return $result;
+	}
+
+
+	/**
+	 * Get a list with all the column names from the specified table with the same order as they appear on it.
+	 *
+	 * @param string $tableName the table name
+	 *
+	 * @return boolean|array The list of all column names on the requested table, or false if an error happens
+	 */
+	public function getTableColumnNames($tableName){
+
+		$mysqlResult = $this->query('SHOW COLUMNS FROM '.$tableName);
+
+		if(!$mysqlResult){
+
+			return false;
+		}
+
+		$result = [];
+
+		foreach ($mysqlResult as $row) {
+
+			array_push($result, $row['Field']);
+		}
+
+		return $result;
+	}
+
+
+	/**
+	 * Gets the maximum value for a specified column on the specified table.
+	 *
+	 * @param string $tableName the table name
+	 * @param string $columnName Name for the column we want to get the maximum value
+	 *
+	 * @return float The maximum value that was found on the given table and colum
+	 */
+	public function getTableColumnMaxValue($tableName, $columnName){
+
+		$mysqlResult = $this->query('SELECT CAST('.$columnName.' AS SIGNED) AS '.$columnName.' FROM '.$tableName.' ORDER BY '.$columnName.' DESC LIMIT 1');
+
+		if(!$mysqlResult){
+
+			return false;
+		}
+
+		return $mysqlResult[0][$columnName];
+	}
+
+
+	/**
+	 * Detect if the specified table exists on database
 	 *
 	 * @param string $tablename the name of the table
 	 *
-	 * @return boolean|array The list of column names or false if an error happens
+	 * @return boolean True if the specified table exists, false otherwise
 	 */
-	public function getTableColumnNames($tablename){
+	public function tableExists($tablename) {
 
-		$query = 'SHOW COLUMNS FROM '.$tablename;
+		if($this->_engine == self::MYSQL){
 
-		$queryStart = microtime(true);
-
-		$result = mysqli_query($this->_mysqlConnectionId, $query);
-
-		$this->_addQueryHistoryValue($query, $queryStart);
-
-		if(!$result){
-
-			$this->lastError = mysqli_error($this->_mysqlConnectionId);
-			return false;
+			return (mysqli_num_rows(mysqli_query($this->_mysqlConnectionId, "SHOW TABLES LIKE '".$tablename."'")) == 1);
 		}
-
-		$returnarray = array();
-
- 		if (mysqli_num_rows($result) > 0){
-
-    		while ($row = mysqli_fetch_assoc($result)){
-
-    			array_push($returnarray, $row['Field']);
-    		}
-
-         	return $returnarray;
- 		}
-
-        return false;
-	}
-
-
-	/**
-	 * Used to create a new row for a table.
-	 *
-	 * @param string $table the table name
-	 * @param string $values the values to add
-	 *
-	 * @return boolean
-	 */
-	public function tableInsert($table, $values){
-
-		$fields = $this->getTableColumnNames($table);
-		$fieldnum = count($fields);
-		$valuesnum = count ($values);
-		$i = 1;
-
-		// Add all the fields to the insert sentence
-		$sql = 'INSERT INTO '.$table.' ('.implode(',',$fields).') VALUES (';
-
-		// We use array_shift to avoid problems with arrays that use only key values and do not have indexes, like $_GET
-		$tempres = array_shift($values);
-		if (is_string($tempres)){
-
-			$sql .= "'".$tempres."'";
-
-		}else{
-
-			$sql .= $tempres;
-		}
-
-		// Check if the received value is a string or not. (Maybe not so much usefull, but...)
-		while ($i<$valuesnum){
-
-			$tempres = array_shift($values);
-
-			if (is_string($tempres)){
-
-				$sql .= ",'".$tempres."'";
-
-			}else{
-
-				$sql .= ','.$tempres;
-			}
-			$i++;
-		}
-
-		$sql .= ')';
-
-		$result = $this->queryToArray($sql);
-
-		if($result === null){
-
-			$this->lastError = mysqli_error($this->_mysqlConnectionId);
-			return false;
-		}
-
-		return true;
-	}
-
-
-	/**
-	 * Used to update the values for a specific row in a table. The row to modify is defined
-	 * by it's primary key. All the other values must be passed in the same order as they
-	 * are declared in the table.
-	 *
-	 *@param string $table The name for the table to update
-	 *@param array $primarykey the value for the key for the row to update. It is an array, as the key can be formed by more than one field.
-	 * 			IMPORTANT: The table field structure must begin always with the primary key values, then the foreign and finally the different values.
-	 *@param string $values All the different values for the table data. THESE MUST NOT INCLUDE THE PRIMARY KEY VALUES!!
-	 *
-	 *@return boolean
-	 *
-	 */
-	public function tableUpdate($table, $primarykey, $values){
-
-		// The primary key data must be in the form of an array
-		if(!is_array($primarykey)){
-
-			$primarykey = array($primarykey);
-		}
-
-		$fields = $this->getTableColumnNames($table);
-		$fieldnum = count($fields);
-		$primarykeynum = count($primarykey);
-		$valuesnum = count ($values);
-
-		// Add all the fields to the update sentence
-		// We use array_shift to avoid problems with arrays that use only key values and do not have indexes, like $_GET
-		$sql = 'UPDATE '.$table.' SET ';
-		$tempres = array_shift($values);
-
-		if (is_string($tempres)){
-
-			$sql .= $fields[$primarykeynum]." = '".$tempres."'";
-
-		}else{
-
-			$sql .= $fields[$primarykeynum].' = '.$tempres;
-		}
-
-		// Check if the received value is a string or not. (Maybe not so much usefull, but...)
-		$i = 1;
-		while ($i<$valuesnum){
-			$tempres = array_shift($values);
-			if (is_string($tempres))
-				$sql .= ','.$fields[$i+$primarykeynum]."= '".$tempres."'";
-			else
-				$sql .= ','.$fields[$i+$primarykeynum].'= '.$tempres;
-			$i++;
-		}
-
-		// Now is time to add the WHERE condition from the primary key
-		$i = 1;
-		$sql .= ' WHERE '.$fields[0]." = '".$primarykey[0]."'";
-		while ($i<$primarykeynum){
-			$i++;
-			if (is_string($primarykey[$i]))
-				$sql .= ' AND '.$fields[$i]." = '".$primarykey[$i]."'";
-			else
-				$sql .= ' AND '.$fields[$i].' = '.$primarykey[$i];
-		}
-
-		if($this->queryToArray($sql) === null){
-
-			$this->lastError = mysqli_error($this->_mysqlConnectionId);
-			return false;
-		}
-
-		return true;
 	}
 
 
@@ -456,29 +435,11 @@ class DataBaseManager extends BaseStrictClass {
 
 		if(!$result){
 
-			$this->lastError = mysqli_error($this->_mysqlConnectionId);
+			$this->_lastError = mysqli_error($this->_mysqlConnectionId);
 			return false;
 		}
 
 		return mysqli_num_rows($result);
-	}
-
-
-	/**
-	 * Detect if the specified table exists on database
-	 *
-	 * @param string $tablename the name of the table
-	 *
-	 * @return boolean result
-	 */
-	public function tableExists($tablename) {
-
-		switch($this->_engine){
-
-			case 'mysql':
-				return (mysqli_num_rows(mysqli_query($this->_mysqlConnectionId, "SHOW TABLES LIKE '".$tablename."'"))==1);
-				break;
-		}
 	}
 
 
@@ -534,16 +495,28 @@ class DataBaseManager extends BaseStrictClass {
 
 
 	/**
-	 * Close the database conection
+	 * Close the current database conection
 	 *
-	 * @return void
+	 * @return boolean True if the disconnect was successful, false otherwise.
 	 */
 	public function disconnect() {
 
-		// TODO:
+		// Check if we are currently connected to a mysql engine
+		if($this->_engine == self::MYSQL && mysqli_close($this->_mysqlConnectionId)){
 
+			$this->_engine = '';
+			$this->_mysqlConnectionId = null;
+			$this->_queryHistory = [];
+			$this->_lastError = '';
+			$this->_accumulatedQueryTime = 0;
+			$this->_lastQuerySucceeded = false;
+			$this->_transactionQueue = [];
+
+			return $this->_mysqlConnectionId == null;
+		}
+
+		return false;
 	}
-
 
 
 	/**
@@ -551,10 +524,11 @@ class DataBaseManager extends BaseStrictClass {
 	 *
 	 * @param string $query The SQL query to store
 	 * @param string $queryStart The microtime when the query started. This method will calculate the total time
+	 * @param boolean $queryResult True if the query execution succeeded or false if there was any error
 	 *
 	 * @return void
 	 */
-	private function _addQueryHistoryValue($query, $queryStart){
+	private function _addQueryToHistory($query, $queryStart, $queryResult){
 
 		// Some queries are not useful
 		if($query == 'START TRANSACTION' || $query == 'ROLLBACK' || $query == 'COMMIT'){
@@ -563,11 +537,19 @@ class DataBaseManager extends BaseStrictClass {
 		}
 
 		$queryEnd = microtime(true);
-
 		$querySeconds = round($queryEnd - $queryStart, 4);
 
 		// Calculate the accumulated time for all the queries since start to now
-		$this->$accumulatedQueryTime += $querySeconds;
+		$this->_accumulatedQueryTime += $querySeconds;
+
+		// generate the query history structure
+		$queryHistory = [];
+		$queryHistory['query'] = $query;
+		$queryHistory['queryError'] = ($queryResult === false ? $this->_lastError : '');
+		$queryHistory['queryDate'] = date('Y/m/d H:i:s', $queryStart);
+		$queryHistory['querySeconds'] = $querySeconds;
+		$queryHistory['querySecondsAccumulated'] = $this->_accumulatedQueryTime;
+		$queryHistory['queryCount'] = 1;
 
 		// Check if we must generate a warning due to slow query times
 		if($this->warnForSlowQueries > 0 && $querySeconds > $this->warnForSlowQueries){
@@ -576,26 +558,13 @@ class DataBaseManager extends BaseStrictClass {
 		}
 
 		// Check if we must generate a warning due to slow query total times
-		if($this->warnForSlowQueriesTotal > 0 && $this->$accumulatedQueryTime > $this->warnForSlowQueriesTotal){
+		if($this->warnForSlowQueriesTotal > 0 && $this->_accumulatedQueryTime > $this->warnForSlowQueriesTotal){
 
 			trigger_error('Warning: The SQL queries total execution time has exceeded '.$this->warnForSlowQueriesTotal.' seconds', E_USER_WARNING);
 		}
 
-		// Check that the current query does not already exist on history
-		for($i = 0; $i<$queryHistoryCount; $i++){
-
-			if($this->queryHistory[$i]['query'] == $query){
-
-				$this->queryHistory[$i]['querySeconds'] = ($this->queryHistory[$i]['querySeconds'] + $querySeconds) / 2;
-				$this->queryHistory[$i]['querySecondsAccumulated'] = $accumulatedTime;
-				$this->queryHistory[$i]['queryCount'] += 1;
-
-				return;
-			}
-		}
-
 		// Reaching here means this is the first time the query is executed, so we will store it
-		array_push($this->queryHistory, array('query' => $query, 'querySeconds' => $querySeconds, 'querySecondsAccumulated' => $accumulatedTime, 'queryCount' => 1));
+		array_push($this->_queryHistory, $queryHistory);
 	}
 }
 
