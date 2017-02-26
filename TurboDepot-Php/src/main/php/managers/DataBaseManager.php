@@ -58,7 +58,7 @@ class DataBaseManager extends BaseStrictClass {
 
 
 	/**
-	 * @see $this->getQueryHistory()
+	 * @see DataBaseManager::getQueryHistory
 	 */
 	private $_queryHistory = [];
 
@@ -75,12 +75,15 @@ class DataBaseManager extends BaseStrictClass {
 	private $_engine = '';
 
 
+	/**
+	 * Stores the name for the database that is currently being selected on the active engine connection.
+	 * Empty value means no database is selected yet.
+	 */
+	private $_selectedDatabase = '';
+
+
 	/** Variable that stores the mysql database connection id so it can be used for all the operations */
 	private $_mysqlConnectionId = null;
-
-
-	/** Array that is used to chain the different transaction operations so multiple calls are taken into account */
-	private $_transactionQueue = [];
 
 
 	/**
@@ -99,24 +102,28 @@ class DataBaseManager extends BaseStrictClass {
 
 		if(mysqli_connect_errno()){
 
-			throw new Exception('Could not connect to MYSQL'.mysqli_connect_error(), E_USER_ERROR);
+			throw new Exception('Could not connect to MYSQL'.mysqli_connect_error());
 		}
 
 		// Force MYSQL and PHP to speak each other in unicode  UTF8 format.
 		if(!mysqli_query($id, "SET NAMES 'utf8'")){
 
-			throw new Exception('Could not set connection encoding', E_USER_ERROR);
+			throw new Exception('Could not set connection encoding');
 		}
 
 		$this->_engine = self::MYSQL;
 		$this->_mysqlConnectionId = $id;
+		$this->_selectedDatabase = StringUtils::isEmpty((string)$dataBaseName) ? '' : $dataBaseName;
 
 		return true;
 	}
 
 
 	/**
+	 * Initialize a postgresql database connection with the specified parameters
 	 * TODO
+	 *
+	 * @return boolean True on success or false if connection was not possible
 	 */
 	public function connectPostgreSql($todo){
 
@@ -136,13 +143,24 @@ class DataBaseManager extends BaseStrictClass {
 
 
 	/**
+	 * Tells if the last executed query was succesful or not
+	 *
+	 * @return boolean True if the last executed query succeeded without error, false if any error happened
+	 */
+	public function isLastQuerySucceeded(){
+
+		return $this->_lastQuerySucceeded;
+	}
+
+
+	/**
 	 * Creates a new empty database with the specified name
 	 *
 	 * @param string $dataBaseName the name of the database to create
 	 *
 	 * @return boolean True if the database could be created, false otherwise
 	 */
-	public function createDataBase($dataBaseName){
+	public function dataBaseCreate($dataBaseName){
 
 		if($this->_engine == self::MYSQL){
 
@@ -154,13 +172,45 @@ class DataBaseManager extends BaseStrictClass {
 
 
 	/**
+	 * Set the specified database as the active one.
+	 * DataBaseManager must be connected to a db host for this method to work.
+	 *
+	 * @param string $dataBaseName The name for the database that we want to set as active.
+	 *
+	 * @return boolean True if it was possible to select the specified database, false if not.
+	 */
+	public function dataBaseSelect($dataBaseName){
+
+		// An active engine connection must be available to select a database
+		if(!$this->isConnected()){
+
+			throw new Exception('DataBaseManager->dataBaseSelect : Not connected to a database host.');
+		}
+
+		if($this->_engine == self::MYSQL){
+
+			if(mysqli_select_db($this->_mysqlConnectionId, $dataBaseName)){
+
+				$this->_selectedDatabase = $dataBaseName;
+
+			}else{
+
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+
+	/**
 	 * Drops the specified database. Use with caution.
 	 *
 	 * @param string $dataBaseName the name of the database
 	 *
 	 * @return boolean True if the database was successfully deleted, false if deletion failed.
 	 */
-	public function deleteDataBase($dataBaseName){
+	public function dataBaseDelete($dataBaseName){
 
 		if($this->_engine == self::MYSQL){
 
@@ -194,8 +244,8 @@ class DataBaseManager extends BaseStrictClass {
      *
      * @param string $query The SQL query to execute
      *
-     * @see $this->getLastError
-     * @see $this->getQueryHistory
+     * @see DataBaseManager::getLastError
+     * @see DataBaseManager::getQueryHistory
      *
      * @return boolean|array <br>
      * - An associative array with the query data for queries that generate values (like a SELECT).<br>
@@ -261,17 +311,6 @@ class DataBaseManager extends BaseStrictClass {
 
 
 	/**
-	 * Contains the result of the last executed query.
-	 *
-	 * @return boolean True if the last executed query succeeded without error, false if any error happened
-	 */
-	public function getLastQuerySucceeded(){
-
-		return $this->_lastQuerySucceeded;
-	}
-
-
-	/**
 	 * Contains the last error that happened on the database (if any).
 	 *
 	 * Note: Only database errors that are caused by operations made with this class are tracked here.
@@ -303,6 +342,29 @@ class DataBaseManager extends BaseStrictClass {
 
 
 	/**
+	 * Get the name for the database that is currently selected
+	 *
+	 * @return boolean|string The name for the currently selected database, '' if no database is selected, false if an error happened.
+	 */
+	public function getSelectedDataBase(){
+
+		if($this->_engine == self::MYSQL){
+
+			$mysqlResult = $this->query('SELECT DATABASE() as d');
+
+			if(!$mysqlResult){
+
+				return false;
+			}
+
+			return (string)$mysqlResult[0]['d'];
+		}
+
+		return false;
+	}
+
+
+	/**
 	 * Gets all the values for a given table column, sorted as they are on the table rows.
 	 * This should be used when we are listing values from a table column that does not have many lines,
 	 * otherwise we may overflow the result and get performance problems
@@ -316,21 +378,26 @@ class DataBaseManager extends BaseStrictClass {
 	 */
 	public function getTableColumnValues($tableName, $columnName){
 
-		$mysqlResult = $this->query('SELECT DISTINCT '.$columnName.' FROM '.$tableName);
+		if($this->_engine == self::MYSQL){
 
-		if(!$mysqlResult){
+			$mysqlResult = $this->query('SELECT DISTINCT '.$columnName.' FROM '.$tableName);
 
-			return false;
+			if(!$mysqlResult){
+
+				return false;
+			}
+
+			$result = [];
+
+			foreach ($mysqlResult as $value) {
+
+				array_push($result, $value[$columnName]);
+			}
+
+			return $result;
 		}
 
-		$result = [];
-
-		foreach ($mysqlResult as $value) {
-
-			array_push($result, $value[$columnName]);
-		}
-
-		return $result;
+		return false;
 	}
 
 
@@ -343,21 +410,26 @@ class DataBaseManager extends BaseStrictClass {
 	 */
 	public function getTableColumnNames($tableName){
 
-		$mysqlResult = $this->query('SHOW COLUMNS FROM '.$tableName);
+		if($this->_engine == self::MYSQL){
 
-		if(!$mysqlResult){
+			$mysqlResult = $this->query('SHOW COLUMNS FROM '.$tableName);
 
-			return false;
+			if(!$mysqlResult){
+
+				return false;
+			}
+
+			$result = [];
+
+			foreach ($mysqlResult as $row) {
+
+				array_push($result, $row['Field']);
+			}
+
+			return $result;
 		}
 
-		$result = [];
-
-		foreach ($mysqlResult as $row) {
-
-			array_push($result, $row['Field']);
-		}
-
-		return $result;
+		return false;
 	}
 
 
@@ -371,14 +443,39 @@ class DataBaseManager extends BaseStrictClass {
 	 */
 	public function getTableColumnMaxValue($tableName, $columnName){
 
-		$mysqlResult = $this->query('SELECT CAST('.$columnName.' AS SIGNED) AS '.$columnName.' FROM '.$tableName.' ORDER BY '.$columnName.' DESC LIMIT 1');
+		if($this->_engine == self::MYSQL){
+
+			$mysqlResult = $this->query('SELECT CAST('.$columnName.' AS SIGNED) AS '.$columnName.' FROM '.$tableName.' ORDER BY '.$columnName.' DESC LIMIT 1');
+
+			if(!$mysqlResult){
+
+				return false;
+			}
+
+			return $mysqlResult[0][$columnName];
+		}
+
+		return false;
+	}
+
+
+	/**
+	 * Get the total number of rows for a given table
+	 *
+	 * @param string $tableName The name for the table we want to count
+	 *
+	 * @return int The total number of table rows or false if an error happened
+	 */
+	public function getTableRowCount($tableName){
+
+		$mysqlResult = $this->query('select count(1) as c FROM '.$tableName);
 
 		if(!$mysqlResult){
 
 			return false;
 		}
 
-		return $mysqlResult[0][$columnName];
+		return (int)$mysqlResult[0]['c'];
 	}
 
 
@@ -399,98 +496,50 @@ class DataBaseManager extends BaseStrictClass {
 
 
 	/**
-	 * Get the total amount of rows by applying the COUNT method on the specified table primary key.
+	 * Start a database transaction.
 	 *
-	 * @param int $primaryKey The query field that contains the table primary key, that will be used to count the items
-	 * @param string $from    The sql FORM part that will be used on the query
-	 * @param string $where	  The sql WHERE part that will be used on the query (optional)
-	 *
-	 * @return integer The total number of items
-	 */
-	public function countByPrimaryKey($primaryKey, $from, $where = ''){
-
-		$line = $this->getNextLine($this->query('SELECT COUNT('.$primaryKey.') as items '.$from.' '.$where));
-
-		if($line == null){
-
-			return 0;
-
-		}else{
-
-			return $line['items'];
-		}
-	}
-
-
-	/**
-	 * Count the total number of rows that a SQL query will generate
-	 *
-	 * @param string $query the SQL Query that we want to count
-	 *
-	 * @return integer The total count of rows that the query will generate
-	 */
-	public function countByQuery($query){
-
-		$result = $this->query($query);
-
-		if(!$result){
-
-			$this->_lastError = mysqli_error($this->_mysqlConnectionId);
-			return false;
-		}
-
-		return mysqli_num_rows($result);
-	}
-
-
-	/**
-	 * Start a database transaction
-	 * TODO explicar com funciona el mecanisme de encadenament de transaccions i dir que es independent del motor de bd
-	 * @return void
+	 * @return boolean True if the transaction started correctly, false otherwise
 	 */
 	public function transactionBegin(){
 
-		if(count($this->_transactionQueue) <= 0){
+		if($this->_engine == self::MYSQL){
 
-			$this->query('START TRANSACTION');
+			return $this->query('START TRANSACTION');
 		}
 
-		// We must chain each transaction begin call so only the first time is executed
-		array_push($this->_transactionQueue, '1');
-
+		return false;
 	}
 
 
 	/**
 	 * Rollback a database transaction
 	 *
-	 * @return void
+	 * @return boolean True if the transaction rolled correctly, false otherwise
 	 */
 	public function transactionRollback(){
 
-		// reset the transaction queue
-		$this->_transactionQueue = [];
+		if($this->_engine == self::MYSQL){
 
-		$this->query('ROLLBACK');
+			return $this->query('ROLLBACK');
+		}
 
+		return false;
 	}
 
 
 	/**
 	 * Commit a database transaction
 	 *
-	 * @return void
+	 * @return boolean True if the transaction commited correctly, false otherwise
 	 */
 	public function transactionCommit(){
 
-		// We remove an element from the transaction queue and execute only if array is empty.
-		array_shift($this->_transactionQueue);
+		if($this->_engine == self::MYSQL){
 
-		if(count($this->_transactionQueue) <= 0){
-
-			$this->query('COMMIT');
+			return $this->query('COMMIT');
 		}
 
+		return false;
 	}
 
 
@@ -510,12 +559,10 @@ class DataBaseManager extends BaseStrictClass {
 			$this->_lastError = '';
 			$this->_accumulatedQueryTime = 0;
 			$this->_lastQuerySucceeded = false;
-			$this->_transactionQueue = [];
-
-			return $this->_mysqlConnectionId == null;
+			$this->_selectedDatabase = '';
 		}
 
-		return false;
+		return $this->_mysqlConnectionId == null;
 	}
 
 
