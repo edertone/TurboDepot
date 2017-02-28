@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <buildpath>
-	<buildpathentry combineaccessrules="false" kind="prj" path="/TurboCommons-Php"/>
 	<buildpathentry kind="con" path="org.eclipse.php.core.LANGUAGE"/>
-	<buildpathentry kind="lib" path="src/test/php/libs/phpunit.phar"/>
+	<buildpathentry kind="lib" path="src/test/php/libs/TurboCommons-Php-0.3.1244.phar"/>
 	<buildpathentry kind="src" path="src"/>
+	<buildpathentry kind="lib" path="src/test/php/libs/phpunit-5.7.14.phar"/>
 </buildpath>

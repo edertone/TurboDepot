@@ -1,0 +1,6 @@
+eclipse.preferences.version=1
+phpunit_config_file=/TurboDepot-Php/src/test/php/PhpUnitSetup.xml
+preload_script=/TurboDepot-Php/src/test/php/AutoLoader.php
+test_file_pattern=
+test_folders=/TurboDepot-Php/src/test/php
+testing_framework=PHPUnit

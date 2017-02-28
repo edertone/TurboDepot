@@ -28,45 +28,115 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 
 
 	/**
+	 * @see PHPUnit_Framework_TestCase::setUpBeforeClass()
+	 *
+	 * @return void
+	 */
+	public static function setUpBeforeClass(){
+
+		// Nothing necessary here
+	}
+
+
+	/**
+	 * @see PHPUnit_Framework_TestCase::setUp()
+	 *
+	 * @return void
+	 */
+	protected function setUp(){
+
+		// We have a DB-Setup xml file containing the database connection parameters we will use for our tests.
+		$this->dbSetup = SerializationUtils::stringToXml(FilesManager::getInstance()->readFile(__DIR__.'/../resources/managers/dataBaseManager/DB-Setup.xml'))->MySql;
+
+		$this->db = new DataBaseManager();
+
+		$this->assertTrue($this->db->connectMysql($this->dbSetup['host'], $this->dbSetup['userName'], $this->dbSetup['password']));
+
+		$i = 0;
+
+		// Find a non existant database name
+		while($this->db->dataBaseExists($this->dataBaseName = 'databasemanagertest_'.$i)){
+
+			$i++;
+		}
+
+		// Create the database
+		$this->db->dataBaseCreate($this->dataBaseName);
+		$this->db->dataBaseSelect($this->dataBaseName);
+	}
+
+
+	/**
+	 * @see PHPUnit_Framework_TestCase::tearDown()
+	 *
+	 * @return void
+	 */
+	protected function tearDown(){
+
+		if(!$this->db->isConnected()){
+
+			$this->assertTrue($this->db->connectMysql($this->dbSetup['host'], $this->dbSetup['userName'], $this->dbSetup['password']));
+		}
+
+		// Delete the test temporary database
+		$this->assertTrue($this->db->dataBaseDelete($this->dataBaseName));
+
+		// Check it does not exist
+		$this->assertTrue(!$this->db->dataBaseExists($this->dataBaseName));
+
+		// Disconnect the database
+		$this->assertTrue($this->db->disconnect());
+	}
+
+
+	/**
+	 * @see PHPUnit_Framework_TestCase::tearDownAfterClass()
+	 *
+	 * @return void
+	 */
+	public static function tearDownAfterClass(){
+
+		// Nothing necessary here
+	}
+
+
+	/**
 	 * testConnect
 	 *
 	 * @return void
 	 */
 	public function testConnect(){
 
-		// We have a DB-Setup xml file containing the database connection parameters we will use for our tests.
-		$dbSetup = SerializationUtils::stringToXml(FilesManager::getInstance()->readFile(__DIR__.'/../resources/DB-Setup.xml'))->MySql;
-
-		$db = new DataBaseManager();
+		$this->db->disconnect();
 
 		// Test correct case
-		$this->assertTrue(!$db->isConnected());
-		$this->assertTrue($db->connectMysql($dbSetup['host'], $dbSetup['userName'], $dbSetup['password'], $dbSetup['dataBaseName']));
-		$this->assertTrue($db->isConnected());
-		$this->assertTrue($db->getLastError() === '');
-		$this->assertTrue($db->disconnect());
-		$this->assertTrue(!$db->isConnected());
-		$this->assertTrue($db->getLastError() === '');
+		$this->assertTrue(!$this->db->isConnected());
+		$this->assertTrue($this->db->connectMysql($this->dbSetup['host'], $this->dbSetup['userName'], $this->dbSetup['password'], $this->dataBaseName));
+		$this->assertTrue($this->db->isConnected());
+		$this->assertTrue($this->db->getLastError() === '');
+		$this->assertTrue($this->db->disconnect());
+		$this->assertTrue(!$this->db->isConnected());
+		$this->assertTrue($this->db->getLastError() === '');
 
 		// test incorrect cases
 		$exceptionMessage = '';
 
 		try {
-			$db->connectMysql($dbSetup['host'], $dbSetup['userName'], $dbSetup['password'], 'nonexistantdatabaseblablabla');
+			$this->db->connectMysql($dbSetup['host'], $dbSetup['userName'], $dbSetup['password'], 'nonexistantdatabaseblablabla');
 			$exceptionMessage = 'nonexistantdatabaseblablabla did not cause exception';
 		} catch (Exception $e) {
 			// We expect an exception to happen
 		}
 
 		try {
-			$db->connectMysql($dbSetup['host'], 'userthatdoesnotexist', $dbSetup['password'], $dbSetup['dataBaseName']);
+			$this->db->connectMysql($dbSetup['host'], 'userthatdoesnotexist', $dbSetup['password'], $this->dataBaseName);
 			$exceptionMessage = 'userthatdoesnotexist did not cause exception';
 		} catch (Exception $e) {
 			// We expect an exception to happen
 		}
 
 		try {
-			$db->connectMysql($dbSetup['host'], $dbSetup['userName'], 'passwordthatdoesnotexist', $dbSetup['dataBaseName']);
+			$this->db->connectMysql($dbSetup['host'], $dbSetup['userName'], 'passwordthatdoesnotexist', $this->dataBaseName);
 			$exceptionMessage = 'passwordthatdoesnotexist did not cause exception';
 		} catch (Exception $e) {
 			// We expect an exception to happen
@@ -77,8 +147,8 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 			$this->fail($exceptionMessage);
 		}
 
-		$this->assertTrue($db->getLastError() === '');
-		$this->assertTrue(!$db->isConnected());
+		$this->assertTrue($this->db->getLastError() === '');
+		$this->assertTrue(!$this->db->isConnected());
 	}
 
 
@@ -100,16 +170,13 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	 */
 	public function testIsConnected(){
 
-		// We have a DB-Setup xml file containing the database connection parameters we will use for our tests.
-		$dbSetup = SerializationUtils::stringToXml(FilesManager::getInstance()->readFile(__DIR__.'/../resources/DB-Setup.xml'))->MySql;
+		$this->assertTrue($this->db->disconnect());
 
-		$db = new DataBaseManager();
-
-		$this->assertTrue(!$db->isConnected());
-		$this->assertTrue($db->connectMysql($dbSetup['host'], $dbSetup['userName'], $dbSetup['password'], $dbSetup['dataBaseName']));
-		$this->assertTrue($db->isConnected());
-		$this->assertTrue($db->disconnect());
-		$this->assertTrue(!$db->isConnected());
+		$this->assertTrue(!$this->db->isConnected());
+		$this->assertTrue($this->db->connectMysql($this->dbSetup['host'], $this->dbSetup['userName'], $this->dbSetup['password'], $this->dataBaseName));
+		$this->assertTrue($this->db->isConnected());
+		$this->assertTrue($this->db->disconnect());
+		$this->assertTrue(!$this->db->isConnected());
 	}
 
 
@@ -131,26 +198,16 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	 */
 	public function testDataBaseCreate(){
 
-		// We have a DB-Setup xml file containing the database connection parameters we will use for our tests.
-		$dbSetup = SerializationUtils::stringToXml(FilesManager::getInstance()->readFile(__DIR__.'/../resources/DB-Setup.xml'))->MySql;
-
-		$db = new DataBaseManager();
-
-		$this->assertTrue($db->connectMysql($dbSetup['host'], $dbSetup['userName'], $dbSetup['password'], $dbSetup['dataBaseName']));
-
 		// Drop test db in case it is on db due to a previous failed execution of tests
-		$db->dataBaseDelete('testDataBaseCreate');
+		$this->db->dataBaseDelete('testDataBaseCreate');
 
-		$this->assertTrue(!$db->dataBaseExists('testDataBaseCreate'));
-		$db->dataBaseCreate('testDataBaseCreate');
-		$this->assertTrue($db->dataBaseExists('testDataBaseCreate'));
+		$this->assertTrue(!$this->db->dataBaseExists('testDataBaseCreate'));
+		$this->db->dataBaseCreate('testDataBaseCreate');
+		$this->assertTrue($this->db->dataBaseExists('testDataBaseCreate'));
 
 		// Drop the database
-		$db->dataBaseDelete('testDataBaseCreate');
-		$this->assertTrue(!$db->dataBaseExists('testDataBaseCreate'));
-
-		// Disconnect the database
-		$this->assertTrue($db->disconnect());
+		$this->db->dataBaseDelete('testDataBaseCreate');
+		$this->assertTrue(!$this->db->dataBaseExists('testDataBaseCreate'));
 	}
 
 
@@ -161,39 +218,29 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	 */
 	public function testDataBaseSelect(){
 
-		// We have a DB-Setup xml file containing the database connection parameters we will use for our tests.
-		$dbSetup = SerializationUtils::stringToXml(FilesManager::getInstance()->readFile(__DIR__.'/../resources/DB-Setup.xml'))->MySql;
-
-		$db = new DataBaseManager();
-
-		$this->assertTrue($db->connectMysql($dbSetup['host'], $dbSetup['userName'], $dbSetup['password']));
-
-		$this->assertTrue($db->getSelectedDataBase() == '');
+		$this->assertTrue($this->db->getSelectedDataBase() == $this->dataBaseName);
 
 		// Drop test dbs in case they are on db due to a previous failed execution of tests
-		$db->dataBaseDelete('testdatabaseselect_tempdb');
-		$db->dataBaseDelete('testdatabaseselect_tempdb2');
+		$this->db->dataBaseDelete('testdatabaseselect_tempdb');
+		$this->db->dataBaseDelete('testdatabaseselect_tempdb2');
 
 		// Create two temporary databases
-		$this->assertTrue($db->dataBaseCreate('testdatabaseselect_tempdb'));
-		$this->assertTrue($db->dataBaseCreate('testdatabaseselect_tempdb2'));
+		$this->assertTrue($this->db->dataBaseCreate('testdatabaseselect_tempdb'));
+		$this->assertTrue($this->db->dataBaseCreate('testdatabaseselect_tempdb2'));
 
 		// test database selection
-		$this->assertTrue($db->dataBaseSelect('testdatabaseselect_tempdb'));
-		$this->assertTrue($db->getSelectedDataBase() == 'testdatabaseselect_tempdb');
-		$this->assertTrue($db->dataBaseSelect('testdatabaseselect_tempdb2'));
-		$this->assertTrue($db->getSelectedDataBase() == 'testdatabaseselect_tempdb2');
+		$this->assertTrue($this->db->dataBaseSelect('testdatabaseselect_tempdb'));
+		$this->assertTrue($this->db->getSelectedDataBase() == 'testdatabaseselect_tempdb');
+		$this->assertTrue($this->db->dataBaseSelect('testdatabaseselect_tempdb2'));
+		$this->assertTrue($this->db->getSelectedDataBase() == 'testdatabaseselect_tempdb2');
 
 		// Drop the databases
-		$db->dataBaseDelete('testdatabaseselect_tempdb');
-		$db->dataBaseDelete('testdatabaseselect_tempdb2');
-		$this->assertTrue(!$db->dataBaseExists('testdatabaseselect_tempdb'));
-		$this->assertTrue(!$db->dataBaseExists('testdatabaseselect_tempdb2'));
+		$this->db->dataBaseDelete('testdatabaseselect_tempdb');
+		$this->db->dataBaseDelete('testdatabaseselect_tempdb2');
+		$this->assertTrue(!$this->db->dataBaseExists('testdatabaseselect_tempdb'));
+		$this->assertTrue(!$this->db->dataBaseExists('testdatabaseselect_tempdb2'));
 
-		$this->assertTrue($db->getSelectedDataBase() == '');
-
-		// Disconnect the database
-		$this->assertTrue($db->disconnect());
+		$this->assertTrue($this->db->getSelectedDataBase() == '');
 	}
 
 
@@ -226,59 +273,52 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	 */
 	public function testQuery(){
 
-		// We have a DB-Setup xml file containing the database connection parameters we will use for our tests.
-		$dbSetup = SerializationUtils::stringToXml(FilesManager::getInstance()->readFile(__DIR__.'/../resources/DB-Setup.xml'))->MySql;
-
-		$db = new DataBaseManager();
-
-		$this->assertTrue($db->connectMysql($dbSetup['host'], $dbSetup['userName'], $dbSetup['password'], $dbSetup['dataBaseName']));
-
 		// Drop test table in case it is on db due to a previous failed execution of tests
-		$db->query('DROP TABLE MyGuests');
+		$this->db->query('DROP TABLE MyGuests');
 
 		// test creating a table
-		$this->assertTrue($db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, firstname VARCHAR(30) NOT NULL, lastname VARCHAR(30) NOT NULL)'));
-		$this->assertTrue($db->tableExists('MyGuests'));
-		$this->assertTrue($db->isLastQuerySucceeded());
-		$this->assertTrue(count($db->getQueryHistory()) == 2);
+		$this->assertTrue($this->db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, firstname VARCHAR(30) NOT NULL, lastname VARCHAR(30) NOT NULL)'));
+		$this->assertTrue($this->db->tableExists('MyGuests'));
+		$this->assertTrue($this->db->isLastQuerySucceeded());
+		$this->assertTrue(count($this->db->getQueryHistory()) == 3);
 
 		// Test inserting data to the table
-		$this->assertTrue($db->query("INSERT INTO MyGuests (firstname, lastname) VALUES ('john','rambo')"));
-		$this->assertTrue($db->isLastQuerySucceeded());
-		$this->assertTrue($db->getLastInsertId() == 1);
-		$this->assertTrue($db->query("INSERT INTO MyGuests (firstname, lastname) VALUES ('albert','einstein')"));
-		$this->assertTrue($db->isLastQuerySucceeded());
-		$this->assertTrue($db->getLastInsertId() == 2);
-		$this->assertTrue($db->query("INSERT INTO MyGuests (firstname, lastname) VALUES ('elen','ripley')"));
-		$this->assertTrue($db->isLastQuerySucceeded());
-		$this->assertTrue($db->getLastInsertId() == 3);
-		$this->assertTrue(count($db->getQueryHistory()) == 5);
+		$this->assertTrue($this->db->query("INSERT INTO MyGuests (firstname, lastname) VALUES ('john','rambo')"));
+		$this->assertTrue($this->db->isLastQuerySucceeded());
+		$this->assertTrue($this->db->getLastInsertId() == 1);
+		$this->assertTrue($this->db->query("INSERT INTO MyGuests (firstname, lastname) VALUES ('albert','einstein')"));
+		$this->assertTrue($this->db->isLastQuerySucceeded());
+		$this->assertTrue($this->db->getLastInsertId() == 2);
+		$this->assertTrue($this->db->query("INSERT INTO MyGuests (firstname, lastname) VALUES ('elen','ripley')"));
+		$this->assertTrue($this->db->isLastQuerySucceeded());
+		$this->assertTrue($this->db->getLastInsertId() == 3);
+		$this->assertTrue(count($this->db->getQueryHistory()) == 6);
 
 		// test reading values from the created table
-		$data = $db->query('SELECT * FROM MyGuests');
-		$this->assertTrue($db->isLastQuerySucceeded());
+		$data = $this->db->query('SELECT * FROM MyGuests');
+		$this->assertTrue($this->db->isLastQuerySucceeded());
 		$this->assertTrue(count($data) == 3);
 		$this->assertTrue($data[0]['firstname'] == 'john');
 		$this->assertTrue($data[1]['lastname'] == 'einstein');
 		$this->assertTrue($data[2]['lastname'] == 'ripley');
 
 		// test deleting the table
-		$this->assertTrue($db->query('DROP TABLE MyGuests'));
-		$this->assertTrue(!$db->tableExists('MyGuests'));
-		$this->assertTrue($db->isLastQuerySucceeded());
-		$this->assertTrue(count($db->getQueryHistory()) == 7);
-		$this->assertTrue(!$db->query('DROP TABLE MyGuests'));
-		$this->assertTrue($db->getLastError() != '');
-		$this->assertTrue(!$db->isLastQuerySucceeded());
-		$this->assertTrue(count($db->getQueryHistory()) == 8);
+		$this->assertTrue($this->db->query('DROP TABLE MyGuests'));
+		$this->assertTrue(!$this->db->tableExists('MyGuests'));
+		$this->assertTrue($this->db->isLastQuerySucceeded());
+		$this->assertTrue(count($this->db->getQueryHistory()) == 8);
+		$this->assertTrue(!$this->db->query('DROP TABLE MyGuests'));
+		$this->assertTrue($this->db->getLastError() != '');
+		$this->assertTrue(!$this->db->isLastQuerySucceeded());
+		$this->assertTrue(count($this->db->getQueryHistory()) == 9);
 
 		// Test disconnect the database
-		$this->assertTrue($db->disconnect());
+		$this->assertTrue($this->db->disconnect());
 
 		// test that queries do not work after db disconnected
-		$this->assertTrue(!$db->query('DROP TABLE MyGuests'));
-		$this->assertTrue(!$db->isLastQuerySucceeded());
-		$this->assertTrue(count($db->getQueryHistory()) == 1);
+		$this->assertTrue(!$this->db->query('DROP TABLE MyGuests'));
+		$this->assertTrue(!$this->db->isLastQuerySucceeded());
+		$this->assertTrue(count($this->db->getQueryHistory()) == 1);
 	}
 
 
@@ -333,39 +373,32 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	 */
 	public function testGetTableColumnValues(){
 
-		// We have a DB-Setup xml file containing the database connection parameters we will use for our tests.
-		$dbSetup = SerializationUtils::stringToXml(FilesManager::getInstance()->readFile(__DIR__.'/../resources/DB-Setup.xml'))->MySql;
-
-		$db = new DataBaseManager();
-
-		$this->assertTrue($db->connectMysql($dbSetup['host'], $dbSetup['userName'], $dbSetup['password'], $dbSetup['dataBaseName']));
-
 		// Drop test table in case it is on db due to a previous failed execution of tests
-		$db->query('DROP TABLE MyGuests');
+		$this->db->query('DROP TABLE MyGuests');
 
 		// Create the table and required data
-		$db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, firstname VARCHAR(30) NOT NULL, lastname VARCHAR(30) NOT NULL)');
-		$this->assertTrue($db->query("INSERT INTO MyGuests (firstname, lastname) VALUES ('john','rambo')"));
-		$this->assertTrue($db->query("INSERT INTO MyGuests (firstname, lastname) VALUES ('albert','einstein')"));
-		$this->assertTrue($db->query("INSERT INTO MyGuests (firstname, lastname) VALUES ('elen','ripley')"));
-		$this->assertTrue($db->query("INSERT INTO MyGuests (firstname, lastname) VALUES ('elen2','ripley')"));
-		$this->assertTrue($db->query("INSERT INTO MyGuests (firstname, lastname) VALUES ('elen3','ripley')"));
-		$this->assertTrue(count($db->getQueryHistory()) == 7);
+		$this->db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, firstname VARCHAR(30) NOT NULL, lastname VARCHAR(30) NOT NULL)');
+		$this->assertTrue($this->db->query("INSERT INTO MyGuests (firstname, lastname) VALUES ('john','rambo')"));
+		$this->assertTrue($this->db->query("INSERT INTO MyGuests (firstname, lastname) VALUES ('albert','einstein')"));
+		$this->assertTrue($this->db->query("INSERT INTO MyGuests (firstname, lastname) VALUES ('elen','ripley')"));
+		$this->assertTrue($this->db->query("INSERT INTO MyGuests (firstname, lastname) VALUES ('elen2','ripley')"));
+		$this->assertTrue($this->db->query("INSERT INTO MyGuests (firstname, lastname) VALUES ('elen3','ripley')"));
+		$this->assertTrue(count($this->db->getQueryHistory()) == 8);
 
 		// Test values are ok
-		$this->assertTrue(ArrayUtils::isEqualTo($db->getTableColumnValues('MyGuests', 'firstname'), ['john', 'albert', 'elen', 'elen2', 'elen3']));
-		$this->assertTrue(ArrayUtils::isEqualTo($db->getTableColumnValues('MyGuests', 'lastname'), ['rambo', 'einstein', 'ripley']));
+		$this->assertTrue(ArrayUtils::isEqualTo($this->db->getTableColumnValues('MyGuests', 'firstname'), ['john', 'albert', 'elen', 'elen2', 'elen3']));
+		$this->assertTrue(ArrayUtils::isEqualTo($this->db->getTableColumnValues('MyGuests', 'lastname'), ['rambo', 'einstein', 'ripley']));
 
 		// Test incorrect values
-		$this->assertTrue(!$db->getTableColumnValues('MyGuests', 'unexistant'));
-		$this->assertTrue(!$db->getTableColumnValues('unexistant', 'lastname'));
+		$this->assertTrue(!$this->db->getTableColumnValues('MyGuests', 'unexistant'));
+		$this->assertTrue(!$this->db->getTableColumnValues('unexistant', 'lastname'));
 
 		// Delete created table
-		$this->assertTrue($db->query('DROP TABLE MyGuests'));
-		$this->assertTrue(!$db->tableExists('MyGuests'));
+		$this->assertTrue($this->db->query('DROP TABLE MyGuests'));
+		$this->assertTrue(!$this->db->tableExists('MyGuests'));
 
 		// Disconnect the database
-		$this->assertTrue($db->disconnect());
+		$this->assertTrue($this->db->disconnect());
 	}
 
 
@@ -376,31 +409,21 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	 */
 	public function testGetTableColumnNames(){
 
-		// We have a DB-Setup xml file containing the database connection parameters we will use for our tests.
-		$dbSetup = SerializationUtils::stringToXml(FilesManager::getInstance()->readFile(__DIR__.'/../resources/DB-Setup.xml'))->MySql;
-
-		$db = new DataBaseManager();
-
-		$this->assertTrue($db->connectMysql($dbSetup['host'], $dbSetup['userName'], $dbSetup['password'], $dbSetup['dataBaseName']));
-
 		// Drop test table in case it is on db due to a previous failed execution of tests
-		$db->query('DROP TABLE MyGuests');
+		$this->db->query('DROP TABLE MyGuests');
 
 		// Create the table
-		$db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, firstname VARCHAR(30) NOT NULL, lastname VARCHAR(30) NOT NULL, city VARCHAR(30) NOT NULL, country VARCHAR(30) NOT NULL)');
+		$this->db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, firstname VARCHAR(30) NOT NULL, lastname VARCHAR(30) NOT NULL, city VARCHAR(30) NOT NULL, country VARCHAR(30) NOT NULL)');
 
 		// Test values are ok
-		$this->assertTrue(ArrayUtils::isEqualTo($db->getTableColumnNames('MyGuests'), ['id', 'firstname', 'lastname', 'city', 'country']));
+		$this->assertTrue(ArrayUtils::isEqualTo($this->db->getTableColumnNames('MyGuests'), ['id', 'firstname', 'lastname', 'city', 'country']));
 
 		// Test incorrect values
-		$this->assertTrue(!$db->getTableColumnNames('unexistant'));
+		$this->assertTrue(!$this->db->getTableColumnNames('unexistant'));
 
 		// Delete created table
-		$this->assertTrue($db->query('DROP TABLE MyGuests'));
-		$this->assertTrue(!$db->tableExists('MyGuests'));
-
-		// Disconnect the database
-		$this->assertTrue($db->disconnect());
+		$this->assertTrue($this->db->query('DROP TABLE MyGuests'));
+		$this->assertTrue(!$this->db->tableExists('MyGuests'));
 	}
 
 
@@ -411,36 +434,26 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	 */
 	public function testGetTableColumnMaxValue(){
 
-		// We have a DB-Setup xml file containing the database connection parameters we will use for our tests.
-		$dbSetup = SerializationUtils::stringToXml(FilesManager::getInstance()->readFile(__DIR__.'/../resources/DB-Setup.xml'))->MySql;
-
-		$db = new DataBaseManager();
-
-		$this->assertTrue($db->connectMysql($dbSetup['host'], $dbSetup['userName'], $dbSetup['password'], $dbSetup['dataBaseName']));
-
 		// Drop test table in case it is on db due to a previous failed execution of tests
-		$db->query('DROP TABLE MyGuests');
+		$this->db->query('DROP TABLE MyGuests');
 
 		// Create the table
-		$db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, val INT(6) NOT NULL)');
-		$this->assertTrue($db->query('INSERT INTO MyGuests (val) VALUES (1)'));
-		$this->assertTrue($db->query('INSERT INTO MyGuests (val) VALUES (8)'));
-		$this->assertTrue($db->query('INSERT INTO MyGuests (val) VALUES (90)'));
-		$this->assertTrue($db->query('INSERT INTO MyGuests (val) VALUES (4)'));
-		$this->assertTrue($db->query('INSERT INTO MyGuests (val) VALUES (27)'));
+		$this->db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, val INT(6) NOT NULL)');
+		$this->assertTrue($this->db->query('INSERT INTO MyGuests (val) VALUES (1)'));
+		$this->assertTrue($this->db->query('INSERT INTO MyGuests (val) VALUES (8)'));
+		$this->assertTrue($this->db->query('INSERT INTO MyGuests (val) VALUES (90)'));
+		$this->assertTrue($this->db->query('INSERT INTO MyGuests (val) VALUES (4)'));
+		$this->assertTrue($this->db->query('INSERT INTO MyGuests (val) VALUES (27)'));
 
 		// Test values are ok
-		$this->assertTrue($db->getTableColumnMaxValue('MyGuests', 'val') == 90);
+		$this->assertTrue($this->db->getTableColumnMaxValue('MyGuests', 'val') == 90);
 
 		// Test incorrect values
-		$this->assertTrue(!$db->getTableColumnMaxValue('MyGuests', 'unexistant'));
+		$this->assertTrue(!$this->db->getTableColumnMaxValue('MyGuests', 'unexistant'));
 
 		// Delete created table
-		$this->assertTrue($db->query('DROP TABLE MyGuests'));
-		$this->assertTrue(!$db->tableExists('MyGuests'));
-
-		// Disconnect the database
-		$this->assertTrue($db->disconnect());
+		$this->assertTrue($this->db->query('DROP TABLE MyGuests'));
+		$this->assertTrue(!$this->db->tableExists('MyGuests'));
 	}
 
 
@@ -451,36 +464,26 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	 */
 	public function testGetTableRowCount(){
 
-		// We have a DB-Setup xml file containing the database connection parameters we will use for our tests.
-		$dbSetup = SerializationUtils::stringToXml(FilesManager::getInstance()->readFile(__DIR__.'/../resources/DB-Setup.xml'))->MySql;
-
-		$db = new DataBaseManager();
-
-		$this->assertTrue($db->connectMysql($dbSetup['host'], $dbSetup['userName'], $dbSetup['password'], $dbSetup['dataBaseName']));
-
 		// Drop test table in case it is on db due to a previous failed execution of tests
-		$db->query('DROP TABLE MyGuests');
+		$this->db->query('DROP TABLE MyGuests');
 
 		// Create the table
-		$db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, val INT(6) NOT NULL)');
+		$this->db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, val INT(6) NOT NULL)');
 
 		for ($i = 0; $i < 23; $i++) {
 
-			$this->assertTrue($db->query('INSERT INTO MyGuests (val) VALUES (1)'));
+			$this->assertTrue($this->db->query('INSERT INTO MyGuests (val) VALUES (1)'));
 		}
 
 		// Test values are ok
-		$this->assertTrue($db->getTableRowCount('MyGuests') == 23);
+		$this->assertTrue($this->db->getTableRowCount('MyGuests') == 23);
 
 		// Test incorrect values
-		$this->assertTrue(!$db->getTableRowCount('unexistant'));
+		$this->assertTrue(!$this->db->getTableRowCount('unexistant'));
 
 		// Delete created table
-		$this->assertTrue($db->query('DROP TABLE MyGuests'));
-		$this->assertTrue(!$db->tableExists('MyGuests'));
-
-		// Disconnect the database
-		$this->assertTrue($db->disconnect());
+		$this->assertTrue($this->db->query('DROP TABLE MyGuests'));
+		$this->assertTrue(!$this->db->tableExists('MyGuests'));
 	}
 
 
@@ -502,47 +505,37 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	 */
 	public function testTransactions(){
 
-		// We have a DB-Setup xml file containing the database connection parameters we will use for our tests.
-		$dbSetup = SerializationUtils::stringToXml(FilesManager::getInstance()->readFile(__DIR__.'/../resources/DB-Setup.xml'))->MySql;
-
-		$db = new DataBaseManager();
-
-		$this->assertTrue($db->connectMysql($dbSetup['host'], $dbSetup['userName'], $dbSetup['password'], $dbSetup['dataBaseName']));
-
 		// Drop test table in case it is on db due to a previous failed execution of tests
-		$db->query('DROP TABLE MyGuests');
+		$this->db->query('DROP TABLE MyGuests');
 
 		// Create the table
-		$db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, val INT(6) NOT NULL)');
+		$this->db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, val INT(6) NOT NULL)');
 
 		// Start transaction
-		$this->assertTrue($db->transactionBegin());
+		$this->assertTrue($this->db->transactionBegin());
 
-		$this->assertTrue($db->query('INSERT INTO MyGuests (val) VALUES (1)'));
-		$this->assertTrue($db->query('INSERT INTO MyGuests (val) VALUES (1)'));
+		$this->assertTrue($this->db->query('INSERT INTO MyGuests (val) VALUES (1)'));
+		$this->assertTrue($this->db->query('INSERT INTO MyGuests (val) VALUES (1)'));
 
-		$this->assertTrue($db->transactionRollback());
+		$this->assertTrue($this->db->transactionRollback());
 
 		// Test values are ok
-		$this->assertTrue($db->getTableRowCount('MyGuests') == 0);
+		$this->assertTrue($this->db->getTableRowCount('MyGuests') == 0);
 
 		// Start transaction
-		$this->assertTrue($db->transactionBegin());
+		$this->assertTrue($this->db->transactionBegin());
 
-		$this->assertTrue($db->query('INSERT INTO MyGuests (val) VALUES (1)'));
-		$this->assertTrue($db->query('INSERT INTO MyGuests (val) VALUES (1)'));
+		$this->assertTrue($this->db->query('INSERT INTO MyGuests (val) VALUES (1)'));
+		$this->assertTrue($this->db->query('INSERT INTO MyGuests (val) VALUES (1)'));
 
-		$this->assertTrue($db->transactionCommit());
+		$this->assertTrue($this->db->transactionCommit());
 
 		// Test values are ok
-		$this->assertTrue($db->getTableRowCount('MyGuests') == 2);
+		$this->assertTrue($this->db->getTableRowCount('MyGuests') == 2);
 
 		// Delete created table
-		$this->assertTrue($db->query('DROP TABLE MyGuests'));
-		$this->assertTrue(!$db->tableExists('MyGuests'));
-
-		// Disconnect the database
-		$this->assertTrue($db->disconnect());
+		$this->assertTrue($this->db->query('DROP TABLE MyGuests'));
+		$this->assertTrue(!$this->db->tableExists('MyGuests'));
 	}
 }
 
