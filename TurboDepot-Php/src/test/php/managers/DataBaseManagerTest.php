@@ -45,8 +45,10 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	 */
 	protected function setUp(){
 
-		// We have a DB-Setup xml file containing the database connection parameters we will use for our tests.
-		$this->dbSetup = SerializationUtils::stringToXml(FilesManager::getInstance()->readFile(__DIR__.'/../resources/managers/dataBaseManager/DB-Setup.xml'))->MySql;
+		$filesManager = new FilesManager();
+
+		// We have a TurboDepot.xml file containing the database connection parameters we will use for our tests.
+		$this->dbSetup = SerializationUtils::stringToXml($filesManager->readFile(__DIR__.'/../resources/managers/dataBaseManager/TurboDepot.xml'))->DataBase->MySql;
 
 		$this->db = new DataBaseManager();
 

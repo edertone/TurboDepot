@@ -91,14 +91,14 @@ class DataBaseManager extends BaseStrictClass {
 	 *
 	 * @param string $host Path to the mysql server (possible values: an ip, a hostname, 'localhost', etc ...)
 	 * @param string $userName The database user we will use for the connection
-	 * @param string $psw The database user password
+	 * @param string $password The database user password
 	 * @param string $dataBaseName The name for the database to which we want to connect. leave it empty if we are connecting only to the mysql host.
 	 *
 	 * @return boolean True on success or false if connection was not possible
 	 */
-	public function connectMysql($host, $userName, $psw, $dataBaseName = null){
+	public function connectMysql($host, $userName, $password, $dataBaseName = null){
 
-		$id = mysqli_connect($host, $userName, $psw, $dataBaseName);
+		$id = mysqli_connect($host, $userName, $password, $dataBaseName);
 
 		if(mysqli_connect_errno()){
 
