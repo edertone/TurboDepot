@@ -57,7 +57,7 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 		$i = 0;
 
 		// Find a non existant database name
-		while($this->db->dataBaseExists($this->dataBaseName = 'databasemanagertest_'.$i)){
+		while($this->db->dataBaseExists($this->dataBaseName = 'data_base_manager_test_'.$i)){
 
 			$i++;
 		}
@@ -242,6 +242,42 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 		$this->assertTrue(!$this->db->dataBaseExists('testdatabaseselect_tempdb'));
 		$this->assertTrue(!$this->db->dataBaseExists('testdatabaseselect_tempdb2'));
 
+		// Test invalid values
+		$exceptionMessage = '';
+
+		try {
+			$this->db->dataBaseSelect('');
+			$exceptionMessage = '"" did not cause exception';
+		} catch (Exception $e) {
+			// We expect an exception to happen
+		}
+
+		try {
+			$this->db->dataBaseSelect(345345);
+			$exceptionMessage = '345345 did not cause exception';
+		} catch (Exception $e) {
+			// We expect an exception to happen
+		}
+
+		try {
+			$this->db->dataBaseSelect([56,9]);
+			$exceptionMessage = '[56,9] did not cause exception';
+		} catch (Exception $e) {
+			// We expect an exception to happen
+		}
+
+		try {
+			$this->db->dataBaseSelect(new DataBaseManager());
+			$exceptionMessage = 'new DataBaseManager() did not cause exception';
+		} catch (Exception $e) {
+			// We expect an exception to happen
+		}
+
+		if($exceptionMessage != ''){
+
+			$this->fail($exceptionMessage);
+		}
+
 		$this->assertTrue($this->db->getSelectedDataBase() == '');
 	}
 
@@ -276,7 +312,7 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	public function testQuery(){
 
 		// Drop test table in case it is on db due to a previous failed execution of tests
-		$this->db->query('DROP TABLE MyGuests');
+		$this->db->tableDelete('MyGuests');
 
 		// test creating a table
 		$this->assertTrue($this->db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, firstname VARCHAR(30) NOT NULL, lastname VARCHAR(30) NOT NULL)'));
@@ -305,11 +341,11 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 		$this->assertTrue($data[2]['lastname'] == 'ripley');
 
 		// test deleting the table
-		$this->assertTrue($this->db->query('DROP TABLE MyGuests'));
+		$this->assertTrue($this->db->tableDelete('MyGuests'));
 		$this->assertTrue(!$this->db->tableExists('MyGuests'));
 		$this->assertTrue($this->db->isLastQuerySucceeded());
 		$this->assertTrue(count($this->db->getQueryHistory()) == 8);
-		$this->assertTrue(!$this->db->query('DROP TABLE MyGuests'));
+		$this->assertTrue(!$this->db->tableDelete('MyGuests'));
 		$this->assertTrue($this->db->getLastError() != '');
 		$this->assertTrue(!$this->db->isLastQuerySucceeded());
 		$this->assertTrue(count($this->db->getQueryHistory()) == 9);
@@ -318,9 +354,29 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 		$this->assertTrue($this->db->disconnect());
 
 		// test that queries do not work after db disconnected
-		$this->assertTrue(!$this->db->query('DROP TABLE MyGuests'));
+		$exceptionMessage = '';
+
+		try {
+			$this->db->query('DROP TABLE MyGuests');
+			$exceptionMessage = 'DROP TABLE did not cause exception';
+		} catch (Exception $e) {
+			// We expect an exception to happen
+		}
+
+		try {
+			$this->db->tableDelete('MyGuests');
+			$exceptionMessage = 'tableDelete did not cause exception';
+		} catch (Exception $e) {
+			// We expect an exception to happen
+		}
+
+		if($exceptionMessage != ''){
+
+			$this->fail($exceptionMessage);
+		}
+
 		$this->assertTrue(!$this->db->isLastQuerySucceeded());
-		$this->assertTrue(count($this->db->getQueryHistory()) == 1);
+		$this->assertTrue(count($this->db->getQueryHistory()) == 0);
 	}
 
 
@@ -364,7 +420,37 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	 */
 	public function testGetSelectedDataBase(){
 
-		// Tested by testDataBaseSelect method
+		// Validate created database is selected
+		$this->assertTrue($this->db->getSelectedDatabase() == $this->dataBaseName);
+
+		// Validate with non selected db
+		$this->db->disconnect();
+		$this->assertTrue(!$this->db->isConnected());
+		$this->assertTrue($this->db->connectMysql($this->dbSetup['host'], $this->dbSetup['userName'], $this->dbSetup['password']));
+		$this->assertTrue($this->db->isConnected());
+		$this->assertTrue($this->db->getSelectedDatabase() == '');
+
+		// Validate selecting db again
+		$this->assertTrue($this->db->dataBaseSelect($this->dataBaseName));
+		$this->assertTrue($this->db->getSelectedDatabase() == $this->dataBaseName);
+
+		// Validate exception when no connection available
+		$this->db->disconnect();
+
+		$exceptionMessage = '';
+
+		try {
+			$this->db->getSelectedDatabase();
+			$exceptionMessage = 'disconnected db did not cause exception';
+		} catch (Exception $e) {
+			// We expect an exception to happen
+		}
+
+		if($exceptionMessage != ''){
+
+			$this->fail($exceptionMessage);
+		}
+
 	}
 
 
@@ -376,7 +462,7 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	public function testGetTableColumnValues(){
 
 		// Drop test table in case it is on db due to a previous failed execution of tests
-		$this->db->query('DROP TABLE MyGuests');
+		$this->db->tableDelete('MyGuests');
 
 		// Create the table and required data
 		$this->db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, firstname VARCHAR(30) NOT NULL, lastname VARCHAR(30) NOT NULL)');
@@ -396,7 +482,7 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 		$this->assertTrue(!$this->db->getTableColumnValues('unexistant', 'lastname'));
 
 		// Delete created table
-		$this->assertTrue($this->db->query('DROP TABLE MyGuests'));
+		$this->assertTrue($this->db->tableDelete('MyGuests'));
 		$this->assertTrue(!$this->db->tableExists('MyGuests'));
 
 		// Disconnect the database
@@ -412,7 +498,7 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	public function testGetTableColumnNames(){
 
 		// Drop test table in case it is on db due to a previous failed execution of tests
-		$this->db->query('DROP TABLE MyGuests');
+		$this->db->tableDelete('MyGuests');
 
 		// Create the table
 		$this->db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, firstname VARCHAR(30) NOT NULL, lastname VARCHAR(30) NOT NULL, city VARCHAR(30) NOT NULL, country VARCHAR(30) NOT NULL)');
@@ -424,7 +510,7 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 		$this->assertTrue(!$this->db->getTableColumnNames('unexistant'));
 
 		// Delete created table
-		$this->assertTrue($this->db->query('DROP TABLE MyGuests'));
+		$this->assertTrue($this->db->tableDelete('MyGuests'));
 		$this->assertTrue(!$this->db->tableExists('MyGuests'));
 	}
 
@@ -437,7 +523,7 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	public function testGetTableColumnMaxValue(){
 
 		// Drop test table in case it is on db due to a previous failed execution of tests
-		$this->db->query('DROP TABLE MyGuests');
+		$this->db->tableDelete('MyGuests');
 
 		// Create the table
 		$this->db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, val INT(6) NOT NULL)');
@@ -453,8 +539,10 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 		// Test incorrect values
 		$this->assertTrue(!$this->db->getTableColumnMaxValue('MyGuests', 'unexistant'));
 
+		// TODO - What happens if the column contains non numeric values?
+
 		// Delete created table
-		$this->assertTrue($this->db->query('DROP TABLE MyGuests'));
+		$this->assertTrue($this->db->tableDelete('MyGuests'));
 		$this->assertTrue(!$this->db->tableExists('MyGuests'));
 	}
 
@@ -467,7 +555,7 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	public function testGetTableRowCount(){
 
 		// Drop test table in case it is on db due to a previous failed execution of tests
-		$this->db->query('DROP TABLE MyGuests');
+		$this->db->tableDelete('MyGuests');
 
 		// Create the table
 		$this->db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, val INT(6) NOT NULL)');
@@ -484,7 +572,7 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 		$this->assertTrue(!$this->db->getTableRowCount('unexistant'));
 
 		// Delete created table
-		$this->assertTrue($this->db->query('DROP TABLE MyGuests'));
+		$this->assertTrue($this->db->tableDelete('MyGuests'));
 		$this->assertTrue(!$this->db->tableExists('MyGuests'));
 	}
 
@@ -496,7 +584,142 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	 */
 	public function testTableExists(){
 
-		// Intensively tested in other test cases here
+		// Test table does not exist
+		$this->assertTrue(!$this->db->tableExists('test_table_exists'));
+
+		// Create table and test it exists
+		$this->db->query('CREATE TABLE test_table_exists (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, val INT(6) NOT NULL)');
+		$this->assertTrue($this->db->tableExists('test_table_exists'));
+
+		// Test tables that do not exist
+		$this->assertTrue(!$this->db->tableExists('1'));
+		$this->assertTrue(!$this->db->tableExists('test'));
+
+		// test invalid values
+		$exceptionMessage = '';
+
+		try {
+			$this->db->tableExists('');
+			$exceptionMessage = '"" did not cause exception';
+		} catch (Exception $e) {
+			// We expect an exception to happen
+		}
+
+		try {
+			$this->db->tableExists(123123);
+			$exceptionMessage = '123123 did not cause exception';
+		} catch (Exception $e) {
+			// We expect an exception to happen
+		}
+
+		try {
+			$this->db->tableExists([1,4,5]);
+			$exceptionMessage = '[1,4,5] did not cause exception';
+		} catch (Exception $e) {
+			// We expect an exception to happen
+		}
+
+		// Test delete created table
+		$this->assertTrue($this->db->tableDelete('test_table_exists'));
+		$this->assertTrue(!$this->db->tableExists('test_table_exists'));
+
+		// Test exception if disconnected
+		$this->db->disconnect();
+
+		try {
+			$this->db->tableExists('test_table_exists');
+			$exceptionMessage = 'disconnected did not cause exception';
+		} catch (Exception $e) {
+			// We expect an exception to happen
+		}
+
+		if($exceptionMessage != ''){
+
+			$this->fail($exceptionMessage);
+		}
+	}
+
+	/**
+	 * testTableDelete
+	 *
+	 * @return void
+	 */
+	public function testTableDelete(){
+
+		// Test delete for non existant tables
+		$this->assertTrue(!$this->db->tableDelete('non_existant'));
+		$this->assertTrue(!$this->db->tableDelete('blabla'));
+		$this->assertTrue(!$this->db->tableDelete('123'));
+
+		$this->assertTrue(!$this->db->isLastQuerySucceeded());
+
+		// Create a temporary table and delete it
+		$this->db->query('CREATE TABLE test_table_exists (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, val INT(6) NOT NULL)');
+		$this->assertTrue($this->db->tableExists('test_table_exists'));
+		$this->assertTrue($this->db->tableDelete('test_table_exists'));
+		$this->assertTrue(!$this->db->tableExists('test_table_exists'));
+
+		$this->assertTrue($this->db->isLastQuerySucceeded());
+
+		// Test invalid and empty values
+		$exceptionMessage = '';
+
+		try {
+			$this->db->tableDelete(null);
+			$exceptionMessage = 'null did not cause exception';
+		} catch (Exception $e) {
+			// We expect an exception to happen
+		}
+
+		try {
+			$this->db->tableDelete('');
+			$exceptionMessage = '"" did not cause exception';
+		} catch (Exception $e) {
+			// We expect an exception to happen
+		}
+
+		try {
+			$this->db->tableDelete(123);
+			$exceptionMessage = '123 did not cause exception';
+		} catch (Exception $e) {
+			// We expect an exception to happen
+		}
+
+		try {
+			$this->db->tableDelete([123, 898]);
+			$exceptionMessage = '[123, 898] did not cause exception';
+		} catch (Exception $e) {
+			// We expect an exception to happen
+		}
+
+		// Test delete with disconnected db throws exception
+		$this->db->disconnect();
+
+		try {
+			$this->db->tableDelete('test_table_exists');
+			$exceptionMessage = 'test_table_exists did not cause exception';
+		} catch (Exception $e) {
+			// We expect an exception to happen
+		}
+
+		// Test delete with non selected db throws exception
+		$this->assertTrue($this->db->connectMysql($this->dbSetup['host'], $this->dbSetup['userName'], $this->dbSetup['password']));
+		$this->assertTrue($this->db->isConnected());
+		$this->assertTrue($this->db->getSelectedDatabase() == '');
+
+		try {
+			$this->db->tableDelete('test_table_exists');
+			$exceptionMessage = 'test_table_exists did not cause exception';
+		} catch (Exception $e) {
+			// We expect an exception to happen
+		}
+
+		$this->assertTrue(count($this->db->getQueryHistory()) == 0);
+
+		if($exceptionMessage != ''){
+
+			$this->fail($exceptionMessage);
+		}
 	}
 
 
@@ -508,7 +731,7 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 	public function testTransactions(){
 
 		// Drop test table in case it is on db due to a previous failed execution of tests
-		$this->db->query('DROP TABLE MyGuests');
+		$this->db->tableDelete('MyGuests');
 
 		// Create the table
 		$this->db->query('CREATE TABLE MyGuests (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, val INT(6) NOT NULL)');
@@ -536,7 +759,7 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 		$this->assertTrue($this->db->getTableRowCount('MyGuests') == 2);
 
 		// Delete created table
-		$this->assertTrue($this->db->query('DROP TABLE MyGuests'));
+		$this->assertTrue($this->db->tableDelete('MyGuests'));
 		$this->assertTrue(!$this->db->tableExists('MyGuests'));
 	}
 }

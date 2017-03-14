@@ -11,6 +11,7 @@
 
 namespace org\turbodepot\src\main\php\managers;
 
+use UnexpectedValueException;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
 use org\turbocommons\src\main\php\utils\StringUtils;
 
@@ -102,13 +103,13 @@ class DataBaseManager extends BaseStrictClass {
 
 		if(mysqli_connect_errno()){
 
-			throw new Exception('Could not connect to MYSQL'.mysqli_connect_error());
+			throw new UnexpectedValueException('Could not connect to MYSQL'.mysqli_connect_error());
 		}
 
 		// Force MYSQL and PHP to speak each other in unicode  UTF8 format.
 		if(!mysqli_query($id, "SET NAMES 'utf8'")){
 
-			throw new Exception('Could not set connection encoding');
+			throw new UnexpectedValueException('Could not set connection encoding');
 		}
 
 		$this->_engine = self::MYSQL;
@@ -181,10 +182,15 @@ class DataBaseManager extends BaseStrictClass {
 	 */
 	public function dataBaseSelect($dataBaseName){
 
+		if(!is_string($dataBaseName)|| $dataBaseName == ''){
+
+			throw new UnexpectedValueException('DataBaseManager->dataBaseSelect : DataBase name must be a non empty string');
+		}
+
 		// An active engine connection must be available to select a database
 		if(!$this->isConnected()){
 
-			throw new Exception('DataBaseManager->dataBaseSelect : Not connected to a database host.');
+			throw new UnexpectedValueException('DataBaseManager->dataBaseSelect : Not connected to a database host.');
 		}
 
 		if($this->_engine == self::MYSQL){
@@ -248,11 +254,17 @@ class DataBaseManager extends BaseStrictClass {
      * @see DataBaseManager::getQueryHistory
      *
      * @return boolean|array <br>
-     * - An associative array with the query data for queries that generate values (like a SELECT).<br>
-     * - True for successful queries that do not generate vaules.<br>
+     * - An associative array with the query data for queries that generate values (like SELECT).<br>
+     * - True for successful queries that do not generate vaules (lime CREATE, DROP, ...).<br>
      * - False for any query that generates an error.
      */
     public function query($query){
+
+    	// An active engine connection must be available
+    	if(!$this->isConnected()){
+
+    		throw new UnexpectedValueException('DataBaseManager->query : Not connected to a database host.');
+    	}
 
     	$result = false;
 
@@ -348,16 +360,24 @@ class DataBaseManager extends BaseStrictClass {
 	 */
 	public function getSelectedDataBase(){
 
+		// An active engine connection must be available
+		if(!$this->isConnected()){
+
+			throw new UnexpectedValueException('DataBaseManager->getSelectedDataBase : Not connected to a database host.');
+		}
+
 		if($this->_engine == self::MYSQL){
 
-			$mysqlResult = $this->query('SELECT DATABASE() as d');
+			$mysqlResult = mysqli_query($this->_mysqlConnectionId, 'SELECT DATABASE() as d');
 
 			if(!$mysqlResult){
 
 				return false;
 			}
 
-			return (string)$mysqlResult[0]['d'];
+			$line = mysqli_fetch_assoc($mysqlResult);
+
+			return (string)$line['d'];
 		}
 
 		return false;
@@ -488,10 +508,50 @@ class DataBaseManager extends BaseStrictClass {
 	 */
 	public function tableExists($tablename) {
 
+		if(!is_string($tablename) || $tablename == ''){
+
+			throw new UnexpectedValueException('DataBaseManager->tableExists : Table name name must be a non empty string');
+		}
+
+		// A selected database must be available
+		if($this->getSelectedDataBase() == ''){
+
+			throw new UnexpectedValueException('DataBaseManager->tableExists :  Not connected to a database host or database not selected.');
+		}
+
 		if($this->_engine == self::MYSQL){
 
 			return (mysqli_num_rows(mysqli_query($this->_mysqlConnectionId, "SHOW TABLES LIKE '".$tablename."'")) == 1);
 		}
+	}
+
+
+	/**
+	 * Delete the specified database table
+	 *
+	 * @param string $tablename the name of the table to delete
+	 *
+	 * @return boolean True if the specified was successfuly deleted, false otherwise
+	 */
+	public function tableDelete($tablename) {
+
+		if(!is_string($tablename) || $tablename == ''){
+
+			throw new UnexpectedValueException('DataBaseManager->tableDelete : Table name name must be a non empty string');
+		}
+
+		// An active engine connection must be available and a database selected
+		if($this->getSelectedDataBase() == ''){
+
+			throw new UnexpectedValueException('DataBaseManager->tableDelete : Not connected to a database host or database not selected.');
+		}
+
+		if($this->_engine == self::MYSQL){
+
+			return $this->query('DROP TABLE '.$tablename);
+		}
+
+		return false;
 	}
 
 
