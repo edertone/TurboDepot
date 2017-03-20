@@ -99,6 +99,12 @@ class DataBaseManager extends BaseStrictClass {
 	 */
 	public function connectMysql($host, $userName, $password, $dataBaseName = null){
 
+		// If we are currently connected, an exception will happen
+		if($this->isConnected()){
+
+			throw new UnexpectedValueException('DataBaseManager->connectMysql : There\'s an active database connection. Disconnect before connecting.');
+		}
+
 		$id = mysqli_connect($host, $userName, $password, $dataBaseName);
 
 		if(mysqli_connect_errno()){
