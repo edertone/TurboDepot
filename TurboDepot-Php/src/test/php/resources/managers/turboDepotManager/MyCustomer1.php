@@ -9,16 +9,16 @@
  * CopyRight : -> Copyright 2017 Edertone Advanded Solutions (Barcelona). http://www.edertone.com
  */
 
+namespace org\turbodepot\src\test\php\resources\managers\turboDepotManager;
 
-require_once __DIR__.'/AutoLoader.php';
+use org\turbodepot\src\main\php\model\TurboDepotEntity;
 
 
-$phpunit = new PHPUnit_TextUI_TestRunner();
+/** Dummy class for testing */
+class MyCustomer1 extends TurboDepotEntity{
 
-// Run all the tests inside the current folder or subfolders for all the files ending with Test.php
-if(!$phpunit->dorun($phpunit->getTest(__DIR__, '', 'Test.php'))->wasSuccessful()){
 
-	throw new Exception();
+
 }
 
 ?>

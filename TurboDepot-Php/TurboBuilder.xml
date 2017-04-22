@@ -2,14 +2,38 @@
 <TurboBuilder xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 			xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/edertone/TurboBuilder/master/TurboBuilder-Ant/turboBuilder/TurboBuilder.xsd">
 
-	<Build />
+	<Build>
+	
+		<Php createPhar="true" />
+	
+	</Build>
 
 	<Release gitChangeLog="true"
 			 optimizePhp="false"
 			 phpDoc="true" />
 	
-	<Validate checkProjectStructure="true"
-			  validateCss="true" />
+	<Validate enabled="true">
+	
+		<ProjectStructure enabled="true" />
+
+		<PhpNamespaces enabled="true"
+					   mandatory="true"
+					   forcePath="true"
+					   mustContain="org\turbodepot\src"
+					   excludes="**/AutoLoader.php,**/index.php" />
+
+		<Css enabled="false" />
+
+		<CopyrightHeaders enabled="true">
+		
+			<Header path="assets/copyrightHeaders/TurboDepot-Generic.txt" 
+					appliesTo="src"
+					includes="**/*.php"
+					excludes="" />
+		
+		</CopyrightHeaders>
+	
+	</Validate>
 	
 	<Test>	
 	

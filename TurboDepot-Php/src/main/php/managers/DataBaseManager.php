@@ -2,12 +2,12 @@
 
 /**
  * TurboDepot is a cross language ORM library that allows saving, retrieving, listing, filtering and more with complex class data instances
-*
-* Website : -> http://www.turbodepot.org
-* License : -> Licensed under the Apache License, Version 2.0. You may not use this file except in compliance with the License.
-* License Url : -> http://www.apache.org/licenses/LICENSE-2.0
-* CopyRight : -> Copyright 2017 Edertone Advanded Solutions (Barcelona). http://www.edertone.com
-*/
+ *
+ * Website : -> http://www.turbodepot.org
+ * License : -> Licensed under the Apache License, Version 2.0. You may not use this file except in compliance with the License.
+ * License Url : -> http://www.apache.org/licenses/LICENSE-2.0
+ * CopyRight : -> Copyright 2017 Edertone Advanded Solutions (Barcelona). http://www.edertone.com
+ */
 
 namespace org\turbodepot\src\main\php\managers;
 
@@ -298,7 +298,7 @@ class DataBaseManager extends BaseStrictClass {
 
     				while($line = mysqli_fetch_assoc($mysqlResult)){
 
-    					array_push($result, $line);
+    					$result[] = $line;
     				}
     			}
     		}
@@ -417,7 +417,7 @@ class DataBaseManager extends BaseStrictClass {
 
 			foreach ($mysqlResult as $value) {
 
-				array_push($result, $value[$columnName]);
+				$result[] = $value[$columnName];
 			}
 
 			return $result;
@@ -449,7 +449,7 @@ class DataBaseManager extends BaseStrictClass {
 
 			foreach ($mysqlResult as $row) {
 
-				array_push($result, $row['Field']);
+				$result[] = $row['Field'];
 			}
 
 			return $result;
@@ -677,7 +677,7 @@ class DataBaseManager extends BaseStrictClass {
 		}
 
 		// Reaching here means this is the first time the query is executed, so we will store it
-		array_push($this->_queryHistory, $queryHistory);
+		$this->_queryHistory[] = $queryHistory;
 	}
 }
 

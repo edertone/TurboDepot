@@ -67,8 +67,9 @@
 		
 		<!-- Set default values for some properties in case they are not specified on the TurboBuilder.xml -->
 		<property name="Build.versionNumber" value="0.0" />
-		<property name="Build.Php.createPhars" value="true" />
+		<property name="Build.Php.createPhar" value="false" />
 		<property name="Build.Js.createMergedJs" value="false" />
+		<property name="Build.Java.createJar" value="false" />
 		<property name="Build.keepUnPackedFiles" value="false" />
 				
 		<property name="Release.generate" value="false" />
@@ -81,9 +82,8 @@
 		<property name="Release.optimizeJs" value="true" />
 		<property name="Release.optimizeCss" value="true" />
 								
-		<property name="Validate.checkProjectStructure" value="true" />
-		<property name="Validate.validateCss" value="true" />
-				
+		<property name="Validate.enabled" value="true" />
+							
 		<property name="Test.Php.enabled" value="false" />
 		<property name="Test.Php.mode" value="commandLine" />
 		<property name="Test.Js.enabled" value="false" />	
@@ -159,10 +159,14 @@
 				
 				self.project.executeTarget("copyMainFiles");
 			
+				if(project.getProperty("Validate.enabled") == "true"){
+					self.project.executeTarget("validateProject");
+				}
+						
 				if(project.getProperty("Release.generate") == "true"){
 					self.project.executeTarget("createReleaseVersion");
 				}
-						
+			
 				if(project.getProperty("Test.Php.enabled") == "true"){
 			
 					if(project.getProperty("Test.Php.mode") == "localWebServer"){
@@ -179,14 +183,18 @@
 					self.project.executeTarget("runJsTestsLocalServer");
 				}
 			
-				if(project.getProperty("Build.Php.createPhars") == "true"){
-					self.project.executeTarget("createPhars");
+				if(project.getProperty("Build.Php.createPhar") == "true"){
+					self.project.executeTarget("createPhar");
 				}
 			
 				if(project.getProperty("Build.Js.createMergedJs") == "true"){
 					self.project.executeTarget("createMergedJs");
 				}
 			
+				if(project.getProperty("Build.Java.createJar") == "true"){
+					self.project.executeTarget("createJar");
+				}
+						
 				if(project.getProperty("Build.keepUnPackedFiles") != "true"){
 					self.project.executeTarget("removeUnpackedFiles");
 				}
@@ -777,7 +785,7 @@
 	
 	
 	<!-- Generate the phar file from the files on the target folder if phar generation is enabled on setup build xml -->
-	<target name="createPhars">
+	<target name="createPhar">
 
 		<!-- Autoloader.php must exist on src/main/php/ for the phar to be correctly generated -->
 		<fail message="src/main/php/AutoLoader.php not found. This is required to create a phar that loads classes automatically">
@@ -802,7 +810,7 @@
 			<![CDATA[
 				
 				if(project.getProperty("Release.generate") == "true"){
-					self.project.executeTarget("createPharsRelease");
+					self.project.executeTarget("createPharRelease");
 				}
 			
 		    ]]>
@@ -811,8 +819,8 @@
 	</target>
 	
 	
-	<!-- Generate the release version phars -->
-	<target name="createPharsRelease">
+	<!-- Generate the release version phar -->
+	<target name="createPharRelease">
 
 		<!--Define the contents for the stub file that will be autoexecuted when the phar file is included -->
 		<property name="phpStubFileRelease" value="&lt;?php Phar::mapPhar(); include \'phar://${projectBaseName}-${Build.versionNumber}.${build.number}.phar/php/AutoLoader.php\'; __HALT_COMPILER(); ?>"/>
@@ -859,11 +867,17 @@
 	<!-- Generate a release version of the single JS file -->
 	<target name="createMergedJsRelease">
 
-		<echo file="${targetFolderPath}/${projectBaseName}-${Build.versionNumber}.${build.number}/${projectBaseName}-${Build.versionNumber}.${build.number}.js" 
+		<!-- Copy the unminified version to release folder -->
+		<copy failonerror="true" 
+			  file="${targetFolderPath}/${projectBaseName}/${projectBaseName}.js" 
+			  tofile="${targetFolderPath}/${projectBaseName}-${Build.versionNumber}.${build.number}/${projectBaseName}-${Build.versionNumber}.${build.number}.js" />
+		
+		<!-- Generate the minified version -->
+		<echo file="${targetFolderPath}/${projectBaseName}-${Build.versionNumber}.${build.number}/${projectBaseName}-${Build.versionNumber}.${build.number}.min.js" 
 			  append="true" 
 			  message="/** ${projectBaseName} ${Build.versionNumber}.${build.number} */&#13;&#10;" />
 				
-		<concat destfile="${targetFolderPath}/${projectBaseName}-${Build.versionNumber}.${build.number}/${projectBaseName}-${Build.versionNumber}.${build.number}.js"
+		<concat destfile="${targetFolderPath}/${projectBaseName}-${Build.versionNumber}.${build.number}/${projectBaseName}-${Build.versionNumber}.${build.number}.min.js"
 				append="true">
 					
 			<fileset dir="${targetFolderPath}/${projectBaseName}-${Build.versionNumber}.${build.number}/main" casesensitive="false">
@@ -875,10 +889,54 @@
 	</target>
 	
 	
+	<!-- Generate the Jar file from the files on the target folder if jar generation is enabled on setup build xml -->
+	<target name="createJar">
+
+		<!-- Compile the java code -->
+		<javac srcdir="${mainFolderPath}/java"
+			   destdir="${targetFolderPath}/${projectBaseName}/main"
+		       source="1.8" />
+		
+		<jar basedir="${targetFolderPath}/${projectBaseName}/main/java"
+			 destfile="${targetFolderPath}/${projectBaseName}/${projectBaseName}.jar" />
+		
+		<script language="javascript">
+			<![CDATA[
+				
+				if(project.getProperty("Release.generate") == "true"){
+					self.project.executeTarget("createJarRelease");
+				}			
+		    ]]>
+		</script>
+		
+	</target>
+	
+	
+	<!-- Generate the release version jar -->
+	<target name="createJarRelease">
+
+		<jar basedir="${mainFolderPath}/java"
+			 destfile="${targetFolderPath}/${projectBaseName}-${Build.versionNumber}.${build.number}/${projectBaseName}-${Build.versionNumber}.${build.number}.jar" />
+		
+	</target>
+	
+	
 	<!-- Removes all the unpacked files on the target folder -->
 	<target name="removeUnpackedFiles">		
 		<delete dir="${targetFolderPath}/${projectBaseName}/main" failonerror="true" />
 		<delete dir="${targetFolderPath}/${projectBaseName}-${Build.versionNumber}.${build.number}/main" failonerror="false" />
+	</target>
+	
+	
+	<!-- Validate the project -->
+	<target name="validateProject" >
+
+		<!-- Execute the project analysis -->
+		<script language="javascript" src="${basedir}/Validate.js" />
+
+		<!-- Check if the build must fail or not -->
+		<fail if="javascript.fail.message" message="${javascript.fail.message}" />
+
 	</target>
 	
 	
