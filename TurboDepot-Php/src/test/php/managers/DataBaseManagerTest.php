@@ -16,7 +16,7 @@ use PHPUnit_Framework_TestCase;
 use org\turbocommons\src\main\php\utils\ArrayUtils;
 use org\turbocommons\src\main\php\utils\SerializationUtils;
 use org\turbodepot\src\main\php\managers\DataBaseManager;
-use org\turbodepot\src\main\php\managers\FilesManager;
+use org\turbocommons\src\main\php\managers\FilesManager;
 
 
 /**

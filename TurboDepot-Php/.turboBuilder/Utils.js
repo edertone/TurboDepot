@@ -143,3 +143,101 @@ function getFilesList(path, includes, excludes){
     
     return result;
 }
+
+
+/**
+ * Copy all the contents from the given folder to another specified folder.
+ * 
+ * @param source A file system path where the files and folders to copy are found.
+ * @param dest A file system path where the source files and folders will be copied.
+ * 
+ * @returns void
+ */
+function copyFolderTo(source, dest){
+	
+	var fs = project.createDataType("fileset");
+
+	fs.setDir(new java.io.File(source));
+    	
+	var copy = project.createTask("copy");
+	
+	copy.setTodir(new java.io.File(dest));
+	copy.setOverwrite(true);
+	copy.addFileset(fs);
+	copy.perform();
+}
+
+
+/**
+ * Copy the specified file to the specified folder.
+ * 
+ * @param source A file system path including the filename that will be copied
+ * @param dest A file system path where the file will be copied.
+ * 
+ * @returns void
+ */
+function copyFileTo(source, dest){
+	
+	var copy = project.createTask("copy");
+	
+	copy.setFile(new java.io.File(source));
+	copy.setTodir(new java.io.File(dest));
+	copy.setOverwrite(true);
+	copy.perform();
+}
+
+
+/**
+ * Create a file with the specified content
+ * 
+ * @param path Full path including the file name to be created
+ * @param contents String containing the text to be written to the file
+ * 
+ * @returns void
+ */
+function createFile(path, contents){
+	
+	var echo = project.createTask("echo");
+	
+	echo.setFile(new java.io.File(path));
+	echo.setMessage(contents);
+	echo.perform();
+}
+
+
+/**
+ * change the name of a file
+ * 
+ * @param from Full path including the file name to be renamed
+ * @param to Full path including the file name that will be assigned
+ * 
+ * @returns void
+ */
+function renameFile(from, to){
+	
+	var move = project.createTask("move");
+	
+	move.setFile(new java.io.File(from));
+	move.setTofile(new java.io.File(to));
+	move.perform();
+}
+
+
+/**
+ * Open an url with the specified browser
+ * 
+ * @param url Url to open 
+ * @param browserExecutable Full path to the browser executable
+ * 
+ * @returns void
+ */
+function launchOnBrowser(url, browserExecutable){
+	
+	var exec = project.createTask("exec");
+	exec.setExecutable(browserExecutable);
+	exec.setSpawn(true);
+
+	exec.createArg().setLine(encodeURI(url));
+	
+	exec.perform();
+}
