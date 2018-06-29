@@ -12,7 +12,7 @@
 namespace org\turbodepot\src\test\php\managers;
 
 use Exception;
-use PHPUnit_Framework_TestCase;
+use PHPUnit\Framework\TestCase;
 use org\turbocommons\src\main\php\utils\ArrayUtils;
 use org\turbocommons\src\main\php\utils\SerializationUtils;
 use org\turbodepot\src\main\php\managers\DataBaseManager;
@@ -24,11 +24,11 @@ use org\turbocommons\src\main\php\managers\FilesManager;
  *
  * @return void
  */
-class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
+class DataBaseManagerTest extends TestCase {
 
 
     /**
-     * @see PHPUnit_Framework_TestCase::setUpBeforeClass()
+     * @see TestCase::setUpBeforeClass()
      *
      * @return void
      */
@@ -39,7 +39,7 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 
 
     /**
-     * @see PHPUnit_Framework_TestCase::setUp()
+     * @see TestCase::setUp()
      *
      * @return void
      */
@@ -69,7 +69,7 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 
 
     /**
-     * @see PHPUnit_Framework_TestCase::tearDown()
+     * @see TestCase::tearDown()
      *
      * @return void
      */
@@ -92,7 +92,7 @@ class DataBaseManagerTest extends PHPUnit_Framework_TestCase {
 
 
     /**
-     * @see PHPUnit_Framework_TestCase::tearDownAfterClass()
+     * @see TestCase::tearDownAfterClass()
      *
      * @return void
      */
