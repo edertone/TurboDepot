@@ -1,0 +1,89 @@
+{
+    "$schema": "https://raw.githubusercontent.com/edertone/TurboBuilder/master/TurboBuilder-Node/src/main/resources/json-schema/turbobuilder.schema.json",
+    "metadata": {
+        "name": "",
+        "description": "",
+        "builderVersion": "0.9.0"
+    },
+    "validate": {
+        "runBeforeBuild": true,
+        "projectStructure": {
+            "readmeFileMandatory": true,
+            "extrasFolderMandatory": true,
+            "extrasSubFoldersMandatory": [
+                "help",
+                "todo"
+            ],
+            "extrasTodoExtension": true
+        },
+        "filesContent": {
+            "tabsForbidden": {
+                "enabled": true,
+                "appliesTo": [
+                    "src",
+                    "extras"
+                ],
+                "excludes": [
+                    ".svg",
+                    ".properties"
+                ]
+            }
+        },
+        "styleSheets": {
+            "onlyScss": true,
+            "noCssHardcodedColors": true
+        },
+        "phpNamespaces": {
+            "enabled": false,
+            "mandatory": true,
+            "mustContain": [
+                "some-php-namespace-string-here-$1-$2"
+            ],
+            "excludes": [
+                "some-filename-pattern"
+            ]
+        },
+        "copyrightHeaders": [],
+        "javascript": {
+            "useStrict": {
+                "enabled": true,
+                "includes": [
+                    ".js"
+                ],
+                "excludes": [
+                    "src/main/libs"
+                ]
+            }
+        }
+    },
+    "build": {
+        "printTodoFiles": false,
+        "replaceVersion": {
+            "enabled": false,
+            "wildCard": "@@--build-version--@@",
+            "extensions": [
+                "js",
+                "php",
+                "json"
+            ]
+        },
+        "lib_php": {
+            "createPhar": true
+        }
+    },
+    "release": {
+        "printTodoFiles": true,
+        "gitChangeLog": true,
+        "gitChangeLogCount": 5,
+        "optimizePictures": true,
+        "generateCodeDocumentation": true
+    },
+    "test": [
+        {
+            "type": "phpUnit",
+            "testsRoot": "src/test/php",
+            "coverageReport": true,
+            "coverageReportOpenAfterTests": true
+        }
+    ]
+}
