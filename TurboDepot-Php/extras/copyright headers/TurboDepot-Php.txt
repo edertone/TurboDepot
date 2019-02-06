@@ -8,20 +8,3 @@
  * License Url : -> http://www.apache.org/licenses/LICENSE-2.0
  * CopyRight : -> Copyright 2019 Edertone Advanded Solutions. http://www.edertone.com
  */
-
-
-namespace org\turbodepot\src\main\php\model;
-
-use org\turbocommons\src\main\php\model\BaseStrictClass;
-
-
-/**
- * TODO
- */
-abstract class DepotObject extends BaseStrictClass{
-
-
-
-}
-
-?>
