@@ -1,3 +1,0 @@
-- Create a private method for TurboDepotManager that validates that a given TurboDepotEntity instance is valid or not
-- Add a TurboDepotManager method to generate a report about db data and model differences
-- Add a feature to store and recover binary data using a storage folder
