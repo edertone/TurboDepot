@@ -1,0 +1,28 @@
+{
+  "name": "turbodepot-node",
+  "version": "0.0.0",
+  "description": "Cross language ORM - Save, read, list, filter and easily perform any storage operation with your application objects",
+  "scripts": {
+    "test": "node node_modules/jasmine/bin/jasmine --config=src/test/js/jasmine.json",
+    "test-debug": "node --inspect-brk node_modules/jasmine/bin/jasmine --config=src/test/js/jasmine.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/edertone/TurboDepot"
+  },
+  "dependencies": {
+    "turbocommons-ts": "0.9.0"
+  },
+  "keywords": [
+    "general",
+    "purpose",
+    "orm"
+  ],
+  "author": "edertone",
+  "license": "Apache-2.0",
+  "preferGlobal": true,
+  "bugs": {
+    "url": "https://github.com/edertone/TurboDepot/issues"
+  },
+  "homepage": "turbodepot.org"
+}

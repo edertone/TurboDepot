@@ -1,0 +1,57 @@
+{
+
+    "$schema": "https://raw.githubusercontent.com/edertone/TurboBuilder/master/TurboBuilder-Node/src/main/resources/json-schema/turbobuilder.schema.json",
+
+    "metadata": {
+        "name": "turbodepot-node",
+        "description": "Cross language ORM - Save, read, list, filter and easily perform any storage operation with your application objects",
+        "builderVersion": "0.9.0"
+    },
+    
+    "validate": {
+        "projectStructure" : {                    
+            "readmeFileMandatory": false
+        },
+        "filesContent" : {
+            "copyrightHeaders": [
+                {
+                    "path": "extras/copyright headers/TsFiles-Header.txt",
+                    "affectedPaths": ["src"],
+                    "includes": ["ts"],
+                    "excludes": []
+                },
+                {
+                    "path": "extras/copyright headers/JsFiles-Header.txt",
+                    "affectedPaths": ["src"],
+                    "includes": ["js"],
+                    "excludes": []
+                }
+            ]
+        }
+    },
+    
+    "build": {
+    
+        "lib_ts" : {
+            "declaration": true,
+            "strict": true,
+            "sourceMap": true,
+            "targets": [
+                {"folder": "ts", "jsTarget": "ES5"}
+            ]
+        }
+    },
+    
+    "release": {
+    },
+    
+    "test": [
+        {
+            "type": "qunit",
+            "testsRoot": "src/test/js",
+            "httpServerPort": "8185",
+            "targets": ["es5", "es6"],
+            "browsers": {"chrome": true, "firefox": true, "iexplore": false}
+        }
+    ]
+}

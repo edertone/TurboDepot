@@ -1,2 +1,5 @@
 # TurboDepot
-Cross-language ORM made easy - Currently under heavy development, stay tunned
+
+## Cross language ORM.
+
+Save, read, list, filter and easily perform any storage operation with your application objects

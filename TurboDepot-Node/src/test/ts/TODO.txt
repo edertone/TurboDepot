@@ -1,0 +1,1 @@
+Place all tests with the same folder structure as the tested sources
