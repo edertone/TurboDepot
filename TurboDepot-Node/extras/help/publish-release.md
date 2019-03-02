@@ -2,15 +2,15 @@
 
 1 - Make sure all tests pass
 
-2 - Commit and push all the new version changes to repository.
-
-3 - Review git changelog to decide the new version value based on the GIT changes: minor, major, ...
-
-4 - Make sure the git tag is updated with the new project version we want to publish
-    (First in remote GIT repo and then in our Local by performing a fetch)
+2 - Review git changelog to decide the new version value based on the GIT changes: minor, major, ...
     
-5 - Update the version number on the project root package.json file
+3 - Update the version number on the project root package.json file
     Make sure we have increased the version number regarding the previously published one
+
+4 - Commit and push all the new version changes to repository.
+
+5 - Make sure the git tag is updated with the new project version we want to publish
+    (First in remote GIT repo and then in our Local by performing a fetch)
 
 6 - Generate a release build executing tests (tb -crt)
 
