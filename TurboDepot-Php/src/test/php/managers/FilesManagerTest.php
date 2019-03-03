@@ -16,7 +16,7 @@ use stdClass;
 use Throwable;
 use org\turbocommons\src\main\php\managers\ValidationManager;
 use org\turbocommons\src\main\php\utils\ArrayUtils;
-use org\turbocommons\src\main\php\managers\FilesManager;
+use org\turbodepot\src\main\php\managers\FilesManager;
 use org\turbocommons\src\main\php\utils\NumericUtils;
 use org\turbocommons\src\main\php\utils\StringUtils;
 
@@ -36,7 +36,7 @@ class FilesManagerTest extends TestCase {
      */
     public static function setUpBeforeClass(){
 
-        // Nothing necessary here
+        require_once __DIR__.'/../resources/libs/turbocommons-php-1.0.0.phar';
     }
 
 
