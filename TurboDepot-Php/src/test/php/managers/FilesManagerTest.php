@@ -9,7 +9,7 @@
  * CopyRight : -> Copyright 2019 Edertone Advanded Solutions (08211 Castellar del Vallès, Barcelona). http://www.edertone.com
  */
 
-namespace org\turbocommons\src\test\php\managers;
+namespace org\turbodepot\src\test\php\managers;
 
 use PHPUnit\Framework\TestCase;
 use stdClass;

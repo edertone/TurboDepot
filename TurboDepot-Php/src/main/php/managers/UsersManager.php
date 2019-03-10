@@ -13,7 +13,6 @@
 namespace org\turbodepot\src\main\php\managers;
 
 use UnexpectedValueException;
-use org\turbodepot\src\main\php\managers\FilesManager;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
 use org\turbocommons\src\main\php\utils\ConversionUtils;
 
@@ -25,7 +24,7 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Contains the turbo users setup data that's been loaded by this class
+     * Contains the turbodepot setup data that's been loaded by this class
      */
     private $_setup = null;
 
@@ -43,7 +42,7 @@ class UsersManager extends BaseStrictClass{
 
             $this->_setup = json_decode((new FilesManager())->readFile($setup));
 
-        }else if (is_object($setup) && property_exists($setup, '$schema'){
+        }else if (is_object($setup) && property_exists($setup, '$schema')){
 
             $this->_setup = $setup;
 
