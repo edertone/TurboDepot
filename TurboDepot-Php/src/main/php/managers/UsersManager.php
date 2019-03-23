@@ -32,12 +32,12 @@ class UsersManager extends BaseStrictClass{
     /**
      * Manages all the user system features and operations
      *
-     * @param /stdClass|string $setup Full or relative path to the turbodepot.json file that contains the turbodepot setup or
+     * @param \stdClass|string $setup Full or relative path to the turbodepot.json file that contains the turbodepot setup or
      *        an stdclass instance with the setup file data decoded from json
      */
     public function __construct($setup){
 
-        // Get the setup data from the received parameter
+        // Load the provided setup data
         if(is_string($setup) && is_file($setup)){
 
             $this->_setup = json_decode((new FilesManager())->readFile($setup));

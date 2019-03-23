@@ -1,0 +1,34 @@
+{
+
+    "$schema": "https://raw.githubusercontent.com/edertone/TurboBuilder/master/TurboBuilder-Node/src/main/resources/json-schema/turbodepot.schema.json",
+    
+    "sources": {
+    
+        "fileSystem": [],
+        
+        "mysql": [],
+        
+        "sqLite": []   
+    },
+    
+    "depots": [
+        
+        {
+            "name": "depot1",
+            "files": {
+                "source": ""
+            },
+            "logs": {
+                "source": ""
+            },
+            "objects": {
+                "source": ""
+            },
+            "users": {
+                "source": "",
+                "tokenLength": 175,
+                "tokenLifetime": 60
+            }
+        }   
+    ]
+}
