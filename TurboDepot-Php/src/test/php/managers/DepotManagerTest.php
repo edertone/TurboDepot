@@ -33,7 +33,7 @@ class DepotManagerTest extends TestCase {
      */
     public static function setUpBeforeClass(){
 
-        require_once __DIR__.'/../resources/libs/turbocommons-php-1.0.0.phar';
+        // Nothing necessary here
     }
 
 
@@ -160,6 +160,79 @@ class DepotManagerTest extends TestCase {
         // Test exceptions
         // Not necessary
     }
+
+
+    /**
+     * testTodo
+     *
+     * @return void
+     */
+    public function testGetLogsManager(){
+
+        // Test empty values
+        $this->assertSame(null, $this->sut->getLogsManager());
+
+        // Test ok values
+        $setup = json_decode($this->filesManager->readFile(__DIR__.'/../resources/managers/depotManager/empty-turbodepot.json'));
+
+        $setup->sources->fileSystem[] = new stdclass();
+
+        $setup->sources->fileSystem[0]->name = 'tmp_source';
+        $setup->sources->fileSystem[0]->path = $this->tempFolder;
+
+        $setup->depots[0]->logs->source = 'tmp_source';
+
+        $this->sut = new DepotManager($setup);
+
+        $this->assertSame('org\turbodepot\src\main\php\managers\LogsManager',
+            get_class($this->sut->getLogsManager()));
+
+        $this->assertFalse($this->filesManager->isFile($this->tempFolder.DIRECTORY_SEPARATOR.'somelog'));
+
+        $this->sut->getLogsManager()->write('some text', 'somelog');
+
+        $this->assertTrue($this->filesManager->isFile($this->tempFolder.DIRECTORY_SEPARATOR.'somelog'));
+        $this->assertRegExp('/....-..-.. ..:..:......... some text\n/', $this->filesManager->readFile($this->tempFolder.DIRECTORY_SEPARATOR.'somelog'));
+
+        // Test wrong values
+        // Not necessary
+
+        // Test exceptions
+        $setup->sources->fileSystem[0]->path = '/invalidPath';
+
+        try {
+            $this->sut = new DepotManager($setup);
+            $this->exceptionMessage = '"" did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/LogsManager received an invalid rootPath: \/invalidPath/', $e->getMessage());
+        }
+    }
+
+
+    /**
+     * testGetUsersManager
+     *
+     * @return void
+     */
+    public function testGetUsersManager(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    // TODO - implement all missing tests
 
 
     /**

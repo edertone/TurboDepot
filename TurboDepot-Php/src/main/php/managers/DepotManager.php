@@ -25,33 +25,44 @@ class DepotManager extends BaseStrictClass{
 
     /**
      * Contains the turbodepot setup data that's been loaded by this class
-     *
      * @var \stdClass
      */
     private $_setup = null;
 
 
     /**
-     * Contains the setup data for the depot instance that's been loaded by this class
+     * Contains the setup data specific for the depot instance that's been loaded by this class
      * @var \stdClass
      */
     private $_loadedDepotSetup = null;
 
 
+    /**
+     * A files manager instance that is used by this class
+     * @var FilesManager
+     */
     private $_filesManager = null;
 
 
+    /**
+     * A logs manager instance that is used by this class
+     * @var LogsManager
+     */
     private $_logsManager = null;
 
 
+    /**
+     * A users manager instance that is used by this class
+     * @var UsersManager
+     */
     private $_usersManager = null;
 
 
     /**
-     * TODO
+     * Main class to interact with a turbo depot instance and create, delete or manipulate the elements which it can store.
      *
      * @param \stdClass|string $setup Full or relative path to the turbodepot.json file that contains the turbodepot setup or
-     *        an stdclass instance with the setup file data decoded from json
+     *        an stdclass instance with a setup file data decoded from json
      * @param string $depotName The name for the depot instance we want to connect. If not specified, the first one that is found
      *        on the provided setup will be used.
      */
@@ -73,15 +84,23 @@ class DepotManager extends BaseStrictClass{
             throw new UnexpectedValueException('DepotManager constructor expects a valid path to users setup or an stdclass instance with the setup data');
         }
 
+        // Search for the requested depot. If none specified, the first one will be used
         if($depotName === ''){
 
             $this->_loadedDepotSetup = $this->_setup->depots[0];
 
         }else{
 
-            // TODO - search the depot specified by $depotName inside the list of setup->depots and set it as the loadedDepot
+            foreach ($this->_setup->depots as $depotSetup) {
+
+                if($depotName === $depotSetup->name){
+
+                    $this->_loadedDepotSetup = $depotSetup;
+                }
+            }
         }
 
+        // Initialize the logs manager to the folder that is defined on the depot setup
         $logsSource = $this->_getSourceSetup($this->_loadedDepotSetup->logs->source);
 
         if($logsSource !== null){
@@ -89,12 +108,13 @@ class DepotManager extends BaseStrictClass{
             $this->_logsManager = new LogsManager($logsSource->path);
         }
 
+        // TODO - initialize the users manager class
         // $this->usersManager = new UsersManager($setupPath);
     }
 
 
     /**
-     * Obtain the files manager instance that is available through the depot manager
+     * Obtain the files manager instance that is available through this depot manager
      *
      * @return FilesManager
      */
@@ -105,7 +125,10 @@ class DepotManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Obtain the logs manager instance that is available through this depot manager.
+     * The logs root path is already defined by the turbodepot.json setup
+     *
+     * @return LogsManager
      */
     public function getLogsManager(){
 
@@ -199,7 +222,7 @@ class DepotManager extends BaseStrictClass{
      *
      * @param string $name The name for a source on the turbodepot setup
      *
-     * @return /stdClass The setup data for the specified source
+     * @return /stdClass The setup data for the specified source or null if the source was not found
      */
     private function _getSourceSetup(string $name){
 

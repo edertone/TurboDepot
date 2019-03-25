@@ -36,7 +36,7 @@ class FilesManagerTest extends TestCase {
      */
     public static function setUpBeforeClass(){
 
-        require_once __DIR__.'/../resources/libs/turbocommons-php-1.0.0.phar';
+        // Nothing necessary here
     }
 
 
