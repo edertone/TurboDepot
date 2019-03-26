@@ -1,7 +1,7 @@
 <?php
 
 /**
- * TurboDepot is a cross language ORM: Save, read, list, filter and easily perform any storage operation with your application objects
+ * TurboDepot is a general purpose multi storage library (ORM, Logs, Users, Files, Objects)
  *
  * Website : -> http://www.turbodepot.org
  * License : -> Licensed under the Apache License, Version 2.0. You may not use this file except in compliance with the License.

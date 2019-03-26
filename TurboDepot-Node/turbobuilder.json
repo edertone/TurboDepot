@@ -4,8 +4,8 @@
 
     "metadata": {
         "name": "turbodepot-node",
-        "description": "Cross language ORM - Save, read, list, filter and easily perform any storage operation with your application objects",
-        "builderVersion": "0.9.0"
+        "description": "General purpose multi storage library (ORM, Logs, Users, Files, Objects)",
+        "builderVersion": "1.0.0"
     },
     
     "validate": {

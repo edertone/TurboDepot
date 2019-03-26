@@ -2,13 +2,13 @@
     "$schema": "https://raw.githubusercontent.com/edertone/TurboBuilder/master/TurboBuilder-Node/src/main/resources/json-schema/turbobuilder.schema.json",
     "metadata": {
         "name": "turbodepot-php",
-        "description": "TODO",
+        "description": "General purpose multi storage library (ORM, Logs, Users, Files, Objects)",
         "builderVersion": "1.0.0"
     },
     "validate": {
         "runBeforeBuild": true,
         "projectStructure": {
-            "readmeFileMandatory": true,
+            "readmeFileMandatory": false,
             "extrasFolderMandatory": true,
             "extrasSubFoldersMandatory": [
                 "help",
