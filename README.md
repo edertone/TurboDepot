@@ -9,6 +9,8 @@ This library gives you total control over your application storage requirements:
 - Super easy ORM: Save, read, list, filter and manipulate you application objects without caring about writing complex SQL queries (you can still execute plain SQL if necessary).
 - Write and read to log files and manage their lifetime and space usage.
 - Save, read, list and manage users, their permissions, tokens and security checks.
-- All the storage configurations are centralized on a single json setup file. Everything you need to tweak is there.
+- Manage the application temporary files
+- Manage the application cached data
+- All the storage configurations are centralized on a single json setup file.
 - All the stored database or file system elements are saved in a human readable way, so you can still easily manipulate them outside of this library when needed.
-- Easy but still powerful: Tested with massive amounts of stored objects
+- Easy but still powerful: Tested with massive amounts of stored objects. Heavily optimized under the hood for best performance.
