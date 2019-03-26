@@ -18,7 +18,7 @@ use org\turbocommons\src\main\php\utils\ConversionUtils;
 
 
 /**
- * Manages all the user system features and operations
+ * Users management class
  */
 class UsersManager extends BaseStrictClass{
 
