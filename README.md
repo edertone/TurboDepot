@@ -17,11 +17,21 @@ This library gives you total control over your application storage requirements:
 - Multiple depot instances can be managed: Each one with its own isolated storage space.
 - Multiple file and database systems are supported.
 
+### Language support
+
+- Php (7 or more)
+- NodeJs
+
+We want to increase this list. So! if you want to translate the library to your language of choice, please contact us! We need your help to port this library to as many languages as possible, and more important, we need to code the SAME unit tests across all the implemented languages. This is the only way to guarantee that the library delivers exactly the same behavior everywhere.
+
 ### Example with PHP
 
-Make sure you've downloaded the latest turbodepot version phar from [turbodepot.org](https://turbodepot.org)
+Make sure you've downloaded the latest turbocommons phar version from [turbocommons.org](https://turbocommons.org) and turbodepot phar version from [turbodepot.org](https://turbodepot.org)
 
 ```
+use org\turbodepot\src\main\php\managers\DepotManager;
+
+require_once 'some/filesystem/path/to/your/turbocommons-php-X.X.X.phar';
 require_once 'some/filesystem/path/to/your/turbodepot-php-X.X.X.phar';
 
 $pathToSetup = 'some/filesystem/path/to/your/turbodepot.json';
@@ -29,7 +39,7 @@ $pathToSetup = 'some/filesystem/path/to/your/turbodepot.json';
 // Connect to a depot instance configured with the name 'my_depot'
 $dpm = new DepotManager($pathToSetup, 'my_depot');
 
-// Write something to your log files
+// Write something to two different log files
 $dpm->getLogsManager()->write('this is a log line', 'logfile.txt');
 $dpm->getLogsManager()->write('this is another log line', 'logfile2.txt');
 
@@ -48,13 +58,6 @@ $dpm2 = new DepotManager($pathToSetup, 'my_depot_2');
 // All operations can now be performed the same way for this second instance
 // ...
 ```
-
-### Language support
-
-- Php (7 or more)
-- NodeJs
-
-We want to increase this list. So! if you want to translate the library to your language of choice, please contact us! We need your help to port this library to as many languages as possible, and more important, we need to code the SAME unit tests across all the implemented languages. This is the only way to guarantee that the library delivers exactly the same behavior everywhere.
 
 ### Dependencies
 
