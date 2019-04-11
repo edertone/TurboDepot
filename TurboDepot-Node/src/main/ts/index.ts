@@ -10,6 +10,7 @@
 
 // Managers package
 export { FilesManager } from './managers/FilesManager';
+export { TerminalManager } from './managers/TerminalManager';
 
 // Model package
 
