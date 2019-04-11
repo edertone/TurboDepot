@@ -39,6 +39,7 @@ export class FilesManager{
      * @param os A node os module instance (const os = require('os'))
      * @param path A node path module instance (const path = require('path'))
      * @param process A node process module instance
+     * @param crypto A node crypto module instance (const crypto = require('crypto'))
      * 
      * @return A FilesManager instance
      */
