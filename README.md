@@ -12,6 +12,7 @@ This library gives you total control over your application storage requirements:
 - Manage the application temporary files
 - Manage the application cached data
 - Operate with the OS terminal with classes that emulate its features
+- Operate with the main application console with classes that emulate its features
 - All the storage configurations are centralized on a single json setup file.
 - All the stored database or file system elements are saved in a human readable way, so you can still easily manipulate them outside of this library when needed.
 - Easy but still powerful: Tested with massive amounts of stored objects. Heavily optimized under the hood for best performance.

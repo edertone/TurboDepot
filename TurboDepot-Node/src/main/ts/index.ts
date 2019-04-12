@@ -9,6 +9,7 @@
 
 
 // Managers package
+export { ConsoleManager } from './managers/ConsoleManager';
 export { FilesManager } from './managers/FilesManager';
 export { TerminalManager } from './managers/TerminalManager';
 

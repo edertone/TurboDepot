@@ -101,7 +101,10 @@ export class TerminalManager {
     
     
     /**
-     * Execute an arbitrary terminal cmd command on the currently active work directory
+     * Execute an arbitrary terminal cmd command on the currently active work directory and capture all of its console
+     * output.
+     * 
+     * This method does not show any command output on the main console
      * 
      * @param command Some cmd operation to execute on the current working directory
      * 
@@ -129,5 +132,35 @@ export class TerminalManager {
             
             return e.stdout.toString();
         }  
+    }
+    
+    
+    /**
+     * Execute an arbitrary terminal cmd command on the currently active work directory, and show the command
+     * output in real time on the console.
+     * 
+     * @param command Some cmd operation to execute on the current working directory
+     * 
+     * @return True if the command was successfully executed, false if not
+     */
+    execLive(command: string) {
+        
+        let finalCommand = command;
+        
+        if(!StringUtils.isEmpty(this.baseCommand)){
+            
+            finalCommand += ' ' + this.baseCommand;
+        }
+        
+        try{
+            
+            this.execSync(finalCommand, {stdio:[0,1,2]});
+            
+            return true;
+            
+        }catch(e){
+
+            return false;
+        }
     }
 }
