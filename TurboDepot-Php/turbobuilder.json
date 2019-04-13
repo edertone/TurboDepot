@@ -32,11 +32,13 @@
                 {
                     "path": "src/main",
                     "maxPercentErrorLevel": 0,
+                    "maxPercentErrorDifference": 1,
                     "report": "html"
                 },
                 {
                     "path": "src/test",
                     "maxPercentErrorLevel": 12,
+                    "maxPercentErrorDifference": 1,
                     "report": "html"
                 }
             ],
