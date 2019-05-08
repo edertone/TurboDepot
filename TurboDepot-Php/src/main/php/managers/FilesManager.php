@@ -38,7 +38,12 @@ class FilesManager extends BaseStrictClass{
      * @param string $rootPath If we want to use an existing directory as the base path for all the methods on this class, we can define here
      *        a full OS filesystem path to it. Setting this value means all the file operations will be based on that directory.
      */
-    public function __construct(string $rootPath = ''){
+    public function __construct($rootPath = ''){
+
+        if (!is_string($rootPath)){
+
+            throw new UnexpectedValueException('rootPath must be a string');
+        }
 
         $this->_rootPath = StringUtils::formatPath($rootPath);
 

@@ -45,9 +45,20 @@ export class FilesManager{
                 private crypto: any,
                 rootPath = '') {
 
+        // This check is specific for the node version of FilesManager
+        if(!fs || !fs.mkdirSync || !os || !os.tmpdir || !path || !path.sep || !process || !process.once || !crypto || !crypto.createHash){
+            
+            throw new Error('Node objects (fs, os, path, process, crypto) must be passed to constructor');
+        }
+        
+        if (!StringUtils.isString(rootPath)){
+
+            throw new Error('rootPath must be a string');
+        }
+        
         this._rootPath = StringUtils.formatPath(rootPath);
 
-        if(this._rootPath !== '' && !this.fs.lstatSync(this.fs.realpathSync(this._rootPath)).isDirectory()){
+        if(this._rootPath !== '' && !this.isDirectory(this._rootPath)){
 
             throw new Error('Specified rootPath does not exist: ' + rootPath);
         }

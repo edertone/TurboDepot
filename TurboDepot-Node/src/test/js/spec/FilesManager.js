@@ -36,9 +36,64 @@ describe('FilesManager', function() {
     });
     
     
+    it('should have a correctly implemented NODE specific construct method', function() {
+
+        // NOTE: TEST SPECIFIC FOR NODEJS!!
+        // This test is specific for the node js version of the FilesManager class.
+        // It will check that the constructor fails if any of the required injected node js modules is missing.
+        
+        expect(() => {
+            this.sut = new FilesManager();
+        }).toThrowError(Error, 'Node objects (fs, os, path, process, crypto) must be passed to constructor');
+        
+        expect(() => {
+            this.sut = new FilesManager(fs);
+        }).toThrowError(Error, 'Node objects (fs, os, path, process, crypto) must be passed to constructor');
+        
+        expect(() => {
+            this.sut = new FilesManager(fs, os);
+        }).toThrowError(Error, 'Node objects (fs, os, path, process, crypto) must be passed to constructor');
+        
+        expect(() => {
+            this.sut = new FilesManager(fs, os, path);
+        }).toThrowError(Error, 'Node objects (fs, os, path, process, crypto) must be passed to constructor');
+        
+        expect(() => {
+            this.sut = new FilesManager(fs, os, path, process);
+        }).toThrowError(Error, 'Node objects (fs, os, path, process, crypto) must be passed to constructor');
+        
+       expect((new FilesManager(fs, os, path, process, crypto)).dirSep()).toBe(path.sep);
+    });  
+    
+    
     it('should have a correctly implemented construct method', function() {
 
-        // TODO        
+        // Test empty values
+        expect(() => {
+            this.sut = new FilesManager(fs, os, path, process, crypto, null);
+        }).toThrowError(Error, /rootPath must be a string/);
+        
+        expect((new FilesManager(fs, os, path, process, crypto)).dirSep()).toBe(path.sep);
+        expect((new FilesManager(fs, os, path, process, crypto, '')).dirSep()).toBe(path.sep);
+
+        expect(() => {
+            this.sut = new FilesManager(fs, os, path, process, crypto, '              ');
+        }).toThrowError(Error, /Specified rootPath does not exist/);
+        
+        expect(() => {
+            this.sut = new FilesManager(fs, os, path, process, crypto, {});
+        }).toThrowError(Error, /rootPath must be a string/);
+
+        // Test ok values
+        expect((new FilesManager(fs, os, path, process, crypto, this.tempFolder)).dirSep()).toBe(path.sep);
+
+        // Test wrong values
+        expect(() => {
+            this.sut = new FilesManager(fs, os, path, process, crypto, 'nonexistant path');
+        }).toThrowError(Error, /Specified rootPath does not exist: nonexistant path/);
+        
+        // Test exceptions
+        // Already tested      
     });
     
     

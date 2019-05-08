@@ -146,14 +146,11 @@ class FilesManagerTest extends TestCase {
             $this->sut = new FilesManager(null);
             $this->exceptionMessage = 'null did not cause exception';
         } catch (Throwable $e) {
-            $this->assertRegExp('/must be of the type string, null given/', $e->getMessage());
+            $this->assertRegExp('/rootPath must be a string/', $e->getMessage());
         }
 
-        $this->assertSame('org\turbodepot\src\main\php\managers\FilesManager',
-            get_class(new FilesManager()));
-
-        $this->assertSame('org\turbodepot\src\main\php\managers\FilesManager',
-            get_class(new FilesManager('')));
+        $this->assertSame(DIRECTORY_SEPARATOR, (new FilesManager())->dirSep());
+        $this->assertSame(DIRECTORY_SEPARATOR, (new FilesManager(''))->dirSep());
 
         try {
             $this->sut = new FilesManager('              ');
@@ -166,12 +163,11 @@ class FilesManagerTest extends TestCase {
             $this->sut = new FilesManager(new stdClass());
             $this->exceptionMessage = 'stdclass did not cause exception';
         } catch (Throwable $e) {
-            $this->assertRegExp('/must be of the type string, object given/', $e->getMessage());
+            $this->assertRegExp('/rootPath must be a string/', $e->getMessage());
         }
 
         // Test ok values
-        $this->assertSame('org\turbodepot\src\main\php\managers\FilesManager',
-            get_class(new FilesManager($this->tempFolder)));
+        $this->assertSame(DIRECTORY_SEPARATOR, (new FilesManager($this->tempFolder))->dirSep());
 
         // Test wrong values
         try {
