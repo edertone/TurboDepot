@@ -12,10 +12,47 @@ import { StringUtils, ArrayUtils } from 'turbocommons-ts';
 
 
 /**
- * Class that contains the most common file system interaction functionalities
+ * Files manager class
  */
 export class FilesManager{
 
+    
+    /**
+     * @see FilesManager.constructor
+     */
+    private _rootPath = '';
+    
+    
+    /**
+     * Manager class that contains the most common file system interaction functionalities
+     * 
+     * This constructor requires some node modules to work, which are passed as dependencies
+     *  
+     * @param fs A node fs module instance (const fs = require('fs'))
+     * @param os A node os module instance (const os = require('os'))
+     * @param path A node path module instance (const path = require('path'))
+     * @param process A node process module instance
+     * @param crypto A node crypto module instance (const crypto = require('crypto'))
+     * @param rootPath If we want to use an existing directory as the base path for all the methods on this class, we can define here
+     *        a full OS filesystem path to it. Setting this value means all the file operations will be based on that directory.
+     * 
+     * @return A FilesManager instance
+     */
+    constructor(private fs:any,
+                private os:any,
+                private path:any,
+                private process: any,
+                private crypto: any,
+                rootPath = '') {
+
+        this._rootPath = StringUtils.formatPath(rootPath);
+
+        if(this._rootPath !== '' && !this.fs.lstatSync(this.fs.realpathSync(this._rootPath)).isDirectory()){
+
+            throw new Error('Specified rootPath does not exist: ' + rootPath);
+        }
+    }
+    
 
     /**
      * Gives us the current OS directory separator character, so we can build cross platform file paths
@@ -29,33 +66,32 @@ export class FilesManager{
     
     
     /**
-     * Typescript / Javascript is a bit special regarding file system operations.
-     * If we run our application in a browser environment, we won't be able to access the file system,
-     * so this class will only work in a server side environment (nodejs).
-     * 
-     * This constructor requires some node modules to work, which are passed as dependencies
-     *  
-     * @param fs A node fs module instance (const fs = require('fs'))
-     * @param os A node os module instance (const os = require('os'))
-     * @param path A node path module instance (const path = require('path'))
-     * @param process A node process module instance
-     * @param crypto A node crypto module instance (const crypto = require('crypto'))
-     * 
-     * @return A FilesManager instance
+     * Tells if the provided string represents a relative or absolute file system path (Windows or Linux).
+     *
+     * Note that this method doesn't check if the path is valid or points to an existing file or directory.
+     *
+     * @return True if the provided path is absolute, false if it is relative
      */
-    constructor(private fs:any,
-                private os:any,
-                private path:any,
-                private process: any,
-                private crypto: any) {
+    isPathAbsolute(path: string){
 
+        if (StringUtils.isString(path)){
+            
+            let len = path.length;
+            let startsWithAlpha = len > 0 && /^[a-zA-Z]+$/.test(path.charAt(0));
+
+            return (path.indexOf('/') === 0 || path.indexOf('\\') === 0) ||
+                (len === 2 && startsWithAlpha && ':' === path.charAt(1)) ||
+                (len > 2 && startsWithAlpha && ':' === path.charAt(1) && (path.indexOf('/') === 2 || path.indexOf('\\') === 2));
+        }
+
+        throw new Error('path must be a string');
     }
     
     
     /**
      * Check if the specified path is a file or not.
      *
-     * @param path An Operating system path to test
+     * @param path An Operating system absolute or relative path to test
      *
      * @return true if the path exists and is a file, false otherwise.
      */
@@ -68,7 +104,7 @@ export class FilesManager{
         
         try {
             
-            return this.fs.lstatSync(path).isFile();
+            return this.fs.lstatSync(this._composePath(path)).isFile();
             
         } catch (e) {
 
@@ -80,29 +116,32 @@ export class FilesManager{
     /**
      * Check if two provided files are identical
      *
-     * @param file1 The first file to compare
-     * @param file2 The second file to compare
+     * @param pathToFile1 Absolute or relative path to the first file to compare
+     * @param pathToFile2 Absolute or relative path to the second file to compare
      *
      * @throws Error
      *
      * @return True if both files are identical, false otherwise
      */
-    isFileEqualTo(file1: string, file2: string){
+    isFileEqualTo(pathToFile1: string, pathToFile2: string){
 
-        if(!this.isFile(file1)){
+        pathToFile1 = this._composePath(pathToFile1);
+        pathToFile2 = this._composePath(pathToFile2);
 
-            throw new Error('Not a file: ' + file1);
+        if(!this.isFile(pathToFile1)){
+
+            throw new Error('Not a file: ' + pathToFile1);
         }
 
-        if(!this.isFile(file2)){
+        if(!this.isFile(pathToFile2)){
 
-            throw new Error('Not a file: ' + file2);
+            throw new Error('Not a file: ' + pathToFile2);
         }
         
-        let file1Hash = this.crypto.createHash('md5').update(this.readFile(file1), 'utf8').digest('hex');
-        let file2Hash = this.crypto.createHash('md5').update(this.readFile(file2), 'utf8').digest('hex');
+        let file1Hash = this.crypto.createHash('md5').update(this.readFile(pathToFile1), 'utf8').digest('hex');
+        let file2Hash = this.crypto.createHash('md5').update(this.readFile(pathToFile2), 'utf8').digest('hex');
         
-        if (this.getFileSize(file1) === this.getFileSize(file2) &&
+        if (this.getFileSize(pathToFile1) === this.getFileSize(pathToFile2) &&
                 file1Hash === file2Hash){
 
                 return true;
@@ -115,7 +154,7 @@ export class FilesManager{
     /**
      * Check if the specified path is a directory or not.
      *
-     * @param path An Operating system path to test
+     * @param path An Operating system absolute or relative path to test
      *
      * @return true if the path exists and is a directory, false otherwise.
      */
@@ -128,7 +167,7 @@ export class FilesManager{
         
         try {
             
-            return this.fs.lstatSync(this.fs.realpathSync(path)).isDirectory();
+            return this.fs.lstatSync(this.fs.realpathSync(this._composePath(path))).isDirectory();
             
         } catch (e) {
 
@@ -140,15 +179,15 @@ export class FilesManager{
     /**
      * Check if two directories contain exactly the same folder structure and files.
      *
-     * @param path1 The full path to the first directory to compare
-     * @param path2 The full path to the second directory to compare
+     * @param path1 Absolute or relative path to the first directory to compare
+     * @param path2 Absolute or relative path to the second directory to compare
      *
      * @return true if both paths are valid directories and contain exactly the same files and folders tree.
      */
     isDirectoryEqualTo(path1: string, path2: string){
 
-        path1 = StringUtils.formatPath(path1, this.dirSep());
-        path2 = StringUtils.formatPath(path2, this.dirSep());
+        path1 = this._composePath(path1);
+        path2 = this._composePath(path2);
 
         let path1Items = this.getDirectoryList(path1, 'nameAsc');
         let path2Items = this.getDirectoryList(path2, 'nameAsc');
@@ -183,7 +222,7 @@ export class FilesManager{
     /**
      * Checks if the specified folder is empty
      *
-     * @param path The path to the directory we want to check
+     * @param path Absolute or relative path to the directory we want to check
      *
      * @return True if directory is empty, false if not. If it does not exist or cannot be read, an exception will be generated
      */
@@ -196,7 +235,7 @@ export class FilesManager{
     /**
      * Find all the elements on a directory which name matches the specified regexp pattern
      *
-     * @param path A directory where the search will be performed
+     * @param path Absolute or relative path where the search will be performed
      *
      * @param searchRegexp A regular expression that files or folders must match to be included
      *        into the results. Here are some useful patterns:<br>
@@ -229,7 +268,7 @@ export class FilesManager{
                        depth = -1): string[]{
 
         let result: string[] = [];
-        path = StringUtils.formatPath(path, this.dirSep());
+        path = this._composePath(path);
 
         for (let item of this.getDirectoryList(path)) {
 
@@ -242,12 +281,10 @@ export class FilesManager{
                 continue;
             }
 
-            if((new RegExp(searchRegexp)).test(item)){
+            if((new RegExp(searchRegexp)).test(item) &&
+               !(searchItemsType === 'files' && isItemADir)){
 
-                if(!(searchItemsType === 'files' && isItemADir)){
-
-                    result.push(itemPath);
-                }
+                result.push(itemPath);
             }
 
             if(depth !== 0 && isItemADir){
@@ -280,7 +317,7 @@ export class FilesManager{
      *
      * NOTE: This method does not create any folder or alter the given path in any way.
      *
-     * @param path The full path to the directoy we want to check for a unique folder name
+     * @param path Absolute or relative path to the directoy we want to check for a unique folder name
      * @param desiredName We can specify a suggested name for the unique directory. This method will verify that it
      *                    does not exist, or otherwise give us a name based on our desired one that is unique for the path
      * @param text Text that will be appended to the suggested name in case it already exists.
@@ -299,8 +336,8 @@ export class FilesManager{
                             separator = '-',
                             isPrefix = false){
 
-        path = StringUtils.formatPath(path, this.dirSep());
-        
+        path = this._composePath(path);
+
         if (!this.isDirectory(path)){
 
             throw new Error('path does not exist: ' + path);
@@ -330,7 +367,7 @@ export class FilesManager{
      *
      * NOTE: This method does not create any file or alter the given path in any way.
      *
-     * @param path The full path to the directoy we want to check for a unique file name
+     * @param path Absolute or relative path to the directoy we want to check for a unique file name
      * @param desiredName We can specify a suggested name for the unique file. This method will verify that it
      *                    does not exist, or otherwise give us a name based on our desired one that is unique for the path
      * @param text Text that will be appended to the suggested name in case it already exists.
@@ -349,7 +386,7 @@ export class FilesManager{
                        separator = '-',
                        isPrefix = false){
 
-        path = StringUtils.formatPath(path, this.dirSep());
+        path = this._composePath(path);
         
         if (!this.isDirectory(path)){
 
@@ -380,12 +417,14 @@ export class FilesManager{
     /**
      * Create a directory at the specified filesystem path
      *
-     * @param path The full path to the directoy we want to create. For example: c:\apps\my_new_folder
+     * @param path Absolute or relative path to the directoy we want to create. For example: c:\apps\my_new_folder
      * @param recursive Allows the creation of nested directories specified in the pathname. Defaults to false.
      *
      * @return Returns true on success or false if the folder already exists (an exception may be thrown if a file exists with the same name or folder cannot be created).
      */
     createDirectory(path: string, recursive = false){
+
+        path = this._composePath(path);
 
         // If folder already exists we won't create it
         if(this.isDirectory(path)){
@@ -499,7 +538,7 @@ export class FilesManager{
      * The contents of any subfolder will not be listed. We must call this method for each child folder if we want to get it's list.
      * (The method ignores the . and .. items if exist).
      *
-     * @param path Full path to the directory we want to list
+     * @param path Absolute or relative path to the directory we want to list
      * @param sort Specifies the sort for the result:<br>
      * &emsp;&emsp;'' will not sort the result.<br>
      * &emsp;&emsp;'nameAsc' will sort the result by filename ascending.
@@ -510,6 +549,8 @@ export class FilesManager{
      * @return The list of item names inside the specified path sorted as requested, or an empty array if no items found inside the folder.
      */
     getDirectoryList(path: string, sort = ''): string[]{
+
+        path = this._composePath(path);
 
         // If folder does not exist, we will throw an exception
         if(!this.isDirectory(path)){
@@ -573,11 +614,13 @@ export class FilesManager{
     /**
      * Calculate the full size in bytes for a specified folder and all its contents.
      *
-     * @param path Full path to the directory we want to calculate its size
+     * @param path Absolute or relative path to the directory we want to calculate its size
      *
      * @return the size of the file in bytes. An exception will be thrown if value cannot be obtained
      */
     getDirectorySize(path: string){
+
+        path = this._composePath(path);
 
         let result = 0;
 
@@ -600,8 +643,8 @@ export class FilesManager{
      * Any source files that exist on destination will be overwritten without warning.
      * Files that exist on destination but not on source won't be modified, removed or altered in any way.
      *
-     * @param sourcePath The full path to the source directory where files and folders to copy exist
-     * @param destPath The full path to the destination directory where files and folders will be copied
+     * @param sourcePath Absolute or relative path to the source directory where files and folders to copy exist
+     * @param destPath Absolute or relative path to the destination directory where files and folders will be copied
      * @param destMustBeEmpty if set to true, an exception will be thrown if the destination directory is not empty.
      *
      * @throws Error
@@ -610,8 +653,8 @@ export class FilesManager{
      */
     copyDirectory(sourcePath: string, destPath: string, destMustBeEmpty = true){
 
-        sourcePath = StringUtils.formatPath(sourcePath, this.dirSep());
-        destPath = StringUtils.formatPath(destPath, this.dirSep());
+        sourcePath = this._composePath(sourcePath);
+        destPath = this._composePath(destPath);
 
         if(sourcePath === destPath){
 
@@ -666,12 +709,15 @@ export class FilesManager{
      * Renames a directory.
 
      *
-     * @param sourcePath The full path to the source directory that must be renamed (including the directoy itself).
-     * @param destPath The full path to the new directoy name (including the directoy itself). It must not exist.
+     * @param sourcePath Absolute or relative path to the source directory that must be renamed (including the directoy itself).
+     * @param destPath Absolute or relative path to the new directoy name (including the directoy itself). It must not exist.
      *
      * @return boolean true on success or false on failure.
      */
     renameDirectory(sourcePath:string, destPath:string){
+
+        sourcePath = this._composePath(sourcePath);
+        destPath = this._composePath(destPath);
 
         if(!this.isDirectory(sourcePath) || this.isDirectory(destPath) || this.isFile(destPath)){
 
@@ -695,14 +741,14 @@ export class FilesManager{
      * Delete a directory from the filesystem and return a boolean telling if the directory delete succeeded or not
      * Note: All directory contents, folders and files will be also removed.
      * 
-     * @param path The path to the directory
+     * @param path Absolute or relative path to the directory
      * @param deleteDirectoryItself Set it to true if the specified directory must also be deleted.
      *
      * @return Returns true on success or false on failure.
      */
     deleteDirectory(path: string, deleteDirectoryItself = true){
 
-        path = StringUtils.formatPath(path, this.dirSep());
+        path = this._composePath(path);
 
         if (!this.isDirectory(path)){
 
@@ -755,7 +801,7 @@ export class FilesManager{
      *
      * @see FilesManager.isFile
      *
-     * @param pathToFile The path including full filename where data will be saved. File will be created or overwritten without warning.
+     * @param pathToFile Absolute or relative path including full filename where data will be saved. File will be created or overwritten without warning.
      * @param data Any information to save on the file.
      * @param append Set it to true to append the data to the end of the file instead of overwritting it. File will be created if it does
      *        not exist, even with append set to true.
@@ -763,6 +809,8 @@ export class FilesManager{
      * @return True on success or false on failure.
      */
     saveFile(pathToFile: string, data = '', append = false){
+
+        pathToFile = this._composePath(pathToFile);
 
         try {
 
@@ -796,7 +844,7 @@ export class FilesManager{
     /**
      * Concatenate all the provided files, one after the other, into a single destination file.
      *
-     * @param sourcePaths A list with the full paths to the files we want to join. The result will be generated in the same order.
+     * @param sourcePaths A list with the absolute or relative paths to the files we want to join. The result will be generated in the same order.
      * @param destFile The full path where the merged file will be stored, including the full file name (will be overwitten if exists).
      * @param separator An optional string that will be concatenated between each file content. We can for example use "\n\n" to
      *        create some empty space between each file content
@@ -809,7 +857,7 @@ export class FilesManager{
 
         for (var i = 0; i < sourcePaths.length; i++) {
 
-            mergedData += this.readFile(sourcePaths[i]);
+            mergedData += this.readFile(this._composePath(sourcePaths[i]));
 
             // Place separator string on all files except the last one
             if(i < sourcePaths.length - 1 && separator !== ''){
@@ -825,20 +873,22 @@ export class FilesManager{
     /**
      * Get the size from a file
      *
-     * @param path The file full path, including the file name and extension
+     * @param pathToFile Absolute or relative file path, including the file name and extension
      *
      * @return int the size of the file in bytes. An exception will be thrown if value cannot be obtained
      */
-    getFileSize(path: string){
+    getFileSize(pathToFile: string){
 
-        if(!this.isFile(path)){
+        pathToFile = this._composePath(pathToFile);
 
-            throw new Error('File not found - ' + path);
+        if(!this.isFile(pathToFile)){
+
+            throw new Error('File not found - ' + pathToFile);
         }
 
         try {
 
-            return this.fs.statSync(path).size;
+            return this.fs.statSync(pathToFile).size;
 
         } catch (e) {
             
@@ -851,18 +901,20 @@ export class FilesManager{
      * Read and return the content of a file. Not suitable for big files (More than 5 MB) cause the script memory
      * may get full and the execution fail
      *
-     * @param path An Operating system full or relative path containing some file
+     * @param pathToFile An Operating system absolute or relative path containing some file
      *
      * @return The file contents (binary or string). If the file is not found or cannot be read, an exception will be thrown.
      */
-    readFile(path: string){
+    readFile(pathToFile: string){
 
-        if(!this.isFile(path)){
+        pathToFile = this._composePath(pathToFile);
 
-            throw new Error('File not found - ' + path);
+        if(!this.isFile(pathToFile)){
+
+            throw new Error('File not found - ' + pathToFile);
         }
 
-        return this.fs.readFileSync(path, "utf8");
+        return this.fs.readFileSync(pathToFile, "utf8");
     }
 
 
@@ -872,7 +924,7 @@ export class FilesManager{
      *
      * Adapted from code suggested at: http://php.net/manual/es/function.readfile.php
      *
-     * @param path The file full path
+     * @param pathToFile An Operating system absolute or relative path containing some file
      * @param downloadRateLimit If we want to limit the download rate of the file, we can do it by setting this value to > 0. For example: 20.5 will set the file download rate to 20,5 kb/s
      *
      * @return the number of bytes read from the file.
@@ -887,16 +939,19 @@ export class FilesManager{
      * Copies a file from a source location to the defined destination
      * If the destination file already exists, it will be overwritten. 
      * 
-     * @param sourcePath The full path to the source file that must be copied (including the filename itself).
-     * @param destPath The full path to the destination where the file must be copied (including the filename itself).
+     * @param sourceFilePath Absolute or relative path to the source file that must be copied (including the filename itself).
+     * @param destFilePath Absolute or relative path to the destination where the file must be copied (including the filename itself).
      *
      * @return Returns true on success or false on failure.
      */
-    copyFile(sourcePath: string, destPath: string){
+    copyFile(sourceFilePath: string, destFilePath: string){
+
+        sourceFilePath = this._composePath(sourceFilePath);
+        destFilePath = this._composePath(destFilePath);
 
         try{
             
-            this.fs.copyFileSync(sourcePath, destPath);
+            this.fs.copyFileSync(sourceFilePath, destFilePath);
 
             return true;
             
@@ -910,21 +965,24 @@ export class FilesManager{
     /**
      * Renames a file.
      *
-     * @param sourcePath The full path to the source file that must be renamed (including the filename itself).
-     * @param destPath The full path to the new file name (including the filename itself). It must not exist.
+     * @param sourceFilePath Absolute or relative path to the source file that must be renamed (including the filename itself).
+     * @param destFilePath Absolute or relative path to the new file name (including the filename itself). It must not exist.
      *
      * @return True on success or false on failure.
      */
-    renameFile(sourcePath: string, destPath: string){
+    renameFile(sourceFilePath: string, destFilePath: string){
 
-        if(!this.isFile(sourcePath) || this.isDirectory(destPath) || this.isFile(destPath)){
+        sourceFilePath = this._composePath(sourceFilePath);
+        destFilePath = this._composePath(destFilePath);
+
+        if(!this.isFile(sourceFilePath) || this.isDirectory(destFilePath) || this.isFile(destFilePath)){
 
             return false;
         }
 
         try {
             
-            this.fs.renameSync(sourcePath, destPath);
+            this.fs.renameSync(sourceFilePath, destFilePath);
             
             return true;
             
@@ -938,20 +996,22 @@ export class FilesManager{
     /**
      * Delete a filesystem file.
      *
-     * @param path The file filesystem path
+     * @param pathToFile Absolute or relative path to the file to delete
      *
      * @return Returns true on success or false on failure.
      */
-    deleteFile(path: string){
+    deleteFile(pathToFile: string){
 
-        if(!this.isFile(path)){
+        pathToFile = this._composePath(pathToFile);
+
+        if(!this.isFile(pathToFile)){
 
             return false;
         }
 
         try {
 
-            this.fs.unlinkSync(path);
+            this.fs.unlinkSync(pathToFile);
             
             return true;
             
@@ -965,17 +1025,17 @@ export class FilesManager{
     /**
      * Delete a list of filesystem files.
      *
-     * @param paths A list of filesystem paths to delete
+     * @param pathsToFiles A list of filesystem absolute or relative paths to files to delete
      *
      * @return Returns true on success or false if any of the files failed to be deleted
      */
-    deleteFiles(paths: string[]){
+    deleteFiles(pathsToFiles: string[]){
 
         let result = true;
 
-        for (let i = 0; i < paths.length; i++) {
+        for (let i = 0; i < pathsToFiles.length; i++) {
 
-            if(!this.deleteFile(paths[i])){
+            if(!this.deleteFile(this._composePath(pathsToFiles[i]))){
 
                 result = false;
             }
@@ -1030,5 +1090,29 @@ export class FilesManager{
         }
 
         return result.join(separator);
+    }
+    
+    
+    /**
+     * Auxiliary method to generate a full path from a relative one and the configured root path
+     *
+     * If an absolute path is passed to the relativePath variable, the result of this method will be that value, ignoring
+     * any possible value on _rootPath.
+     */
+    private _composePath(relativePath: string){
+
+        let composedPath = '';
+
+        if (StringUtils.isEmpty(this._rootPath) ||
+            this.isPathAbsolute(relativePath)) {
+
+            composedPath = relativePath;
+
+        } else {
+
+            composedPath = this._rootPath + this.dirSep() + relativePath;
+        }
+
+        return StringUtils.formatPath(composedPath, this.dirSep());
     }
 }

@@ -52,8 +52,8 @@ class FilesManagerTest extends TestCase {
         $this->sut = new FilesManager();
 
         // Create a temporary folder
-        $this->tempFolder = $this->sut->createTempDirectory('TurboCommons-FilesManagerTest');
-        $this->assertTrue(strpos($this->tempFolder, 'TurboCommons-FilesManagerTest') !== false);
+        $this->tempFolder = $this->sut->createTempDirectory('TurboDepot-FilesManagerTest');
+        $this->assertTrue(strpos($this->tempFolder, 'TurboDepot-FilesManagerTest') !== false);
         $this->assertTrue($this->sut->isDirectoryEmpty($this->tempFolder));
         $this->assertFalse($this->sut->isFile($this->tempFolder));
     }
@@ -135,6 +135,58 @@ class FilesManagerTest extends TestCase {
 
 
     /**
+     * testConstruct
+     *
+     * @return void
+     */
+    public function testConstruct(){
+
+        // Test empty values
+        try {
+            $this->sut = new FilesManager(null);
+            $this->exceptionMessage = 'null did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/must be of the type string, null given/', $e->getMessage());
+        }
+
+        $this->assertSame('org\turbodepot\src\main\php\managers\FilesManager',
+            get_class(new FilesManager()));
+
+        $this->assertSame('org\turbodepot\src\main\php\managers\FilesManager',
+            get_class(new FilesManager('')));
+
+        try {
+            $this->sut = new FilesManager('              ');
+            $this->exceptionMessage = '"             " did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Specified rootPath does not exist/', $e->getMessage());
+        }
+
+        try {
+            $this->sut = new FilesManager(new stdClass());
+            $this->exceptionMessage = 'stdclass did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/must be of the type string, object given/', $e->getMessage());
+        }
+
+        // Test ok values
+        $this->assertSame('org\turbodepot\src\main\php\managers\FilesManager',
+            get_class(new FilesManager($this->tempFolder)));
+
+        // Test wrong values
+        try {
+            $this->sut = new FilesManager('nonexistant path');
+            $this->exceptionMessage = 'nonexistant path did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Specified rootPath does not exist: nonexistant path/', $e->getMessage());
+        }
+
+        // Test exceptions
+        // Already tested
+    }
+
+
+    /**
      * testDirSep
      *
      * @return void
@@ -142,6 +194,125 @@ class FilesManagerTest extends TestCase {
     public function testDirSep(){
 
         $this->assertTrue($this->sut->dirSep() === DIRECTORY_SEPARATOR);
+    }
+
+
+    /**
+     * testIsPathAbsolute
+     *
+     * @return void
+     */
+    public function testIsPathAbsolute(){
+
+        // Test empty values
+        try {
+            $this->sut->isPathAbsolute(null);
+            $this->exceptionMessage = 'null did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/path must be a string/', $e->getMessage());
+        }
+
+        $this->assertFalse($this->sut->isPathAbsolute(''));
+        $this->assertFalse($this->sut->isPathAbsolute('            '));
+
+        try {
+            $this->sut->isPathAbsolute(0);
+            $this->exceptionMessage = '0 did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/path must be a string/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->isPathAbsolute([]);
+            $this->exceptionMessage = '[] did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/path must be a string/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->isPathAbsolute(new stdClass());
+            $this->exceptionMessage = 'new stdClass() did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/path must be a string/', $e->getMessage());
+        }
+
+        // Test ok values
+
+        // Windows absolute paths
+        $this->assertTrue($this->sut->isPathAbsolute('\\'));
+        $this->assertTrue($this->sut->isPathAbsolute('\\\\'));
+        $this->assertTrue($this->sut->isPathAbsolute('c:'));
+        $this->assertTrue($this->sut->isPathAbsolute('d:'));
+        $this->assertTrue($this->sut->isPathAbsolute('f:'));
+        $this->assertTrue($this->sut->isPathAbsolute('c:\\'));
+        $this->assertTrue($this->sut->isPathAbsolute('d:\\'));
+        $this->assertTrue($this->sut->isPathAbsolute('f:\\'));
+        $this->assertTrue($this->sut->isPathAbsolute('C:\\temp\\'));
+        $this->assertTrue($this->sut->isPathAbsolute('C:\\Documents\\Newsletters\\Summer2018.pdf'));
+        $this->assertTrue($this->sut->isPathAbsolute('\\Program Files\\Custom Utilities\\StringFinder.exe'));
+        $this->assertTrue($this->sut->isPathAbsolute('C:\\Projects\\apilibrary\\apilibrary.sln'));
+        $this->assertTrue($this->sut->isPathAbsolute('\\\\Server2\\Share\\Test\\Foo.txt'));
+        $this->assertTrue($this->sut->isPathAbsolute('\\\\system07\\C$\\'));
+        $this->assertTrue($this->sut->isPathAbsolute('\\var'));
+        $this->assertTrue($this->sut->isPathAbsolute('\\utilities\\dir'));
+        $this->assertTrue($this->sut->isPathAbsolute('/'));
+        $this->assertTrue($this->sut->isPathAbsolute('//'));
+        $this->assertTrue($this->sut->isPathAbsolute('c:/'));
+        $this->assertTrue($this->sut->isPathAbsolute('d:/'));
+        $this->assertTrue($this->sut->isPathAbsolute('C:/temp/'));
+        $this->assertTrue($this->sut->isPathAbsolute('C:/Documents/Newsletters/Summer2018.pdf'));
+        $this->assertTrue($this->sut->isPathAbsolute('/Program Files/Custom Utilities/StringFinder.exe'));
+        $this->assertTrue($this->sut->isPathAbsolute('C:/Projects/apilibrary/apilibrary.sln'));
+        $this->assertTrue($this->sut->isPathAbsolute('//Server2/Share/Test/Foo.txt'));
+        $this->assertTrue($this->sut->isPathAbsolute('//system07/C$/'));
+        $this->assertTrue($this->sut->isPathAbsolute('/var'));
+        $this->assertTrue($this->sut->isPathAbsolute('/utilities/dir'));
+
+        // Windows relative paths
+        $this->assertFalse($this->sut->isPathAbsolute(''));
+        $this->assertFalse($this->sut->isPathAbsolute('2018\\January.xlsx'));
+        $this->assertFalse($this->sut->isPathAbsolute('..\\Publications\\TravelBrochure.pdf'));
+        $this->assertFalse($this->sut->isPathAbsolute('C:Projects\\apilibrary\\apilibrary.sln'));
+        $this->assertFalse($this->sut->isPathAbsolute('var'));
+        $this->assertFalse($this->sut->isPathAbsolute('utilities\\dir'));
+        $this->assertFalse($this->sut->isPathAbsolute('..\\Landuse'));
+        $this->assertFalse($this->sut->isPathAbsolute('..\\..\\Data\\Final\\Infrastructure.gdb\\Streets'));
+        $this->assertFalse($this->sut->isPathAbsolute('2018/January.xlsx'));
+        $this->assertFalse($this->sut->isPathAbsolute('../Publications/TravelBrochure.pdf'));
+        $this->assertFalse($this->sut->isPathAbsolute('C:Projects/apilibrary/apilibrary.sln'));
+        $this->assertFalse($this->sut->isPathAbsolute('utilities/dir'));
+        $this->assertFalse($this->sut->isPathAbsolute('../Landuse'));
+        $this->assertFalse($this->sut->isPathAbsolute('../../Data/Final/Infrastructure.gdb/Streets'));
+
+        // Linux absolute paths
+        $this->assertTrue($this->sut->isPathAbsolute('/'));
+        $this->assertTrue($this->sut->isPathAbsolute('//'));
+        $this->assertTrue($this->sut->isPathAbsolute('/var'));
+        $this->assertTrue($this->sut->isPathAbsolute('/utilities/dir'));
+        $this->assertTrue($this->sut->isPathAbsolute('/export/home/heden/rhost'));
+
+        // Linux relative paths
+        $this->assertFalse($this->sut->isPathAbsolute(''));
+        $this->assertFalse($this->sut->isPathAbsolute('2018/January.xlsx'));
+        $this->assertFalse($this->sut->isPathAbsolute('../Publications/TravelBrochure.pdf'));
+        $this->assertFalse($this->sut->isPathAbsolute('Projects/apilibrary/apilibrary.sln'));
+        $this->assertFalse($this->sut->isPathAbsolute('var'));
+
+        // Test wrong values
+        // Test exceptions
+        try {
+            $this->sut->isPathAbsolute(123253565);
+            $this->exceptionMessage = '123253565 did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/path must be a string/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->isPathAbsolute([1,2,3,4,5,7]);
+            $this->exceptionMessage = '[1,2,3,4,5,7] did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/path must be a string/', $e->getMessage());
+        }
     }
 
 
@@ -186,8 +357,14 @@ class FilesManagerTest extends TestCase {
 
         $this->sut->saveFile($this->tempFolder.DIRECTORY_SEPARATOR.'File2.txt', 'Hello baby');
         $this->assertTrue($this->sut->isFile($this->tempFolder.DIRECTORY_SEPARATOR.'File2.txt'));
+
+        $sut2 = new FilesManager($this->tempFolder);
+        $this->assertTrue($sut2->isFile('File2.txt'));
+
         $this->sut->deleteFile($this->tempFolder.DIRECTORY_SEPARATOR.'File2.txt');
         $this->assertFalse($this->sut->isFile($this->tempFolder.DIRECTORY_SEPARATOR.'File2.txt'));
+
+        $this->assertFalse($sut2->isFile('File2.txt'));
 
         // Test wrong values
         $this->assertFalse($this->sut->isFile($this->tempFolder));
@@ -250,6 +427,11 @@ class FilesManagerTest extends TestCase {
         $this->assertFalse($this->sut->isFileEqualTo($file2, $file3));
         $this->assertFalse($this->sut->isFileEqualTo($file3, $file4));
         $this->assertTrue($this->sut->isFileEqualTo($file1, $file4));
+
+        $sut2 = new FilesManager($this->tempFolder);
+
+        $this->assertTrue($sut2->isFileEqualTo('file1', 'file1'));
+        $this->assertFalse($sut2->isFileEqualTo('file1', 'file2'));
 
         // Test wrong values
         // Test exceptions
@@ -334,6 +516,10 @@ class FilesManagerTest extends TestCase {
         $this->assertFalse($this->sut->isDirectory($recursiveDirectory));
         $this->assertTrue($this->sut->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'a'.DIRECTORY_SEPARATOR.'b'));
 
+        $sut2 = new FilesManager($this->tempFolder);
+        $this->assertTrue($sut2->isDirectory(''));
+        $this->assertTrue($sut2->isDirectory('a'.DIRECTORY_SEPARATOR.'b'));
+
         // Test wrong values
         $this->assertFalse($this->sut->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'asdfsdf.txt353455'));
         $this->assertFalse($this->sut->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'asdfsdf.txt'));
@@ -348,6 +534,8 @@ class FilesManagerTest extends TestCase {
 
         $this->sut->saveFile($this->tempFolder.DIRECTORY_SEPARATOR.'File2.txt', 'Hello baby');
         $this->assertFalse($this->sut->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'File2.txt'));
+
+        $this->assertFalse($sut2->isDirectory('nonexistantdir'));
     }
 
 
@@ -420,6 +608,12 @@ class FilesManagerTest extends TestCase {
 
         $this->sut->deleteFiles($this->sut->findDirectoryItems($dir1, '/^somefile-0-0-0\.txt$/', 'absolute'));
         $this->assertFalse($this->sut->isDirectoryEqualTo($dir1, $dir2));
+
+        $sut2 = new FilesManager($this->tempFolder);
+
+        $this->assertTrue($sut2->isDirectoryEqualTo('dir1', 'dir1'));
+        $this->assertTrue($sut2->isDirectoryEqualTo('dir1', $dir1));
+        $this->assertFalse($sut2->isDirectoryEqualTo('dir1', 'dir3'));
 
         // Test wrong values
         // Test exceptions
@@ -499,15 +693,22 @@ class FilesManagerTest extends TestCase {
         // Test ok values
         $this->assertTrue($this->sut->isDirectoryEmpty($this->tempFolder));
 
+        $sut2 = new FilesManager($this->tempFolder);
+        $this->assertTrue($sut2->isDirectoryEmpty(''));
+
         $averageDirectory = $this->tempFolder.DIRECTORY_SEPARATOR.'some folder';
         $this->sut->createDirectory($averageDirectory);
         $this->assertTrue($this->sut->isDirectoryEmpty($averageDirectory));
+        $this->assertTrue($sut2->isDirectoryEmpty('some folder'));
         $this->sut->saveFile($averageDirectory.DIRECTORY_SEPARATOR.'File.txt', 'Hello baby');
         $this->assertFalse($this->sut->isDirectoryEmpty($averageDirectory));
+        $this->assertFalse($sut2->isDirectoryEmpty('some folder'));
 
         // Test wrong values
         $this->sut->saveFile($this->tempFolder.DIRECTORY_SEPARATOR.'File.txt', 'Hello baby');
         $this->assertFalse($this->sut->isDirectoryEmpty($this->tempFolder));
+
+        $this->assertFalse($sut2->isDirectoryEmpty(''));
 
         // Test exceptions
         try {
@@ -644,7 +845,7 @@ class FilesManagerTest extends TestCase {
         $this->assertSame(['folder-0-2', 'folder-0-3'], $this->sut->findDirectoryItems($this->tempFolder, '/^.*(0-3|0-2)$/i', 'name', 'folders'));
 
         // Create a folder with some dummy image files
-        $temp2Folder = $this->sut->createTempDirectory('TurboCommons-FilesManagerTest-2');
+        $temp2Folder = $this->sut->createTempDirectory('TurboDepot-FilesManagerTest-2');
 
         for ($k = 0; $k < 2; $k++) {
 
@@ -749,6 +950,9 @@ class FilesManagerTest extends TestCase {
         $this->assertSame([$this->tempFolder.DIRECTORY_SEPARATOR.'folder-1-0'.DIRECTORY_SEPARATOR.'folder-1-1'.DIRECTORY_SEPARATOR.'folder-1-2'], $this->sut->findDirectoryItems($this->tempFolder, '/^folder-1-2$/', 'absolute'));
         $this->assertSame([], $this->sut->findDirectoryItems($this->tempFolder, '/^folder-1-2$/', 'absolute', 'both', 0));
 
+        $sut2 = new FilesManager($this->tempFolder);
+        $this->assertSame([$this->tempFolder.DIRECTORY_SEPARATOR.'folder-3-0'.DIRECTORY_SEPARATOR.'folder-3-1'.DIRECTORY_SEPARATOR.'folder-3-2'.DIRECTORY_SEPARATOR.'folder-3-3'], $sut2->findDirectoryItems('', '/^folder-3-3$/', 'absolute'));
+
         // Test wrong values
         // Not necessary
 
@@ -832,6 +1036,10 @@ class FilesManagerTest extends TestCase {
         $this->assertTrue($this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', 'copy', '-', false) == 'NewFolder-copy-2');
         $this->assertTrue($this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', 'copy', '-', true) == 'copy-1-NewFolder');
 
+        $sut2 = new FilesManager($this->tempFolder);
+
+        $this->assertTrue($sut2->findUniqueDirectoryName('', 'NewFolder', 'copy', '-', true) == 'copy-1-NewFolder');
+
         // Test wrong values
         // not necessary
 
@@ -914,6 +1122,10 @@ class FilesManagerTest extends TestCase {
         $this->assertTrue($this->sut->findUniqueFileName($this->tempFolder, 'NewFile.txt', '', '-', true) == '1-NewFile.txt');
         $this->assertTrue($this->sut->findUniqueFileName($this->tempFolder, 'NewFile.txt', 'copy', '-', false) == 'NewFile-copy-2.txt');
         $this->assertTrue($this->sut->findUniqueFileName($this->tempFolder, 'NewFile.txt', 'copy', '-', true) == 'copy-1-NewFile.txt');
+
+        $sut2 = new FilesManager($this->tempFolder);
+
+        $this->assertTrue($sut2->findUniqueFileName('', 'NewFile.txt', 'copy', '-', true) == 'copy-1-NewFile.txt');
 
         // Test wrong values
         // not necessary
@@ -1007,6 +1219,12 @@ class FilesManagerTest extends TestCase {
         $this->assertFalse($this->sut->isDirectory($recursive2));
         $this->assertTrue($this->sut->createDirectory($recursive2, true));
         $this->assertTrue($this->sut->isDirectory($recursive2));
+
+        $sut2 = new FilesManager($this->tempFolder);
+        $this->assertFalse($sut2->isDirectory('subfolder-tocreate'));
+        $this->assertTrue($sut2->createDirectory('subfolder-tocreate', true));
+        $this->assertTrue($sut2->isDirectory('subfolder-tocreate'));
+        $this->assertTrue($sut2->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'subfolder-tocreate'));
 
         // Test wrong values
         // not necessary
@@ -1138,6 +1356,12 @@ class FilesManagerTest extends TestCase {
         $this->assertTrue(in_array('1234', $res));
         $this->assertTrue(in_array('-go-', $res));
 
+        $sut2 = new FilesManager($this->tempFolder);
+        $res = $sut2->getDirectoryList('');
+        $this->assertTrue($validationManager->isArray($res));
+        $this->assertTrue(count($res) == 4);
+        $this->assertTrue(in_array('file.txt', $res));
+
         // Check sorted lists
         $res = $this->sut->getDirectoryList($this->tempFolder, 'nameAsc');
         $this->assertTrue(ArrayUtils::isEqualTo($res, ['-go-', '1234', 'file.txt', 'test1']));
@@ -1210,6 +1434,9 @@ class FilesManagerTest extends TestCase {
         $this->assertTrue($this->sut->getDirectorySize($this->tempFolder.DIRECTORY_SEPARATOR.'testsize-2') === 10000);
 
         $this->assertTrue($this->sut->getDirectorySize($this->tempFolder) === 12960);
+
+        $sut2 = new FilesManager($this->tempFolder);
+        $this->assertTrue($sut2->getDirectorySize('') === 12960);
 
         // Test wrong values
         // Test exceptions

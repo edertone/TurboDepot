@@ -5,7 +5,7 @@
     "metadata": {
         "name": "turbodepot-node",
         "description": "General purpose multi storage library (ORM, Logs, Users, Files, Objects)",
-        "builderVersion": "1.0.0"
+        "builderVersion": "2.0.0"
     },
     
     "validate": {
@@ -38,7 +38,7 @@
                     "path": "extras/copyright headers/JsFiles-Header.txt",
                     "affectedPaths": ["src"],
                     "includes": ["js"],
-                    "excludes": []
+                    "excludes": ["src/test"]
                 }
             ]
         }
@@ -61,11 +61,8 @@
     
     "test": [
         {
-            "type": "qunit",
-            "testsRoot": "src/test/js",
-            "httpServerPort": "8185",
-            "targets": ["es5", "es6"],
-            "browsers": {"chrome": true, "firefox": true, "iexplore": false}
+            "type": "jasmine",
+            "jasmineConfig": "src/test/js/jasmine.json"
         }
     ]
 }

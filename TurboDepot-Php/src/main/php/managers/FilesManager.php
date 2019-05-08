@@ -20,9 +20,33 @@ use org\turbocommons\src\main\php\utils\ArrayUtils;
 
 
 /**
- * Class that contains the most common file system interaction functionalities
+ * Files manager class
  */
 class FilesManager extends BaseStrictClass{
+
+
+    /**
+     * @see FilesManager::__construct
+     * @var string
+     */
+    private $_rootPath = '';
+
+
+    /**
+     * Manager class that contains the most common file system interaction functionalities
+     *
+     * @param string $rootPath If we want to use an existing directory as the base path for all the methods on this class, we can define here
+     *        a full OS filesystem path to it. Setting this value means all the file operations will be based on that directory.
+     */
+    public function __construct(string $rootPath = ''){
+
+        $this->_rootPath = StringUtils::formatPath($rootPath);
+
+        if($this->_rootPath !== '' && !is_dir($this->_rootPath)){
+
+            throw new UnexpectedValueException('Specified rootPath does not exist: '.$rootPath);
+        }
+    }
 
 
     /**
@@ -37,9 +61,32 @@ class FilesManager extends BaseStrictClass{
 
 
     /**
+     * Tells if the provided string represents a relative or absolute file system path (Windows or Linux).
+     *
+     * Note that this method doesn't check if the path is valid or points to an existing file or directory.
+     *
+     * @return boolean True if the provided path is absolute, false if it is relative
+     */
+    public function isPathAbsolute($path){
+
+        if (is_string($path)){
+
+            $len = strlen($path);
+            $startsWithAlpha = $len > 0 && ctype_alpha($path[0]);
+
+            return strspn($path, '/\\', 0, 1) ||
+                ($len === 2 && $startsWithAlpha && ':' === $path[1]) ||
+                ($len > 2 && $startsWithAlpha && ':' === $path[1] && strspn($path, '/\\', 2, 1));
+        }
+
+        throw new UnexpectedValueException('path must be a string');
+    }
+
+
+    /**
      * Check if the specified path is a file or not.
      *
-     * @param string $path An Operating system path to test
+     * @param string $path An Operating system absolute or relative path to test
      *
      * @return bool true if the path exists and is a file, false otherwise.
      */
@@ -52,7 +99,7 @@ class FilesManager extends BaseStrictClass{
 
         try {
 
-            return is_file($path);
+            return is_file($this->_composePath($path));
 
         } catch (Exception $e) {
 
@@ -64,29 +111,32 @@ class FilesManager extends BaseStrictClass{
     /**
      * Check if two provided files are identical
      *
-     * @param string $file1 The first file to compare
-     * @param string $file2 The second file to compare
+     * @param string $pathToFile1 Absolute or relative path to the first file to compare
+     * @param string $pathToFile2 Absolute or relative path to the second file to compare
      *
      * @throws UnexpectedValueException
      *
      * @return boolean True if both files are identical, false otherwise
      */
-    public function isFileEqualTo($file1, $file2){
+    public function isFileEqualTo($pathToFile1, $pathToFile2){
 
-        if(!is_file($file1)){
+        $pathToFile1 = $this->_composePath($pathToFile1);
+        $pathToFile2 = $this->_composePath($pathToFile2);
 
-            throw new UnexpectedValueException('Not a file: '.$file1);
+        if(!is_file($pathToFile1)){
+
+            throw new UnexpectedValueException('Not a file: '.$pathToFile1);
         }
 
-        if(!is_file($file2)){
+        if(!is_file($pathToFile2)){
 
-            throw new UnexpectedValueException('Not a file: '.$file2);
+            throw new UnexpectedValueException('Not a file: '.$pathToFile2);
         }
 
-        $file1Hash = md5_file($file1);
-        $file2Hash = md5_file($file2);
+        $file1Hash = md5_file($pathToFile1);
+        $file2Hash = md5_file($pathToFile2);
 
-        if (filesize($file1) === filesize($file2) &&
+        if (filesize($pathToFile1) === filesize($pathToFile2) &&
             $file1Hash === $file2Hash){
 
                 return true;
@@ -99,7 +149,7 @@ class FilesManager extends BaseStrictClass{
     /**
      * Check if the specified path is a directory or not.
      *
-     * @param string $path An Operating system path to test
+     * @param string $path An Operating system absolute or relative path to test
      *
      * @return bool true if the path exists and is a directory, false otherwise.
      */
@@ -112,7 +162,7 @@ class FilesManager extends BaseStrictClass{
 
         try {
 
-            return is_dir($path);
+            return is_dir($this->_composePath($path));
 
         } catch (Exception $e) {
 
@@ -124,15 +174,15 @@ class FilesManager extends BaseStrictClass{
     /**
      * Check if two directories contain exactly the same folder structure and files.
      *
-     * @param string $path1 The full path to the first directory to compare
-     * @param string $path2 The full path to the second directory to compare
+     * @param string $path1 Absolute or relative path to the first directory to compare
+     * @param string $path2 Absolute or relative path to the second directory to compare
      *
      * @return bool true if both paths are valid directories and contain exactly the same files and folders tree.
      */
     public function isDirectoryEqualTo($path1, $path2){
 
-        $path1 = StringUtils::formatPath($path1, DIRECTORY_SEPARATOR);
-        $path2 = StringUtils::formatPath($path2, DIRECTORY_SEPARATOR);
+        $path1 = $this->_composePath($path1);
+        $path2 = $this->_composePath($path2);
 
         $path1Items = $this->getDirectoryList($path1, 'nameAsc');
         $path2Items = $this->getDirectoryList($path2, 'nameAsc');
@@ -167,7 +217,7 @@ class FilesManager extends BaseStrictClass{
     /**
      * Checks if the specified folder is empty
      *
-     * @param string $path The path to the directory we want to check
+     * @param string $path Absolute or relative path to the directory we want to check
      *
      * @return boolean True if directory is empty, false if not. If it does not exist or cannot be read, an exception will be generated
      */
@@ -180,7 +230,7 @@ class FilesManager extends BaseStrictClass{
     /**
      * Find all the elements on a directory which name matches the specified regexp pattern
      *
-     * @param string $path A directory where the search will be performed
+     * @param string $path Absolute or relative path where the search will be performed
      *
      * @param string $searchRegexp A regular expression that files or folders must match to be included
      *        into the results. Here are some useful patterns:<br>
@@ -213,7 +263,7 @@ class FilesManager extends BaseStrictClass{
                                        int $depth = -1){
 
         $result = [];
-        $path = StringUtils::formatPath($path, DIRECTORY_SEPARATOR);
+        $path = $this->_composePath($path);
 
         foreach ($this->getDirectoryList($path) as $item){
 
@@ -226,12 +276,10 @@ class FilesManager extends BaseStrictClass{
                 continue;
             }
 
-            if(preg_match($searchRegexp, $item)){
+            if(preg_match($searchRegexp, $item) &&
+               !($searchItemsType === 'files' && $isItemADir)){
 
-                if(!($searchItemsType === 'files' && $isItemADir)){
-
-                    $result[] = $itemPath;
-                }
+                $result[] = $itemPath;
             }
 
             if($depth !== 0 && $isItemADir){
@@ -264,7 +312,7 @@ class FilesManager extends BaseStrictClass{
      *
      * NOTE: This method does not create any folder or alter the given path in any way.
      *
-     * @param string $path The full path to the directoy we want to check for a unique folder name
+     * @param string $path Absolute or relative path to the directoy we want to check for a unique folder name
      * @param string $desiredName We can specify a suggested name for the unique directory. This method will verify that it
      *                            does not exist, or otherwise give us a name based on our desired one that is unique for the path
      * @param string $text Text that will be appended to the suggested name in case it already exists.
@@ -283,7 +331,7 @@ class FilesManager extends BaseStrictClass{
                                             string $separator = '-',
                                             bool $isPrefix = false){
 
-        $path = StringUtils::formatPath($path, DIRECTORY_SEPARATOR);
+        $path = $this->_composePath($path);
 
         if (!$this->isDirectory($path)){
 
@@ -314,7 +362,7 @@ class FilesManager extends BaseStrictClass{
      *
      * NOTE: This method does not create any file or alter the given path in any way.
      *
-     * @param string $path The full path to the directoy we want to check for a unique file name
+     * @param string $path Absolute or relative path to the directoy we want to check for a unique file name
      * @param string $desiredName We can specify a suggested name for the unique file. This method will verify that it
      *                            does not exist, or otherwise give us a name based on our desired one that is unique for the path
      * @param string $text Text that will be appended to the suggested name in case it already exists.
@@ -333,7 +381,7 @@ class FilesManager extends BaseStrictClass{
                                         string $separator = '-',
                                         bool $isPrefix = false){
 
-        $path = StringUtils::formatPath($path, DIRECTORY_SEPARATOR);
+        $path = $this->_composePath($path);
 
         if (!$this->isDirectory($path)){
 
@@ -364,12 +412,14 @@ class FilesManager extends BaseStrictClass{
     /**
      * Create a directory at the specified filesystem path
      *
-     * @param string $path The full path to the directoy we want to create. For example: c:\apps\my_new_folder
+     * @param string $path Absolute or relative path to the directoy we want to create. For example: c:\apps\my_new_folder
      * @param bool $recursive Allows the creation of nested directories specified in the pathname. Defaults to false.
      *
      * @return bool Returns true on success or false if the folder already exists (an exception may be thrown if a file exists with the same name or folder cannot be created).
      */
     public function createDirectory(string $path, bool $recursive = false){
+
+        $path = $this->_composePath($path);
 
         // If folder already exists we won't create it
         if(is_dir($path)){
@@ -483,7 +533,7 @@ class FilesManager extends BaseStrictClass{
      * The contents of any subfolder will not be listed. We must call this method for each child folder if we want to get it's list.
      * (The method ignores the . and .. items if exist).
      *
-     * @param string $path Full path to the directory we want to list
+     * @param string $path Absolute or relative path to the directory we want to list
      * @param string $sort Specifies the sort for the result:<br>
      * &emsp;&emsp;'' will not sort the result.<br>
      * &emsp;&emsp;'nameAsc' will sort the result by filename ascending.
@@ -494,6 +544,8 @@ class FilesManager extends BaseStrictClass{
      * @return array The list of item names inside the specified path sorted as requested, or an empty array if no items found inside the folder.
      */
     public function getDirectoryList($path, string $sort = ''){
+
+        $path = $this->_composePath($path);
 
         // If folder does not exist, we will throw an exception
         if(!$this->isDirectory($path)){
@@ -564,11 +616,13 @@ class FilesManager extends BaseStrictClass{
     /**
      * Calculate the full size in bytes for a specified folder and all its contents.
      *
-     * @param string $path Full path to the directory we want to calculate its size
+     * @param string $path Absolute or relative path to the directory we want to calculate its size
      *
      * @return int the size of the file in bytes. An exception will be thrown if value cannot be obtained
      */
     public function getDirectorySize(string $path){
+
+        $path = $this->_composePath($path);
 
         $result = 0;
 
@@ -591,8 +645,8 @@ class FilesManager extends BaseStrictClass{
      * Any source files that exist on destination will be overwritten without warning.
      * Files that exist on destination but not on source won't be modified, removed or altered in any way.
      *
-     * @param string $sourcePath The full path to the source directory where files and folders to copy exist
-     * @param string $destPath The full path to the destination directory where files and folders will be copied
+     * @param string $sourcePath Absolute or relative path to the source directory where files and folders to copy exist
+     * @param string $destPath Absolute or relative path to the destination directory where files and folders will be copied
      * @param boolean $destMustBeEmpty if set to true, an exception will be thrown if the destination directory is not empty.
      *
      * @throws UnexpectedValueException
@@ -601,8 +655,8 @@ class FilesManager extends BaseStrictClass{
      */
     public function copyDirectory(string $sourcePath, string $destPath, $destMustBeEmpty = true){
 
-        $sourcePath = StringUtils::formatPath($sourcePath, DIRECTORY_SEPARATOR);
-        $destPath = StringUtils::formatPath($destPath, DIRECTORY_SEPARATOR);
+        $sourcePath = $this->_composePath($sourcePath);
+        $destPath = $this->_composePath($destPath);
 
         if($sourcePath === $destPath){
 
@@ -656,12 +710,15 @@ class FilesManager extends BaseStrictClass{
     /**
      * Renames a directory.
      *
-     * @param string $sourcePath The full path to the source directory that must be renamed (including the directoy itself).
-     * @param string $destPath The full path to the new directoy name (including the directoy itself). It must not exist.
+     * @param string $sourcePath Absolute or relative path to the source directory that must be renamed (including the directoy itself).
+     * @param string $destPath Absolute or relative path to the new directoy name (including the directoy itself). It must not exist.
      *
      * @return boolean true on success or false on failure.
      */
     public function renameDirectory(string $sourcePath, string $destPath){
+
+        $sourcePath = $this->_composePath($sourcePath);
+        $destPath = $this->_composePath($destPath);
 
         if(!$this->isDirectory($sourcePath) || $this->isDirectory($destPath) || $this->isFile($destPath)){
 
@@ -676,14 +733,14 @@ class FilesManager extends BaseStrictClass{
      * Delete a directory from the filesystem and return a boolean telling if the directory delete succeeded or not
      * Note: All directory contents, folders and files will be also removed.
      *
-     * @param string $path The path to the directory
+     * @param string $path Absolute or relative path to the directory
      * @param string $deleteDirectoryItself Set it to true if the specified directory must also be deleted.
      *
      * @return bool Returns true on success or false on failure.
      */
     public function deleteDirectory(string $path, bool $deleteDirectoryItself = true){
 
-        $path = StringUtils::formatPath($path, DIRECTORY_SEPARATOR);
+        $path = $this->_composePath($path);
 
         if (!is_dir($path)){
 
@@ -729,7 +786,7 @@ class FilesManager extends BaseStrictClass{
      *
      * @see FilesManager::isFile
      *
-     * @param string $pathToFile The path including full filename where data will be saved. File will be created or overwritten without warning.
+     * @param string $pathToFile Absolute or relative path including full filename where data will be saved. File will be created or overwritten without warning.
      * @param string $data Any information to save on the file.
      * @param string $append Set it to true to append the data to the end of the file instead of overwritting it. File will be created if it does
      *        not exist, even with append set to true.
@@ -737,6 +794,8 @@ class FilesManager extends BaseStrictClass{
      * @return True on success or false on failure.
      */
     public function saveFile(string $pathToFile, string $data = '', bool $append = false){
+
+        $pathToFile = $this->_composePath($pathToFile);
 
         $flags = $append ? FILE_APPEND : null;
 
@@ -753,7 +812,7 @@ class FilesManager extends BaseStrictClass{
     /**
      * Concatenate all the provided files, one after the other, into a single destination file.
      *
-     * @param array $sourcePaths A list with the full paths to the files we want to join. The result will be generated in the same order.
+     * @param array $sourcePaths A list with the absolute or relative paths to the files we want to join. The result will be generated in the same order.
      * @param string $destFile The full path where the merged file will be stored, including the full file name (will be overwitten if exists).
      * @param string $separator An optional string that will be concatenated between each file content. We can for example use "\n\n" to
      *        create some empty space between each file content
@@ -766,7 +825,7 @@ class FilesManager extends BaseStrictClass{
 
         for ($i = 0, $l = count($sourcePaths); $i < $l; $i++) {
 
-            $mergedData .= $this->readFile($sourcePaths[$i]);
+            $mergedData .= $this->readFile($this->_composePath($sourcePaths[$i]));
 
             // Place separator string on all files except the last one
             if($i < $l - 1 && $separator !== ''){
@@ -782,18 +841,20 @@ class FilesManager extends BaseStrictClass{
     /**
      * Get the size from a file
      *
-     * @param string $path The file full path, including the file name and extension
+     * @param string $pathToFile Absolute or relative file path, including the file name and extension
      *
      * @return int the size of the file in bytes. An exception will be thrown if value cannot be obtained
      */
-    public function getFileSize(string $path){
+    public function getFileSize(string $pathToFile){
 
-        if(!is_file($path)){
+        $pathToFile = $this->_composePath($pathToFile);
 
-            throw new UnexpectedValueException('File not found - '.$path);
+        if(!is_file($pathToFile)){
+
+            throw new UnexpectedValueException('File not found - '.$pathToFile);
         }
 
-        $fileSize = filesize($path);
+        $fileSize = filesize($pathToFile);
 
         if($fileSize === false){
 
@@ -808,20 +869,22 @@ class FilesManager extends BaseStrictClass{
      * Read and return the content of a file. Not suitable for big files (More than 5 MB) cause the script memory
      * may get full and the execution fail
      *
-     * @param string $path An Operating system full or relative path containing some file
+     * @param string $pathToFile An Operating system absolute or relative path containing some file
      *
      * @return string The file contents as a string. If the file is not found or cannot be read, an exception will be thrown.
      */
-    public function readFile(string $path){
+    public function readFile(string $pathToFile){
 
-        if(!is_file($path)){
+        $pathToFile = $this->_composePath($pathToFile);
 
-            throw new UnexpectedValueException('File not found - '.$path);
+        if(!is_file($pathToFile)){
+
+            throw new UnexpectedValueException('File not found - '.$pathToFile);
         }
 
-        if(($contents = file_get_contents($path, true)) === false){
+        if(($contents = file_get_contents($pathToFile, true)) === false){
 
-            throw new UnexpectedValueException('Error reading file - '.$path);
+            throw new UnexpectedValueException('Error reading file - '.$pathToFile);
         }
 
         return $contents;
@@ -834,14 +897,16 @@ class FilesManager extends BaseStrictClass{
      *
      * Adapted from code suggested at: http://php.net/manual/es/function.readfile.php
      *
-     * @param string $path The file full path
+     * @param string $pathToFile An Operating system absolute or relative path containing some file
      * @param float $downloadRateLimit If we want to limit the download rate of the file, we can do it by setting this value to > 0. For example: 20.5 will set the file download rate to 20,5 kb/s
      *
      * @return int the number of bytes read from the file.
      */
-    public function readFileBuffered(string $path, int $downloadRateLimit = 0){
+    public function readFileBuffered(string $pathToFile, int $downloadRateLimit = 0){
 
-        if(!is_file($path)){
+        $pathToFile = $this->_composePath($pathToFile);
+
+        if(!is_file($pathToFile)){
 
             return 0;
         }
@@ -862,7 +927,7 @@ class FilesManager extends BaseStrictClass{
         $buffer = '';
         $cnt = 0;
 
-        $handle = fopen($path, 'rb');
+        $handle = fopen($pathToFile, 'rb');
 
         if($handle === false) {
 
@@ -905,68 +970,76 @@ class FilesManager extends BaseStrictClass{
      * Copies a file from a source location to the defined destination
      * If the destination file already exists, it will be overwritten.
      *
-     * @param string $sourcePath The full path to the source file that must be copied (including the filename itself).
-     * @param string $destPath The full path to the destination where the file must be copied (including the filename itself).
+     * @param string $sourceFilePath Absolute or relative path to the source file that must be copied (including the filename itself).
+     * @param string $destFilePath Absolute or relative path to the destination where the file must be copied (including the filename itself).
      *
      * @return boolean Returns true on success or false on failure.
      */
-    public function copyFile(string $sourcePath, string $destPath){
+    public function copyFile(string $sourceFilePath, string $destFilePath){
 
-        return copy($sourcePath, $destPath);
+        $sourceFilePath = $this->_composePath($sourceFilePath);
+        $destFilePath = $this->_composePath($destFilePath);
+
+        return copy($sourceFilePath, $destFilePath);
     }
 
 
     /**
      * Renames a file.
      *
-     * @param string $sourcePath The full path to the source file that must be renamed (including the filename itself).
-     * @param string $destPath The full path to the new file name (including the filename itself). It must not exist.
+     * @param string $sourceFilePath Absolute or relative path to the source file that must be renamed (including the filename itself).
+     * @param string $destFilePath Absolute or relative path to the new file name (including the filename itself). It must not exist.
      *
      * @return boolean True on success or false on failure.
      */
-    public function renameFile(string $sourcePath, string $destPath){
+    public function renameFile(string $sourceFilePath, string $destFilePath){
 
-        if(!$this->isFile($sourcePath) || $this->isDirectory($destPath) || $this->isFile($destPath)){
+        $sourceFilePath = $this->_composePath($sourceFilePath);
+        $destFilePath = $this->_composePath($destFilePath);
+
+        if(!$this->isFile($sourceFilePath) || $this->isDirectory($destFilePath) || $this->isFile($destFilePath)){
 
             return false;
         }
 
-        return rename ($sourcePath, $destPath);
+        return rename ($sourceFilePath, $destFilePath);
     }
 
 
     /**
      * Delete a filesystem file.
      *
-     * @param string $path The file filesystem path
+     * @param string $pathToFile Absolute or relative path to the file to delete
      *
      * @return boolean Returns true on success or false on failure.
      */
-    public function deleteFile(string $path){
+    public function deleteFile(string $pathToFile){
 
-        if(!is_file($path)){
+        $pathToFile = $this->_composePath($pathToFile);
+
+        if(!is_file($pathToFile)){
 
             return false;
         }
 
-        return unlink($path);
+        return unlink($pathToFile);
     }
 
 
     /**
      * Delete a list of filesystem files.
      *
-     * @param array $paths A list of filesystem paths to delete
+     * @param array $pathsToFiles A list of filesystem absolute or relative paths to files to delete
      *
      * @return boolean Returns true on success or false if any of the files failed to be deleted
      */
-    public function deleteFiles(array $paths){
+    public function deleteFiles(array $pathsToFiles){
 
         $result = true;
 
-        for ($i = 0, $l = count($paths); $i < $l; $i++) {
+        for ($i = 0, $l = count($pathsToFiles); $i < $l; $i++) {
 
-            if(!$this->deleteFile($paths[$i])){
+            if(!$this->deleteFile($this->_composePath($pathsToFiles[$i]))){
 
                 $result = false;
             }
@@ -1021,6 +1094,30 @@ class FilesManager extends BaseStrictClass{
         }
 
         return implode($separator, $result);
+    }
+
+
+    /**
+     * Auxiliary method to generate a full path from a relative one and the configured root path
+     *
+     * If an absolute path is passed to the relativePath variable, the result of this method will be that value, ignoring
+     * any possible value on _rootPath.
+     */
+    private function _composePath($relativePath){
+
+        $composedPath = '';
+
+        if (StringUtils::isEmpty($this->_rootPath) ||
+            $this->isPathAbsolute($relativePath)) {
+
+            $composedPath = $relativePath;
+
+        } else {
+
+            $composedPath = $this->_rootPath.$this->dirSep().$relativePath;
+        }
+
+        return StringUtils::formatPath($composedPath, $this->dirSep());
     }
 }
 
