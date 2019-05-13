@@ -6,7 +6,11 @@
  * License Url : -> http://www.apache.org/licenses/LICENSE-2.0
  * CopyRight : -> Copyright 2019 Edertone Advanded Solutions (08211 Castellar del Vallès, Barcelona). http://www.edertone.com
  */
- 
+
+
+declare let console: any;
+declare let process: any;
+
 
 /**
  * ConsoleManager class
@@ -19,15 +23,9 @@ export class ConsoleManager {
     /**
      * An improved console class that implements useful methods for the console output
      * 
-     * This constructor requires some node modules to work, which are passed as dependencies
-     *  
-     * @param console An instance for the console process node object
-     * @param process An instance for the global process node object
-     * 
      * @return A ConsoleManager instance
      */
-    constructor(private console:any,
-                private process:any) {
+    constructor() {
         
     }
     
@@ -37,7 +35,7 @@ export class ConsoleManager {
      */
     log(message:string) {
         
-        this.console.log(message);
+        console.log(message);
     }
     
     
@@ -47,11 +45,11 @@ export class ConsoleManager {
      */
     success(message: string, quit = false) {
         
-        this.console.log('\x1b[32m%s\x1b[0m', message);
+        console.log('\x1b[32m%s\x1b[0m', message);
         
         if(quit){
             
-            this.process.exit(0);
+            process.exit(0);
         }
     }
     
@@ -62,11 +60,11 @@ export class ConsoleManager {
      */
     warning(message:string, quit = false) {
         
-        this.console.log('\x1b[33m%s\x1b[0m', message);
+        console.log('\x1b[33m%s\x1b[0m', message);
         
         if(quit){
             
-            this.process.exit(1);
+            process.exit(1);
         }
     }
     
@@ -82,12 +80,12 @@ export class ConsoleManager {
 
             for(let i = 0; i < messages.length; i++){
                 
-                this.console.log('\x1b[33m%s\x1b[0m', messages[i]);
+                console.log('\x1b[33m%s\x1b[0m', messages[i]);
             }
             
             if(quit){
                 
-                this.process.exit(1);
+                process.exit(1);
             }
         }    
     }
@@ -99,11 +97,11 @@ export class ConsoleManager {
      */
     error(message:string, quit = false) {
         
-        this.console.log('\x1b[31m%s\x1b[0m', message);
+        console.log('\x1b[31m%s\x1b[0m', message);
         
         if(quit){
             
-            this.process.exit(1);
+            process.exit(1);
         }
     }
     
@@ -119,12 +117,12 @@ export class ConsoleManager {
 
             for(let i = 0; i < messages.length; i++){
                 
-                this.console.log('\x1b[31m%s\x1b[0m', messages[i]);
+                console.log('\x1b[31m%s\x1b[0m', messages[i]);
             }
             
             if(quit){
                 
-                this.process.exit(1);
+                process.exit(1);
             }
         }    
     }

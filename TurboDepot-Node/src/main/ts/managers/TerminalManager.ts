@@ -11,6 +11,9 @@
 import { StringUtils } from 'turbocommons-ts';
 import { FilesManager } from './FilesManager';
 
+declare let process: any;
+declare function require(name: string): any;
+
 
 /**
  * TerminalManager class
@@ -35,27 +38,21 @@ export class TerminalManager {
 
     
     /**
-     * Class that helps with the process of testing command line applications and executions through the OS terminal
-     * 
-     * This constructor requires some node modules to work, which are passed as dependencies
-     *  
-     * @param execSync A node execSync module instance (const { execSync } = require('child_process');)
-     * @param process An instance for the global process node object
-     * @param fs A node fs module instance (const fs = require('fs'))
-     * @param os A node os module instance (const os = require('os'))
-     * @param path A node path module instance (const path = require('path'))
-     * @param crypto A node crypto module instance (const crypto = require('crypto'))
+     * Stores the NodeJs execSync instance
+     */
+    private execSync: any;
+    
+    
+    /**
+     * Class that helps with the process of interacting with command line applications and executions through the OS terminal
      * 
      * @return A TerminalManager instance
      */
-    constructor(private execSync:any,
-                private process:any,
-                fs:any,
-                os:any,
-                path:any,
-                crypto: any) {
+    constructor() {
 
-        this.filesManager = new FilesManager(fs, os, path, process, crypto);
+        this.execSync = require('child_process').execSync;
+        
+        this.filesManager = new FilesManager();
     }
     
     
@@ -68,7 +65,7 @@ export class TerminalManager {
      */
     switchWorkDirTo(path: string) {
     
-        this.process.chdir(path);
+        process.chdir(path);
         
         return path;
     }

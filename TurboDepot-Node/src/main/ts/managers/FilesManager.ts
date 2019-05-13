@@ -10,6 +10,9 @@
 
 import { StringUtils, ArrayUtils } from 'turbocommons-ts';
 
+declare let process: any;
+declare function require(name: string): any;
+
 
 /**
  * Files manager class
@@ -24,33 +27,44 @@ export class FilesManager{
     
     
     /**
+     * Stores the NodeJs fs instance
+     */
+    private fs: any;
+    
+    
+    /**
+     * Stores the NodeJs os instance
+     */
+    private os: any;
+    
+    
+    /**
+     * Stores the NodeJs path instance
+     */
+    private path: any;
+    
+    
+    /**
+     * Stores the NodeJs crypto instance
+     */
+    private crypto: any;
+    
+    
+    /**
      * Manager class that contains the most common file system interaction functionalities
      * 
-     * This constructor requires some node modules to work, which are passed as dependencies
-     *  
-     * @param fs A node fs module instance (const fs = require('fs'))
-     * @param os A node os module instance (const os = require('os'))
-     * @param path A node path module instance (const path = require('path'))
-     * @param process A node process module instance
-     * @param crypto A node crypto module instance (const crypto = require('crypto'))
      * @param rootPath If we want to use an existing directory as the base path for all the methods on this class, we can define here
      *        a full OS filesystem path to it. Setting this value means all the file operations will be based on that directory.
      * 
      * @return A FilesManager instance
      */
-    constructor(private fs:any,
-                private os:any,
-                private path:any,
-                private process: any,
-                private crypto: any,
-                rootPath = '') {
-
-        // This check is specific for the node version of FilesManager
-        if(!fs || !fs.mkdirSync || !os || !os.tmpdir || !path || !path.sep || !process || !process.once || !crypto || !crypto.createHash){
-            
-            throw new Error('Node objects (fs, os, path, process, crypto) must be passed to constructor');
-        }
+    constructor(rootPath = '') {
         
+        this.fs = require('fs');
+        this.os = require('os');
+        this.path = require('path');
+        this.crypto = require('crypto');
+
         if (!StringUtils.isString(rootPath)){
 
             throw new Error('rootPath must be a string');
@@ -521,7 +535,7 @@ export class FilesManager{
             
             if(this._tempDirectoriesToDelete.length < 2){
               
-                this.process.once('exit', () => {
+                process.once('exit', () => {
                     
                     for (let temp of this._tempDirectoriesToDelete) {
 
