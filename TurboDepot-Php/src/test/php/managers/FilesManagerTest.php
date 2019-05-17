@@ -1342,28 +1342,33 @@ class FilesManagerTest extends TestCase {
         $this->assertTrue($this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'test1'));
         $this->assertTrue($this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'1234'));
         $this->assertTrue($this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'-go-'));
+        $this->assertTrue($this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'ABC'));
+        $this->assertTrue($this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'PROPERTY'));
 
         // Check that list is ok
         $res = $this->sut->getDirectoryList($this->tempFolder);
         $this->assertTrue($validationManager->isArray($res));
-        $this->assertTrue(count($res) == 4);
+        $this->assertTrue(count($res) == 6);
         $this->assertTrue(in_array('file.txt', $res));
         $this->assertTrue(in_array('test1', $res));
         $this->assertTrue(in_array('1234', $res));
         $this->assertTrue(in_array('-go-', $res));
+        $this->assertTrue(in_array('ABC', $res));
+        $this->assertTrue(in_array('PROPERTY', $res));
 
         $sut2 = new FilesManager($this->tempFolder);
         $res = $sut2->getDirectoryList('');
         $this->assertTrue($validationManager->isArray($res));
-        $this->assertTrue(count($res) == 4);
+        $this->assertTrue(count($res) == 6);
         $this->assertTrue(in_array('file.txt', $res));
+        $this->assertTrue(in_array('PROPERTY', $res));
 
         // Check sorted lists
         $res = $this->sut->getDirectoryList($this->tempFolder, 'nameAsc');
-        $this->assertTrue(ArrayUtils::isEqualTo($res, ['-go-', '1234', 'file.txt', 'test1']));
+        $this->assertTrue(ArrayUtils::isEqualTo($res, ['-go-', '1234', 'ABC', 'file.txt', 'PROPERTY', 'test1']));
 
         $res = $this->sut->getDirectoryList($this->tempFolder, 'nameDesc');
-        $this->assertTrue(ArrayUtils::isEqualTo($res, ['test1', 'file.txt', '1234', '-go-']));
+        $this->assertTrue(ArrayUtils::isEqualTo($res, ['test1', 'PROPERTY', 'file.txt', 'ABC', '1234', '-go-']));
 
         // TODO - test sort by modification date
         //$res = $this->sut->getDirectoryList($this->tempFolder, 'mDateAsc');
@@ -1555,6 +1560,29 @@ class FilesManagerTest extends TestCase {
 
 
     /**
+     * testMirrorDirectory
+     *
+     * @return void
+     */
+    public function testMirrorDirectory(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
      * testSyncDirectories
      *
      * @return void
@@ -1572,6 +1600,8 @@ class FilesManagerTest extends TestCase {
 
         // Test exceptions
         // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 
@@ -1593,6 +1623,8 @@ class FilesManagerTest extends TestCase {
 
         // Test exceptions
         // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 
@@ -1692,6 +1724,8 @@ class FilesManagerTest extends TestCase {
 
         // Test exceptions
         // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 
@@ -1713,6 +1747,8 @@ class FilesManagerTest extends TestCase {
 
         // Test exceptions
         // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 

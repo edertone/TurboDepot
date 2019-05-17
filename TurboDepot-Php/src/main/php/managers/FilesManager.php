@@ -29,7 +29,7 @@ class FilesManager extends BaseStrictClass{
      * @see FilesManager::__construct
      * @var string
      */
-    private $_rootPath = '';
+    protected $_rootPath = '';
 
 
     /**
@@ -584,11 +584,11 @@ class FilesManager extends BaseStrictClass{
         switch($sort) {
 
             case 'nameAsc':
-                sort($result);
+                sort($result, SORT_NATURAL | SORT_FLAG_CASE);
                 break;
 
             case 'nameDesc':
-                rsort($result);
+                rsort($result, SORT_NATURAL | SORT_FLAG_CASE);
                 break;
 
             case 'mDateAsc':
@@ -700,6 +700,16 @@ class FilesManager extends BaseStrictClass{
         }
 
         return true;
+    }
+
+
+    /**
+     * TODO implement this method
+     */
+    public function mirrorDirectory(string $sourcePath, string $destPath){
+
+        // TODO - this method will apply the minimum modifications to the destination path to make sure it is an exact copy
+        // of the source one. It is a one way sync process
     }
 
 
@@ -1103,12 +1113,12 @@ class FilesManager extends BaseStrictClass{
 
 
     /**
-     * Auxiliary method to generate a full path from a relative one and the configured root path
+     * Auxiliary method to generate a full path from a relative (or absolute) one and the configured root path
      *
      * If an absolute path is passed to the relativePath variable, the result of this method will be that value, ignoring
      * any possible value on _rootPath.
      */
-    private function _composePath($relativePath){
+    protected function _composePath($relativePath){
 
         $composedPath = '';
 

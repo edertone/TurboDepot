@@ -719,6 +719,15 @@ export class FilesManager{
 
         return true;
     }
+    
+    
+    /**
+     * TODO - translate from php
+     */
+    mirrorDirectory(){
+
+        // TODO - translate from php
+    }
 
 
     /**
