@@ -34,19 +34,22 @@ class LocalizedFilesManager extends FilesManager{
 
 
     /**
-     * Manager class that allows us to interact with a localized file system. That means the folder and file names are stored with translation keys.
-     * It also allows us to store different language versions for the same file, for example in case we have a document that is translated into multiple
-     * languages.
+     * Manager class that allows us to interact with a localized file system.
+     * This kind of file system allows us to store folders and files with localized names and content. Each folder or file is stored with a translation
+     * key that allows us to retrieve it's name with serveral languages. We can also provide localized content to the same folder or file by appending
+     * a -xx_XX key at the end of the translation key to store different contents for each language.
+     *
+     * We can have a document that is translated into multiple languages or a folder with different contents depending on the language
      *
      * @see LocalizationManager::initialize
      *
-     * @param string $rootPath We need to specify an existing directory as the base path for all the methods on this class. The full OS path must be provided.
+     * @param string $rootPath We need to specify an existing directory as the entry point where all the localized files and directories are stored. The full OS path must be provided.
      * @param array $locales List of languages for which we want to load the translations (see TurboCommons LocalizationManager docs for more info)
      * @param array $locations A list (sorted by preference) where each item defines a translations location (see TurboCommons LocalizationManager::initialize docs for more info)
      * @param boolean $failIfKeyNotFound If set to true, any operation with a folder or file that is named without a translation key that is available for the currently
-     *                defined list of translation locations, will throw an exception. If set to false, the key itself will be used as the folder or file name without error.
+     *                defined list of translation locations, will throw an exception. If set to false, the key itself will be used as the folder or file name without throwing an error.
      */
-    public function __construct($rootPath, $locales, $locations, $failIfKeyNotFound = true){
+    public function __construct($rootPath, $locales, $locations, $failIfKeyNotFound = false){
 
         if (!is_string($rootPath)){
 
@@ -155,7 +158,7 @@ class LocalizedFilesManager extends FilesManager{
 
     /**
      * Gives the list of items that are stored on the specified folder. It will give files and directories, and each element
-     * will be an instance of LocalizedFilesObject
+     * will be an instance of a LocalizedFilesObject
      *
      * The contents of any subfolder will not be listed. We must call this method for each child folder if we want to get it's list.
      * (The method ignores the . and .. items if exist).
@@ -165,7 +168,7 @@ class LocalizedFilesManager extends FilesManager{
      *
      * @param string $path Absolute or relative path to the directory we want to list
      * @param string $bundle The name for the resource bundle file. See LocalizationManager::get for more info
-     * @param string $location A location label to uniquely reference the bundle and resolve possible conflicts. See LocalizationManager::get for more info
+     * @param string $location A location label to uniquely reference the location and resolve possible conflicts. See LocalizationManager::get for more info
      * @param mixed $toReplace A list of values that will replace the wildcards that are found on the translated text. See LocalizationManager::get for more info
      * @param string $sort See FilesManager::getDirectoryList
      *
@@ -176,6 +179,7 @@ class LocalizedFilesManager extends FilesManager{
         $fullPath = $this->_composePath($path);
 
         $result = [];
+        $dirKeys = [];
         $fileKeys = [];
 
         $list = parent::getDirectoryList($path, $sort);
@@ -188,8 +192,16 @@ class LocalizedFilesManager extends FilesManager{
 
                 $isDirectory = true;
                 $extension = '';
-                $key = $item;
+                $key = preg_replace("/(.*)-[a-z][a-z]_[A-Z][A-Z]$/", '${1}', $item, 1);
                 $translation = $this->_localizationManager->get($key, $bundle, $location, $toReplace);
+
+                // If the folder contains multiple localized contents, the key is duplicate, so we won't add it to the result
+                if(in_array($key, $dirKeys)){
+
+                    continue;
+                }
+
+                $dirKeys[] = $key;
 
             }else{
 

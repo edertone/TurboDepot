@@ -61,7 +61,7 @@ class LocalizedFilesManagerTest extends TestCase {
             'bundles' => ['Locales']
         ]];
 
-        $this->sut = new LocalizedFilesManager($this->basePath.'/paths/example-1', ['en_US', 'es_ES'], $this->defaultLocations);
+        $this->sut = new LocalizedFilesManager($this->basePath.'/paths/test-1', ['en_US', 'es_ES'], $this->defaultLocations);
     }
 
 
@@ -333,16 +333,6 @@ class LocalizedFilesManagerTest extends TestCase {
         assertLocalizedFilesObject($list[1], true, '', 'en_US', 'PASSWORD', 'Password');
         assertLocalizedFilesObject($list[2], true, '', 'en_US', 'TAG_NOT_EXISTING_ON_ES_ES', 'Missing tag');
 
-        try {
-            $list = $this->sut->getDirectoryList('TAG_NOT_EXISTING_ON_ES_ES/LOGIN', '', '', [], 'nameAsc');
-            $this->exceptionMessage = 'getDirectoryList did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/key <non existant key> not found on Locales/', $e->getMessage());
-        }
-
-        // Create a new LocalizedFilesManager instance without throwing an exception if a key does not exist
-        $this->sut = new LocalizedFilesManager($this->basePath.'/paths/example-1', ['en_US', 'es_ES'], $this->defaultLocations, false);
-
         $list = $this->sut->getDirectoryList('TAG_NOT_EXISTING_ON_ES_ES/LOGIN', '', '', [], 'nameAsc');
         $this->assertSame(4, count($list));
 
@@ -352,6 +342,7 @@ class LocalizedFilesManagerTest extends TestCase {
         assertLocalizedFilesObject($list[3], false, 'txt', 'en_US', 'USER', 'User.txt');
 
         // Test spanish language
+
         $this->sut->setPrimaryLocale('es_ES');
 
         $list = $this->sut->getDirectoryList('TAG_NOT_EXISTING_ON_ES_ES/LOGIN', '', '', [], 'nameAsc');
@@ -393,7 +384,31 @@ class LocalizedFilesManagerTest extends TestCase {
         assertLocalizedFilesObject($list[1], false, 'txt', 'es_ES', 'TAG_NOT_EXISTING_ON_ES_ES', 'Missing tag.txt');
         assertLocalizedFilesObject($list[2], false, 'txt', 'es_ES', 'USER', 'Usuario.txt');
 
+        // Test folders with multiple localized contents
+
+        $this->sut = new LocalizedFilesManager($this->basePath.'/paths/test-2', ['en_US', 'es_ES'], $this->defaultLocations);
+
+        $list = $this->sut->getDirectoryList('2019', '', '', [], 'nameAsc');
+        $this->assertSame(1, count($list));
+
+        assertLocalizedFilesObject($list[0], true, '', 'en_US', '10', '10');
+
+        $list = $this->sut->getDirectoryList('2019/10/29', '', '', [], 'nameAsc');
+        $this->assertSame(2, count($list));
+
+        assertLocalizedFilesObject($list[0], true, '', 'en_US', 'some-folder-title', 'some-folder-title');
+        assertLocalizedFilesObject($list[1], true, '', 'en_US', 'USER', 'User');
+
         // Test wrong values
+        $this->sut = new LocalizedFilesManager($this->basePath.'/paths/test-1', ['en_US', 'es_ES'], $this->defaultLocations, true);
+
+        try {
+            $list = $this->sut->getDirectoryList('TAG_NOT_EXISTING_ON_ES_ES/LOGIN', '', '', [], 'nameAsc');
+            $this->exceptionMessage = 'getDirectoryList did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/key <non existant key> not found on Locales/', $e->getMessage());
+        }
+
         // Test exceptions
         try {
             $list = $this->sut->getDirectoryList(34545435, '', '', [], 'nameAsc');
