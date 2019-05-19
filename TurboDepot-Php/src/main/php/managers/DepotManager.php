@@ -13,8 +13,6 @@ namespace org\turbodepot\src\main\php\managers;
 
 use UnexpectedValueException;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
-use org\turbodepot\src\main\php\model\DepotFile;
-use org\turbodepot\src\main\php\model\DepotObject;
 
 
 /**
@@ -45,10 +43,24 @@ class DepotManager extends BaseStrictClass{
 
 
     /**
+     * A files manager instance that is used by this class
+     * @var LocalizedFilesManager
+     */
+    private $_localizedFilesManager = null;
+
+
+    /**
      * A logs manager instance that is used by this class
      * @var LogsManager
      */
     private $_logsManager = null;
+
+
+    /**
+     * A tmp files manager instance that is used by this class
+     * @var TmpFilesManager
+     */
+    private $_tmpFilesManager = null;
 
 
     /**
@@ -101,11 +113,23 @@ class DepotManager extends BaseStrictClass{
         }
 
         // Initialize the logs manager to the folder that is defined on the depot setup
-        $logsSource = $this->_getSourceSetup($this->_loadedDepotSetup->logs->source);
-
-        if($logsSource !== null){
+        if(($logsSource = $this->_getSourceSetup($this->_loadedDepotSetup->logs->source)) !== null){
 
             $this->_logsManager = new LogsManager($logsSource->path);
+        }
+
+        // Initialize the tmp files manager to the folder that is defined on the depot setup
+        if(($tmpFilesSource = $this->_getSourceSetup($this->_loadedDepotSetup->tmpFiles->source)) !== null){
+
+            $this->_tmpFilesManager = new TmpFilesManager($tmpFilesSource->path);
+        }
+
+        // Initialize the localized files manager to the folder that is defined on the depot setup
+        if(($localizedFilesSource = $this->_getSourceSetup($this->_loadedDepotSetup->localizedFiles->source)) !== null){
+
+            $this->_localizedFilesManager = new LocalizedFilesManager($localizedFilesSource->path,
+                $this->_loadedDepotSetup->localizedFiles->locales, $this->_loadedDepotSetup->localizedFiles->locations,
+                $this->_loadedDepotSetup->localizedFiles->failIfKeyNotFound);
         }
 
         // TODO - initialize the users manager class
@@ -125,8 +149,27 @@ class DepotManager extends BaseStrictClass{
 
 
     /**
+     * TODO
+     */
+    public function getTmpFilesManager(){
+
+        return $this->_tmpFilesManager;
+    }
+
+
+    /**
+     * Obtain the localized files manager instance that is available through this depot manager.
+     *
+     * @return LocalizedFilesManager
+     */
+    public function getLocalizedFilesManager(){
+
+        return $this->_localizedFilesManager;
+    }
+
+
+    /**
      * Obtain the logs manager instance that is available through this depot manager.
-     * The logs root path is already defined by the turbodepot.json setup
      *
      * @return LogsManager
      */
@@ -142,78 +185,6 @@ class DepotManager extends BaseStrictClass{
     public function getUsersManager(){
 
         return $this->_usersManager;
-    }
-
-
-    /**
-     * TODO
-     */
-    public function isFile(string $path, string $fileName){
-
-
-    }
-
-
-    /**
-     * TODO
-     */
-    public function isObject(string $path, string $id){
-
-
-    }
-
-
-    /**
-     * TODO
-     */
-    public function getFile(string $path, string $fileName){
-
-
-    }
-
-
-    /**
-     * TODO
-     */
-    public function getObject(string $path, string $id){
-
-
-    }
-
-
-    /**
-     * TODO
-     */
-    public function saveFile(string $path, DepotFile $file){
-
-
-    }
-
-
-    /**
-     * TODO
-     */
-    public function saveObject(string $path, DepotObject $object){
-
-
-    }
-
-
-    /**
-     * TODO
-     */
-    public function deleteFile(string $path, string $fileName){
-
-
-    }
-
-
-    /**
-     * TODO
-     */
-    public function deleteObject(string $path, string $id){
-
-
     }
 
 

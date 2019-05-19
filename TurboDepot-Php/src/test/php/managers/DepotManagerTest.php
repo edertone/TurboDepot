@@ -49,12 +49,14 @@ class DepotManagerTest extends TestCase {
         $this->filesManager = new FilesManager();
 
         // Create a temporary folder
-        $this->tempFolder = $this->filesManager->createTempDirectory('TurboCommons-DepotManagerTest');
-        $this->assertTrue(strpos($this->tempFolder, 'TurboCommons-DepotManagerTest') !== false);
+        $this->tempFolder = $this->filesManager->createTempDirectory('TurboDepot-DepotManagerTest');
+        $this->assertTrue(strpos($this->tempFolder, 'TurboDepot-DepotManagerTest') !== false);
         $this->assertTrue($this->filesManager->isDirectoryEmpty($this->tempFolder));
         $this->assertFalse($this->filesManager->isFile($this->tempFolder));
 
-        $this->sut = new DepotManager(__DIR__.'/../resources/managers/depotManager/empty-turbodepot.json');
+        $this->setup = json_decode($this->filesManager->readFile(__DIR__.'/../resources/managers/depotManager/empty-turbodepot.json'));
+
+        $this->sut = new DepotManager($this->setup);
     }
 
 
@@ -163,6 +165,75 @@ class DepotManagerTest extends TestCase {
 
 
     /**
+     * testGetTmpFilesManager
+     *
+     * @return void
+     */
+    public function testGetTmpFilesManager(){
+
+        // Test empty values
+        $this->assertSame(null, $this->sut->getTmpFilesManager());
+
+        // Test ok values
+        $this->assertTrue($this->filesManager->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'tmp'));
+
+        $tmpFilesSource = new stdClass();
+        $tmpFilesSource->name = "tmp_files_source";
+        $tmpFilesSource->path = $this->tempFolder.DIRECTORY_SEPARATOR.'tmp';
+        $this->setup->sources->fileSystem[] = $tmpFilesSource;
+
+        $this->setup->depots[0]->tmpFiles->source = "tmp_files_source";
+
+        $this->sut = new DepotManager($this->setup);
+
+        $this->assertSame('org\turbodepot\src\main\php\managers\TmpFilesManager',
+            get_class($this->sut->getTmpFilesManager()));
+
+        // Test wrong values
+        // Test exceptions
+        // Not necessary
+    }
+
+
+    /**
+     * testGetLocalizedFilesManager
+     *
+     * @return void
+     */
+    public function testGetLocalizedFilesManager(){
+
+        // Test empty values
+        $this->assertSame(null, $this->sut->getLocalizedFilesManager());
+
+        // Test ok values
+        $this->assertTrue($this->filesManager->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'localized'));
+
+        $localizedFilesSource = new stdClass();
+        $localizedFilesSource->name = "localized_files_source";
+        $localizedFilesSource->path = $this->tempFolder.DIRECTORY_SEPARATOR.'localized';
+
+        $this->setup->sources->fileSystem[] = $localizedFilesSource;
+
+        $this->setup->depots[0]->localizedFiles->source = "localized_files_source";
+        $this->setup->depots[0]->localizedFiles->locales = ['en_US', 'es_ES'];
+        $this->setup->depots[0]->localizedFiles->locations = [[
+            'label' => 'test-json',
+            'path' => __DIR__.'/../resources/managers/localizedFilesManager/locales/test-json/$locale/$bundle.json',
+            'bundles' => ['Locales']
+        ]];
+
+        $this->sut = new DepotManager($this->setup);
+
+        $this->assertSame('org\turbodepot\src\main\php\managers\LocalizedFilesManager',
+            get_class($this->sut->getLocalizedFilesManager()));
+
+        // Test wrong values
+        // Test exceptions
+        // Not necessary
+    }
+
+
+    /**
      * testTodo
      *
      * @return void
@@ -173,16 +244,14 @@ class DepotManagerTest extends TestCase {
         $this->assertSame(null, $this->sut->getLogsManager());
 
         // Test ok values
-        $setup = json_decode($this->filesManager->readFile(__DIR__.'/../resources/managers/depotManager/empty-turbodepot.json'));
+        $this->setup->sources->fileSystem[] = new stdclass();
 
-        $setup->sources->fileSystem[] = new stdclass();
+        $this->setup->sources->fileSystem[0]->name = 'tmp_source';
+        $this->setup->sources->fileSystem[0]->path = $this->tempFolder;
 
-        $setup->sources->fileSystem[0]->name = 'tmp_source';
-        $setup->sources->fileSystem[0]->path = $this->tempFolder;
+        $this->setup->depots[0]->logs->source = 'tmp_source';
 
-        $setup->depots[0]->logs->source = 'tmp_source';
-
-        $this->sut = new DepotManager($setup);
+        $this->sut = new DepotManager($this->setup);
 
         $this->assertSame('org\turbodepot\src\main\php\managers\LogsManager',
             get_class($this->sut->getLogsManager()));
@@ -198,10 +267,10 @@ class DepotManagerTest extends TestCase {
         // Not necessary
 
         // Test exceptions
-        $setup->sources->fileSystem[0]->path = '/invalidPath';
+        $this->setup->sources->fileSystem[0]->path = '/invalidPath';
 
         try {
-            $this->sut = new DepotManager($setup);
+            $this->sut = new DepotManager($this->setup);
             $this->exceptionMessage = '"" did not cause exception';
         } catch (Throwable $e) {
             $this->assertRegExp('/LogsManager received an invalid rootPath: \/invalidPath/', $e->getMessage());
