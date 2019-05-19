@@ -37,7 +37,7 @@
                 },
                 {
                     "path": "src/test",
-                    "maxPercentErrorLevel": 12,
+                    "maxPercentErrorLevel": 9,
                     "maxPercentErrorDifference": 1,
                     "report": "html"
                 }
