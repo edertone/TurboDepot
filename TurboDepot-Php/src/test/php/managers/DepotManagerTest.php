@@ -172,7 +172,12 @@ class DepotManagerTest extends TestCase {
     public function testGetTmpFilesManager(){
 
         // Test empty values
-        $this->assertSame(null, $this->sut->getTmpFilesManager());
+        try {
+            $this->sut->getTmpFilesManager();
+            $this->exceptionMessage = 'getTmpFilesManager did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/tmpFilesManager not available. Check it is correctly configured on turbodepot setup/', $e->getMessage());
+        }
 
         // Test ok values
         $this->assertTrue($this->filesManager->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'tmp'));
@@ -203,7 +208,12 @@ class DepotManagerTest extends TestCase {
     public function testGetLocalizedFilesManager(){
 
         // Test empty values
-        $this->assertSame(null, $this->sut->getLocalizedFilesManager());
+        try {
+            $this->sut->getLocalizedFilesManager();
+            $this->exceptionMessage = 'getLocalizedFilesManager did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/localizedFilesManager not available. Check it is correctly configured on turbodepot setup/', $e->getMessage());
+        }
 
         // Test ok values
         $this->assertTrue($this->filesManager->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'localized'));
@@ -241,7 +251,12 @@ class DepotManagerTest extends TestCase {
     public function testGetLogsManager(){
 
         // Test empty values
-        $this->assertSame(null, $this->sut->getLogsManager());
+        try {
+            $this->sut->getLogsManager();
+            $this->exceptionMessage = 'getLogsManager did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/logsManager not available. Check it is correctly configured on turbodepot setup/', $e->getMessage());
+        }
 
         // Test ok values
         $this->setup->sources->fileSystem[] = new stdclass();

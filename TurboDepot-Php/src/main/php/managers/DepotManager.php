@@ -153,6 +153,11 @@ class DepotManager extends BaseStrictClass{
      */
     public function getTmpFilesManager(){
 
+        if($this->_tmpFilesManager === null){
+
+            throw new UnexpectedValueException('tmpFilesManager not available. Check it is correctly configured on turbodepot setup');
+        }
+
         return $this->_tmpFilesManager;
     }
 
@@ -163,6 +168,11 @@ class DepotManager extends BaseStrictClass{
      * @return LocalizedFilesManager
      */
     public function getLocalizedFilesManager(){
+
+        if($this->_localizedFilesManager === null){
+
+            throw new UnexpectedValueException('localizedFilesManager not available. Check it is correctly configured on turbodepot setup');
+        }
 
         return $this->_localizedFilesManager;
     }
@@ -175,6 +185,11 @@ class DepotManager extends BaseStrictClass{
      */
     public function getLogsManager(){
 
+        if($this->_logsManager === null){
+
+            throw new UnexpectedValueException('logsManager not available. Check it is correctly configured on turbodepot setup');
+        }
+
         return $this->_logsManager;
     }
 
@@ -183,6 +198,11 @@ class DepotManager extends BaseStrictClass{
      * TODO
      */
     public function getUsersManager(){
+
+        if($this->_usersManager === null){
+
+            throw new UnexpectedValueException('usersManager not available. Check it is correctly configured on turbodepot setup');
+        }
 
         return $this->_usersManager;
     }
