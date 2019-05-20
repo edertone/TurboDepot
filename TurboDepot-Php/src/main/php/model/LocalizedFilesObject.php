@@ -95,7 +95,7 @@ class LocalizedFilesObject extends BaseStrictClass{
     }
 
     /**
-     * The path to this object, relative to the folder that is defined as the root of
+     * The path to this object (including the object itself), relative to the folder that is defined as the root of
      *  the localized files manager class
      */
     public function getPath(){

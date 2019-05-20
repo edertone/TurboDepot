@@ -434,11 +434,11 @@ class LocalizedFilesManagerTest extends TestCase {
 
 
     /**
-     * testTODO
+     * testCopyDirectory
      *
      * @return void
      */
-    public function testTODO(){
+    public function testCopyDirectory(){
 
         // Test empty values
         // TODO
@@ -455,7 +455,277 @@ class LocalizedFilesManagerTest extends TestCase {
         $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
-    // TODO - add all missing tests
+
+    /**
+     * testMirrorDirectory
+     *
+     * @return void
+     */
+    public function testMirrorDirectory(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * testSyncDirectories
+     *
+     * @return void
+     */
+    public function testSyncDirectories(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * testRenameDirectory
+     *
+     * @return void
+     */
+    public function testRenameDirectory(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * testDeleteDirectory
+     *
+     * @return void
+     */
+    public function testDeleteDirectory(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * testSaveFile
+     *
+     * @return void
+     */
+    public function testSaveFile(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * testMergeFiles
+     *
+     * @return void
+     */
+    public function testMergeFiles(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * testReadFile
+     *
+     * @return void
+     */
+    public function testReadFile(){
+
+        // Test empty values
+        try {
+            $this->sut->readFile(null);
+            $this->exceptionMessage = 'null did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/pathOrObject is not a valid file/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->readFile('');
+            $this->exceptionMessage = 'null did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/File not found.*test-1/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->readFile(0);
+            $this->exceptionMessage = 'null did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/pathOrObject is not a valid file/', $e->getMessage());
+        }
+
+        // Test ok values - Passing a LocalizedFilesObject instance
+
+        $list = $this->sut->getDirectoryList('LOGIN', '', '', [], 'nameAsc');
+
+        $this->assertSame('0', $this->sut->readFile($list[0]));
+        $this->assertSame('1', $this->sut->readFile($list[1]));
+        $this->assertSame('2-en_US', $this->sut->readFile($list[2]));
+
+        $this->sut->setPrimaryLocale('es_ES');
+        $this->assertSame('2-en_US', $this->sut->readFile($list[2]));
+
+        $list = $this->sut->getDirectoryList('LOGIN', '', '', [], 'nameAsc');
+
+        $this->assertSame('0', $this->sut->readFile($list[0]));
+        $this->assertSame('1', $this->sut->readFile($list[1]));
+        $this->assertSame('2-es_ES', $this->sut->readFile($list[2]));
+
+        $this->sut->setPrimaryLocale('en_US');
+        $list = $this->sut->getDirectoryList('PASSWORD/LOGIN', '', '', [], 'nameAsc');
+        $this->assertSame('1-en_US', $this->sut->readFile($list[0]));
+        $this->assertSame('0', $this->sut->readFile($list[1]));
+        $this->assertSame('2', $this->sut->readFile($list[2]));
+
+        $this->sut->setPrimaryLocale('es_ES');
+        $this->assertSame('1-en_US', $this->sut->readFile($list[0]));
+
+        $list = $this->sut->getDirectoryList('PASSWORD/LOGIN', '', '', [], 'nameAsc');
+        $this->assertSame('1-es_ES', $this->sut->readFile($list[0]));
+        $this->assertSame('0', $this->sut->readFile($list[1]));
+        $this->assertSame('2', $this->sut->readFile($list[2]));
+
+        // Test ok values - Passing directly a path as a string
+
+        $this->sut = new LocalizedFilesManager($this->basePath.'/paths/test-2', ['en_US', 'es_ES'], $this->defaultLocations);
+
+        $this->assertSame('some english text', $this->sut->readFile('2019/10/29/some-folder-title-en_US/text.md'));
+        $this->assertSame('Un texto en español', $this->sut->readFile('2019/10/29/some-folder-title-es_ES/text.md'));
+        $this->assertSame('1', $this->sut->readFile('2019/10/29/USER/somefile'));
+        $this->assertSame('2', $this->sut->readFile('2019/10/29/USER-en_US/somefile'));
+        $this->assertSame('3', $this->sut->readFile('2019/10/29/USER-es_ES/somefile'));
+
+        // Test wrong values
+        // Test exceptions
+        try {
+            $this->sut->readFile(9283498234);
+            $this->exceptionMessage = '9283498234 did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/pathOrObject is not a valid file/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->readFile([12121, 454 , 4545]);
+            $this->exceptionMessage = '[12121, 454 , 4545] did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/pathOrObject is not a valid file/', $e->getMessage());
+        }
+    }
+
+
+    /**
+     * testCopyFile
+     *
+     * @return void
+     */
+    public function testCopyFile(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * testRenameFile
+     *
+     * @return void
+     */
+    public function testRenameFile(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
 }
 
 ?>

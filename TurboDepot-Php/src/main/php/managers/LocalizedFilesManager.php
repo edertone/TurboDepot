@@ -206,22 +206,32 @@ class LocalizedFilesManager extends FilesManager{
             }else{
 
                 $isDirectory = false;
-                $key = preg_replace("/(.*)-[a-z][a-z]_[A-Z][A-Z]$/", '${1}', StringUtils::getPathElementWithoutExt($item), 1);
-                $translation = $this->_localizationManager->get($key, $bundle, $location, $toReplace);
                 $extension = StringUtils::getPathExtension($item);
+                $extensionWithDot = $extension === '' ? '' : '.'.$extension;
+                $elementNoExt = StringUtils::getPathElementWithoutExt($item);
+                $key = preg_replace("/(.*)-[a-z][a-z]_[A-Z][A-Z]$/", '${1}', $elementNoExt, 1);
+                $translation = $this->_localizationManager->get($key, $bundle, $location, $toReplace).$extensionWithDot;
 
-                if($extension !== ''){
+                if(preg_match("/.*-[a-z][a-z]_[A-Z][A-Z]$/", $elementNoExt)){
 
-                    $translation .= '.'.$extension;
+                    foreach ($this->_localizationManager->locales() as $managerLocale) {
+
+                        if(in_array($key.'-'.$managerLocale.$extensionWithDot, $list)){
+
+                            $item = $key.'-'.$managerLocale.$extensionWithDot;
+
+                            break;
+                        }
+                    }
                 }
 
                 // If the file contains multiple localized contents, the key is duplicate, so we won't add it to the result
-                if(in_array($key.'.'.$extension, $fileKeys)){
+                if(in_array($key.$extensionWithDot, $fileKeys)){
 
                     continue;
                 }
 
-                $fileKeys[] = $key.'.'.$extension;
+                $fileKeys[] = $key.$extensionWithDot;
             }
 
             $result[] = new LocalizedFilesObject($isDirectory, $path.DIRECTORY_SEPARATOR.$item, $extension, $locale, $language, $key, $translation);
@@ -279,6 +289,34 @@ class LocalizedFilesManager extends FilesManager{
     public function mergeFiles(array $sourcePaths, string $destFile, $separator = ''){
     }
 
+
+    /**
+     * Read and return the content of a localized file (see FilesManager::readFile for more info).
+     *
+     * @see FilesManager::readFile
+     *
+     * @param string|LocalizedFilesObject $pathOrObject A LocalizedFilesObject instance that represents a file which we want to read.
+     *        We usually get this instance by calling to getDirectoryList method, but we may also provide here a string containing the path
+     *        to the file we want to obtain.
+     *
+     * @return string The file contents as a string.
+     */
+    public function readFile($pathOrObject){
+
+        if(is_string($pathOrObject)){
+
+            return parent::readFile($pathOrObject);
+        }
+
+        if(is_object($pathOrObject) &&
+           get_class($pathOrObject) === 'org\turbodepot\src\main\php\model\LocalizedFilesObject' &&
+           $pathOrObject->getIsDirectory() === false){
+
+            return parent::readFile($pathOrObject->getPath());
+        }
+
+        throw new UnexpectedValueException('pathOrObject is not a valid file');
+    }
 
     /**
      * TODO - Implement
