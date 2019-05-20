@@ -888,7 +888,7 @@ class FilesManager extends BaseStrictClass{
      *
      * @return string The file contents as a string. If the file is not found or cannot be read, an exception will be thrown.
      */
-    public function readFile(string $pathToFile){
+    public function readFile($pathToFile){
 
         $pathToFile = $this->_composePath($pathToFile);
 
