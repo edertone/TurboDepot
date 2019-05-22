@@ -166,14 +166,14 @@ class LocalizedFilesManagerTest extends TestCase {
             $this->assertSame(DIRECTORY_SEPARATOR, (new LocalizedFilesManager($this->tempFolder, ['en_US', 'es_ES', 'ca_ES'], $this->defaultLocations))->dirSep());
             $this->exceptionMessage = '"ca_ES" did not cause exception';
         } catch (Throwable $e) {
-            $this->assertRegExp('/File not found.*ca_ES/', $e->getMessage());
+            $this->assertRegExp('/File does not exist.*ca_ES/', $e->getMessage());
         }
 
         try {
             $this->assertSame(DIRECTORY_SEPARATOR, (new LocalizedFilesManager($this->tempFolder, ['5345345'], $this->defaultLocations))->dirSep());
             $this->exceptionMessage = '"5345345" did not cause exception';
         } catch (Throwable $e) {
-            $this->assertRegExp('/File not found.*5345345/', $e->getMessage());
+            $this->assertRegExp('/File does not exist.*5345345/', $e->getMessage());
         }
 
         // Test exceptions
@@ -319,7 +319,7 @@ class LocalizedFilesManagerTest extends TestCase {
             $this->sut->getDirectoryList(null);
             $this->exceptionMessage = 'null did not cause exception';
         } catch (Throwable $e) {
-            $this->assertRegExp('/path must be a string/', $e->getMessage());
+            $this->assertRegExp('/Path must be a string/', $e->getMessage());
         }
 
         $this->assertTrue(ArrayUtils::isArray($this->sut->getDirectoryList('')));
@@ -414,7 +414,7 @@ class LocalizedFilesManagerTest extends TestCase {
             $list = $this->sut->getDirectoryList(34545435, '', '', [], 'nameAsc');
             $this->exceptionMessage = '34545435 did not cause exception';
         } catch (Throwable $e) {
-            $this->assertRegExp('/path must be a string/', $e->getMessage());
+            $this->assertRegExp('/Path must be a string/', $e->getMessage());
         }
 
         try {
@@ -613,7 +613,7 @@ class LocalizedFilesManagerTest extends TestCase {
             $this->sut->readFile('');
             $this->exceptionMessage = 'null did not cause exception';
         } catch (Throwable $e) {
-            $this->assertRegExp('/File not found.*test-1/', $e->getMessage());
+            $this->assertRegExp('/File does not exist.*test-1/', $e->getMessage());
         }
 
         try {

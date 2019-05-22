@@ -251,7 +251,7 @@ class LocalizedFilesManager extends FilesManager{
     /**
      * TODO - Implement
      */
-    public function mirrorDirectory(string $sourcePath, string $destPath){
+    public function mirrorDirectory($sourcePath, $destPath){
     }
 
 
