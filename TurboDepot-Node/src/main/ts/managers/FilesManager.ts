@@ -150,19 +150,9 @@ export class FilesManager{
      */
     isFileEqualTo(pathToFile1: string, pathToFile2: string){
 
-        pathToFile1 = this._composePath(pathToFile1);
-        pathToFile2 = this._composePath(pathToFile2);
+        pathToFile1 = this._composePath(pathToFile1, false, true);
+        pathToFile2 = this._composePath(pathToFile2, false, true);
 
-        if(!this.isFile(pathToFile1)){
-
-            throw new Error('Not a file: ' + pathToFile1);
-        }
-
-        if(!this.isFile(pathToFile2)){
-
-            throw new Error('Not a file: ' + pathToFile2);
-        }
-        
         let file1Hash = this.crypto.createHash('md5').update(this.readFile(pathToFile1), 'utf8').digest('hex');
         let file2Hash = this.crypto.createHash('md5').update(this.readFile(pathToFile2), 'utf8').digest('hex');
         
@@ -192,7 +182,7 @@ export class FilesManager{
         
         try {
             
-            return this.fs.lstatSync(this.fs.realpathSync(this._composePath(path))).isDirectory();
+            return this.fs.lstatSync(this._composePath(path)).isDirectory();
             
         } catch (e) {
 
@@ -361,13 +351,8 @@ export class FilesManager{
                             separator = '-',
                             isPrefix = false){
 
-        path = this._composePath(path);
+        path = this._composePath(path, true);
 
-        if (!this.isDirectory(path)){
-
-            throw new Error('path does not exist: ' + path);
-        }
-        
         let i = 1;
         let result = (desiredName == '' ? i : desiredName);
         
@@ -411,27 +396,23 @@ export class FilesManager{
                        separator = '-',
                        isPrefix = false){
 
-        path = this._composePath(path);
-        
-        if (!this.isDirectory(path)){
-
-            throw new Error('path does not exist: ' + path);
-        }
-        
         let i = 1;
         let result = (desiredName == '' ? i : desiredName);
+        
+        path = this._composePath(path, true);
+        
         let extension = StringUtils.getPathExtension(desiredName);
+
+        if(extension !== ''){
+
+            extension = '.' + extension;
+        }
 
         while(this.isDirectory(path + this.dirSep() + result) ||
               this.isFile(path + this.dirSep() + result)){
 
-            result = this._generateUniqueNameAux(i, StringUtils.getPathElementWithoutExt(desiredName), text, separator, isPrefix);
-
-            if(extension != ''){
-
-                result += '.' + extension;
-            }
-
+            result = this._generateUniqueNameAux(i, StringUtils.getPathElementWithoutExt(desiredName), text, separator, isPrefix) + extension;
+            
             i++;
         }
 
@@ -575,13 +556,7 @@ export class FilesManager{
      */
     getDirectoryList(path: string, sort = ''): string[]{
 
-        path = this._composePath(path);
-
-        // If folder does not exist, we will throw an exception
-        if(!this.isDirectory(path)){
-
-            throw new Error('path does not exist: ' + path);
-        }
+        path = this._composePath(path, true);
 
         // Get all the folder contents
         let result = [];
@@ -724,9 +699,83 @@ export class FilesManager{
     /**
      * TODO - translate from php
      */
-    mirrorDirectory(){
+    mirrorDirectory(sourcePath: string, destPath: string){
 
-        // TODO - translate from php
+        sourcePath = this._composePath(sourcePath, true);
+        destPath = this._composePath(destPath, true);
+
+        if(sourcePath === destPath){
+
+            throw new Error('cannot mirror a directory into itself: ' + sourcePath);
+        }
+
+        // Recursively Loop all the source items and copy to destination all those that are different or do not exist
+        for (let sourceItem of this.getDirectoryList(sourcePath)) {
+
+            let sourceItemPath = sourcePath + this.dirSep() + sourceItem;
+            let destItemPath = destPath + this.dirSep() + sourceItem;
+            let isDestItemPathADir = this.isDirectory(destItemPath);
+            let isDestItemPathAFile = this.isFile(destItemPath);
+            
+            if(this.isDirectory(sourceItemPath)){
+
+                if(isDestItemPathAFile && !this.deleteFile(destItemPath)){
+
+                    throw new Error('Could not delete file from destination: ' + destItemPath);
+                }
+
+                if(!isDestItemPathADir){
+
+                    this.createDirectory(destItemPath);
+                }
+
+                this.mirrorDirectory(sourceItemPath, destItemPath);
+
+            }else{
+
+                if(isDestItemPathADir && !this.deleteDirectory(destItemPath)){
+
+                    throw new Error('Could not delete directory from destination: ' + destItemPath);
+                }
+
+                if((!isDestItemPathAFile || !this.isFileEqualTo(sourceItemPath, destItemPath)) &&
+                   !this.copyFile(sourceItemPath, destItemPath)){
+
+                    throw new Error('Could not copy file from source <' + sourceItemPath + '> to destination <' + destItemPath + '>');
+                }
+            }
+        }
+
+        // Recursively loop destination items and delete all the ones that do not exist on source
+        for (let destItem of this.getDirectoryList(destPath)) {
+
+            let sourceItemPath = sourcePath + this.dirSep() + destItem;
+            let destItemPath = destPath + this.dirSep() + destItem;
+
+            if(this.isDirectory(destItemPath)){
+
+                if(!this.isDirectory(sourceItemPath)){
+
+                    if(!this.deleteDirectory(destItemPath)){
+
+                        throw new Error('Could not delete directory from destination: ' + destItemPath);
+                    }
+
+                }else{
+
+                    this.mirrorDirectory(sourceItemPath, destItemPath);
+                }
+
+            }else{
+
+                if(!this.isFile(sourceItemPath) && !this.deleteFile(destItemPath)){
+
+                    throw new Error('Could not delete file from destination: ' + destItemPath);
+                }
+            }
+        }
+
+        return true;
     }
 
 
@@ -782,12 +831,7 @@ export class FilesManager{
      */
     deleteDirectory(path: string, deleteDirectoryItself = true){
 
-        path = this._composePath(path);
-
-        if (!this.isDirectory(path)){
-
-            throw new Error('Not a directory: ' + path);
-        }
+        path = this._composePath(path, true);
 
         for (let file of this.getDirectoryList(path)) {
   
@@ -913,12 +957,7 @@ export class FilesManager{
      */
     getFileSize(pathToFile: string){
 
-        pathToFile = this._composePath(pathToFile);
-
-        if(!this.isFile(pathToFile)){
-
-            throw new Error('File not found - ' + pathToFile);
-        }
+        pathToFile = this._composePath(pathToFile, false, true);
 
         try {
 
@@ -941,12 +980,7 @@ export class FilesManager{
      */
     readFile(pathToFile: string){
 
-        pathToFile = this._composePath(pathToFile);
-
-        if(!this.isFile(pathToFile)){
-
-            throw new Error('File not found - ' + pathToFile);
-        }
+        pathToFile = this._composePath(pathToFile, false, true);
 
         return this.fs.readFileSync(pathToFile, "utf8");
     }
@@ -1133,8 +1167,13 @@ export class FilesManager{
      * If an absolute path is passed to the relativePath variable, the result of this method will be that value, ignoring
      * any possible value on _rootPath.
      */
-    private _composePath(relativePath: string){
+    private _composePath(relativePath: string, testIsDirectory = false, testIsFile = false){
 
+        if (!StringUtils.isString(relativePath)){
+
+            throw new Error('Path must be a string: ');
+        }
+        
         let composedPath = '';
 
         if (StringUtils.isEmpty(this._rootPath) ||
@@ -1147,6 +1186,18 @@ export class FilesManager{
             composedPath = this._rootPath + this.dirSep() + relativePath;
         }
 
-        return StringUtils.formatPath(composedPath, this.dirSep());
+        let path = StringUtils.formatPath(composedPath, this.dirSep());
+
+        if (testIsDirectory && !this.isDirectory(path)){
+
+            throw new Error('Path does not exist: ' + path);
+        }
+
+        if(testIsFile && !this.isFile(path)){
+
+            throw new Error('File does not exist: ' + path);
+        }
+
+        return path;
     }
 }

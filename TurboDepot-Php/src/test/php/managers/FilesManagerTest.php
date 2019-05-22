@@ -48,6 +48,7 @@ class FilesManagerTest extends TestCase {
     protected function setUp(){
 
         $this->exceptionMessage = '';
+        $this->basePath = __DIR__.'/../resources/managers/filesManager';
 
         $this->sut = new FilesManager();
 
@@ -1469,21 +1470,21 @@ class FilesManagerTest extends TestCase {
             $this->sut->copyDirectory(null, null);
             $this->exceptionMessage = 'null did not cause exception';
         } catch (Throwable $e) {
-            // We expect an exception to happen
+            $this->assertRegExp('/must be of the type string, null given/', $e->getMessage());
         }
 
         try {
             $this->sut->copyDirectory('', '');
             $this->exceptionMessage = '"" did not cause exception';
         } catch (Throwable $e) {
-            // We expect an exception to happen
+            $this->assertRegExp('/cannot copy a directory into itself/', $e->getMessage());
         }
 
         try {
             $this->sut->copyDirectory('       ', '       ');
             $this->exceptionMessage = '"      " did not cause exception';
         } catch (Throwable $e) {
-            // We expect an exception to happen
+            $this->assertRegExp('/cannot copy a directory into itself/', $e->getMessage());
         }
 
         // Test ok values
@@ -1567,18 +1568,104 @@ class FilesManagerTest extends TestCase {
     public function testMirrorDirectory(){
 
         // Test empty values
-        // TODO
+        try {
+            $this->sut->mirrorDirectory(null, null);
+            $this->exceptionMessage = 'null did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path must be a string/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->mirrorDirectory('', '');
+            $this->exceptionMessage = '"" did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path does not exist/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->mirrorDirectory('       ', '       ');
+            $this->exceptionMessage = '"      " did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path does not exist/', $e->getMessage());
+        }
+
+        $this->assertTrue($this->sut->createDirectory($this->tempFolder.'/test-1'));
+        $this->assertTrue($this->sut->mirrorDirectory($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+        $this->assertTrue($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
 
         // Test ok values
-        // TODO
+
+        // Alter contents on one file from the previously mirrored temp folder and make sure the mirror process restores it
+        $this->assertTrue($this->sut->saveFile($this->tempFolder.'/test-1/c/d', 'modified'));
+        $this->assertFalse($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+        $this->assertTrue($this->sut->mirrorDirectory($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+        $this->assertTrue($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+
+        // Rename one file from the previously mirrored temp folder and make sure the mirror process restores it
+        $this->assertTrue($this->sut->renameFile($this->tempFolder.'/test-1/a', $this->tempFolder.'/test-1/a-renamed'));
+        $this->assertFalse($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+        $this->assertTrue($this->sut->mirrorDirectory($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+        $this->assertTrue($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+
+        // Delete one file from the previously mirrored temp folder and make sure the mirror process restores it
+        $this->assertTrue($this->sut->deleteFile($this->tempFolder.'/test-1/c/d'));
+        $this->assertFalse($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+        $this->assertTrue($this->sut->mirrorDirectory($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+        $this->assertTrue($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+
+        // Add one file to the previously mirrored temp folder and make sure the mirror process restores it
+        $this->assertTrue($this->sut->saveFile($this->tempFolder.'/test-1/c/e', 'e'));
+        $this->assertFalse($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+        $this->assertTrue($this->sut->mirrorDirectory($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+        $this->assertTrue($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+
+        // Rename one folder from the previously mirrored temp folder and make sure the mirror process restores it
+        $this->assertTrue($this->sut->renameDirectory($this->tempFolder.'/test-1/c', $this->tempFolder.'/test-1/c-modified'));
+        $this->assertFalse($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+        $this->assertTrue($this->sut->mirrorDirectory($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+        $this->assertTrue($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+
+        // Delete one folder from the previously mirrored temp folder and make sure the mirror process restores it
+        $this->assertTrue($this->sut->deleteDirectory($this->tempFolder.'/test-1/c'));
+        $this->assertFalse($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+        $this->assertTrue($this->sut->mirrorDirectory($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+        $this->assertTrue($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+
+        // Add one empty folder to the previously mirrored temp folder and make sure the mirror process restores it
+        $this->assertTrue($this->sut->createDirectory($this->tempFolder.'/test-1/c/e'));
+        $this->assertFalse($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+        $this->assertTrue($this->sut->mirrorDirectory($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
+        $this->assertTrue($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
 
         // Test wrong values
-        // TODO
+        try {
+            $this->sut->mirrorDirectory($this->tempFolder.'/test-1', $this->tempFolder.'/test-1');
+            $this->exceptionMessage = 'copy on same folder did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/cannot mirror a directory into itself/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->mirrorDirectory($this->tempFolder.'/test-1', $this->tempFolder.DIRECTORY_SEPARATOR.'nonexistant');
+            $this->exceptionMessage = 'non existant folder did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path does not exist.*nonexistant/', $e->getMessage());
+        }
 
         // Test exceptions
-        // TODO
+        try {
+            $this->sut->mirrorDirectory('wrtwrtyeyery');
+            $this->exceptionMessage = 'wrtwrtyeyery did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Too few arguments to function/', $e->getMessage());
+        }
 
-        $this->markTestIncomplete('This test has not been implemented yet.');
+        try {
+            $this->sut->mirrorDirectory([1,2,3,4], [1,2,3,4]);
+            $this->exceptionMessage = '[1,2,3,4] did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path must be a string/', $e->getMessage());
+        }
     }
 
 

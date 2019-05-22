@@ -125,18 +125,8 @@ class FilesManager extends BaseStrictClass{
      */
     public function isFileEqualTo($pathToFile1, $pathToFile2){
 
-        $pathToFile1 = $this->_composePath($pathToFile1);
-        $pathToFile2 = $this->_composePath($pathToFile2);
-
-        if(!is_file($pathToFile1)){
-
-            throw new UnexpectedValueException('Not a file: '.$pathToFile1);
-        }
-
-        if(!is_file($pathToFile2)){
-
-            throw new UnexpectedValueException('Not a file: '.$pathToFile2);
-        }
+        $pathToFile1 = $this->_composePath($pathToFile1, false, true);
+        $pathToFile2 = $this->_composePath($pathToFile2, false, true);
 
         $file1Hash = md5_file($pathToFile1);
         $file2Hash = md5_file($pathToFile2);
@@ -336,12 +326,7 @@ class FilesManager extends BaseStrictClass{
                                             string $separator = '-',
                                             bool $isPrefix = false){
 
-        $path = $this->_composePath($path);
-
-        if (!$this->isDirectory($path)){
-
-            throw new UnexpectedValueException('path does not exist: '.$path);
-        }
+        $path = $this->_composePath($path, true);
 
         $i = 1;
         $result = ($desiredName == '' ? $i : $desiredName);
@@ -386,26 +371,22 @@ class FilesManager extends BaseStrictClass{
                                         string $separator = '-',
                                         bool $isPrefix = false){
 
-        $path = $this->_composePath($path);
-
-        if (!$this->isDirectory($path)){
-
-            throw new UnexpectedValueException('path does not exist: '.$path);
-        }
-
         $i = 1;
         $result = ($desiredName == '' ? $i : $desiredName);
+
+        $path = $this->_composePath($path, true);
+
         $extension = StringUtils::getPathExtension($desiredName);
+
+        if($extension !== ''){
+
+            $extension = '.'.$extension;
+        }
 
         while(is_dir($path.DIRECTORY_SEPARATOR.$result) ||
               is_file($path.DIRECTORY_SEPARATOR.$result)){
 
-            $result = $this->_generateUniqueNameAux($i, StringUtils::getPathElementWithoutExt($desiredName), $text, $separator, $isPrefix);
-
-            if($extension != ''){
-
-                $result .= '.'.$extension;
-            }
+            $result = $this->_generateUniqueNameAux($i, StringUtils::getPathElementWithoutExt($desiredName), $text, $separator, $isPrefix).$extension;
 
             $i++;
         }
@@ -550,13 +531,7 @@ class FilesManager extends BaseStrictClass{
      */
     public function getDirectoryList($path, string $sort = ''){
 
-        $path = $this->_composePath($path);
-
-        // If folder does not exist, we will throw an exception
-        if(!$this->isDirectory($path)){
-
-            throw new UnexpectedValueException('path does not exist: '.$path);
-        }
+        $path = $this->_composePath($path, true);
 
         // Get all the folder contents
         $result = [];
@@ -704,12 +679,86 @@ class FilesManager extends BaseStrictClass{
 
 
     /**
-     * TODO implement this method
+     * // TODO - this method will apply the minimum modifications to the destination path to make sure it is an exact copy
+     * // of the source one. It is a one way sync process
      */
-    public function mirrorDirectory(string $sourcePath, string $destPath){
+    public function mirrorDirectory($sourcePath, $destPath){
 
-        // TODO - this method will apply the minimum modifications to the destination path to make sure it is an exact copy
-        // of the source one. It is a one way sync process
+        $sourcePath = $this->_composePath($sourcePath, true);
+        $destPath = $this->_composePath($destPath, true);
+
+        if($sourcePath === $destPath){
+
+            throw new UnexpectedValueException('cannot mirror a directory into itself: '.$sourcePath);
+        }
+
+        // Recursively Loop all the source items and copy to destination all those that are different or do not exist
+        foreach ($this->getDirectoryList($sourcePath) as $sourceItem){
+
+            $sourceItemPath = $sourcePath.DIRECTORY_SEPARATOR.$sourceItem;
+            $destItemPath = $destPath.DIRECTORY_SEPARATOR.$sourceItem;
+            $isDestItemPathADir = is_dir($destItemPath);
+            $isDestItemPathAFile = is_file($destItemPath);
+
+            if(is_dir($sourceItemPath)){
+
+                if($isDestItemPathAFile && !$this->deleteFile($destItemPath)){
+
+                    throw new UnexpectedValueException('Could not delete file from destination: '.$destItemPath);
+                }
+
+                if(!$isDestItemPathADir){
+
+                    $this->createDirectory($destItemPath);
+                }
+
+                $this->mirrorDirectory($sourceItemPath, $destItemPath);
+
+            }else{
+
+                if($isDestItemPathADir && !$this->deleteDirectory($destItemPath)){
+
+                    throw new UnexpectedValueException('Could not delete directory from destination: '.$destItemPath);
+                }
+
+                if((!$isDestItemPathAFile || !$this->isFileEqualTo($sourceItemPath, $destItemPath)) &&
+                   !$this->copyFile($sourceItemPath, $destItemPath)){
+
+                    throw new UnexpectedValueException('Could not copy file from source <'.$sourceItemPath.'> to destination <'.$destItemPath.'>');
+                }
+            }
+        }
+
+        // Recursively loop destination items and delete all the ones that do not exist on source
+        foreach ($this->getDirectoryList($destPath) as $destItem){
+
+            $sourceItemPath = $sourcePath.DIRECTORY_SEPARATOR.$destItem;
+            $destItemPath = $destPath.DIRECTORY_SEPARATOR.$destItem;
+
+            if(is_dir($destItemPath)){
+
+                if(!is_dir($sourceItemPath)){
+
+                    if(!$this->deleteDirectory($destItemPath)){
+
+                        throw new UnexpectedValueException('Could not delete directory from destination: '.$destItemPath);
+                    }
+
+                }else{
+
+                    $this->mirrorDirectory($sourceItemPath, $destItemPath);
+                }
+
+            }else{
+
+                if(!is_file($sourceItemPath) && !$this->deleteFile($destItemPath)){
+
+                    throw new UnexpectedValueException('Could not delete file from destination: '.$destItemPath);
+                }
+            }
+        }
+
+        return true;
     }
 
 
@@ -755,12 +804,7 @@ class FilesManager extends BaseStrictClass{
      */
     public function deleteDirectory(string $path, bool $deleteDirectoryItself = true){
 
-        $path = $this->_composePath($path);
-
-        if (!is_dir($path)){
-
-            throw new UnexpectedValueException('Not a directory: '.$path);
-        }
+        $path = $this->_composePath($path, true);
 
         $dirIterator = new DirectoryIterator($path);
 
@@ -862,12 +906,7 @@ class FilesManager extends BaseStrictClass{
      */
     public function getFileSize(string $pathToFile){
 
-        $pathToFile = $this->_composePath($pathToFile);
-
-        if(!is_file($pathToFile)){
-
-            throw new UnexpectedValueException('File not found - '.$pathToFile);
-        }
+        $pathToFile = $this->_composePath($pathToFile, false, true);
 
         $fileSize = filesize($pathToFile);
 
@@ -890,12 +929,7 @@ class FilesManager extends BaseStrictClass{
      */
     public function readFile($pathToFile){
 
-        $pathToFile = $this->_composePath($pathToFile);
-
-        if(!is_file($pathToFile)){
-
-            throw new UnexpectedValueException('File not found - '.$pathToFile);
-        }
+        $pathToFile = $this->_composePath($pathToFile, false, true);
 
         if(($contents = file_get_contents($pathToFile, true)) === false){
 
@@ -1118,7 +1152,12 @@ class FilesManager extends BaseStrictClass{
      * If an absolute path is passed to the relativePath variable, the result of this method will be that value, ignoring
      * any possible value on _rootPath.
      */
-    protected function _composePath($relativePath){
+    protected function _composePath($relativePath, $testIsDirectory = false, $testIsFile = false){
+
+        if (!is_string($relativePath)){
+
+            throw new UnexpectedValueException('Path must be a string: ');
+        }
 
         $composedPath = '';
 
@@ -1132,7 +1171,19 @@ class FilesManager extends BaseStrictClass{
             $composedPath = $this->_rootPath.$this->dirSep().$relativePath;
         }
 
-        return StringUtils::formatPath($composedPath, $this->dirSep());
+        $path = StringUtils::formatPath($composedPath, $this->dirSep());
+
+        if ($testIsDirectory && !$this->isDirectory($path)){
+
+            throw new UnexpectedValueException('Path does not exist: '.$path);
+        }
+
+        if($testIsFile && !is_file($path)){
+
+            throw new UnexpectedValueException('File does not exist: '.$path);
+        }
+
+        return $path;
     }
 }
 
