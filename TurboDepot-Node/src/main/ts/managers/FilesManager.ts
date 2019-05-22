@@ -180,9 +180,16 @@ export class FilesManager{
             throw new Error('path must be a string');
         }
         
+        path = this._composePath(path);
+        
+        if(StringUtils.isEmpty(path)){
+            
+            return false;
+        }
+        
         try {
             
-            return this.fs.lstatSync(this._composePath(path)).isDirectory();
+            return this.fs.lstatSync(this.fs.realpathSync(path)).isDirectory();
             
         } catch (e) {
 

@@ -155,9 +155,16 @@ class FilesManager extends BaseStrictClass{
             throw new UnexpectedValueException('path must be a string');
         }
 
+        $path = $this->_composePath($path);
+
+        if(StringUtils::isEmpty($path)){
+
+            return false;
+        }
+
         try {
 
-            return is_dir($this->_composePath($path));
+            return is_dir($path);
 
         } catch (Exception $e) {
 
