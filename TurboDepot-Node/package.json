@@ -1,6 +1,6 @@
 {
   "name": "turbodepot-node",
-  "version": "3.1.1",
+  "version": "3.2.0",
   "description": "General purpose multi storage library (ORM, Logs, Users, Files, Objects)",
   "scripts": {
     "test": "node node_modules/jasmine/bin/jasmine --config=src/test/js/jasmine.json",
