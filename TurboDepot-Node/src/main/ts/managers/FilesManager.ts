@@ -153,13 +153,12 @@ export class FilesManager{
         pathToFile1 = this._composePath(pathToFile1, false, true);
         pathToFile2 = this._composePath(pathToFile2, false, true);
 
-        let file1Hash = this.crypto.createHash('md5').update(this.readFile(pathToFile1), 'utf8').digest('hex');
-        let file2Hash = this.crypto.createHash('md5').update(this.readFile(pathToFile2), 'utf8').digest('hex');
-        
-        if (this.getFileSize(pathToFile1) === this.getFileSize(pathToFile2) &&
-                file1Hash === file2Hash){
+        if (this.getFileSize(pathToFile1) === this.getFileSize(pathToFile2)){
 
-                return true;
+            let file1Hash = this.crypto.createHash('md5').update(this.readFile(pathToFile1), 'utf8').digest('hex');
+            let file2Hash = this.crypto.createHash('md5').update(this.readFile(pathToFile2), 'utf8').digest('hex');
+            
+            return file1Hash === file2Hash;
         }
 
         return false;
@@ -281,13 +280,16 @@ export class FilesManager{
      *        - If set to 0 the search will be performed only on the path root elements<br>
      *        - If set to 2 the search will be performed on the root, first and second depth level of subfolders
      *
+     * @param excludeRegexp A regular expression that will exclude all the results that match it
+     * 
      * @return A list formatted as defined in returnFormat, with all the elements that meet the search criteria
      */
     findDirectoryItems(path: string,
                        searchRegexp: string,
                        returnFormat = 'relative',
                        searchItemsType = 'both',
-                       depth = -1): string[]{
+                       depth = -1,
+                       excludeRegexp = ''): string[]{
 
         let result: string[] = [];
         path = this._composePath(path);
@@ -295,14 +297,15 @@ export class FilesManager{
         for (let item of this.getDirectoryList(path)) {
 
             let itemPath = path + this.dirSep() + item;
-            let isItemADir = this.isDirectory(itemPath);
-            let isItemAFile = this.isFile(itemPath);
-
-            if(searchItemsType === 'folders' && isItemAFile){
-
+            
+            if((excludeRegexp !== '' && (new RegExp(excludeRegexp)).test(itemPath)) ||
+               (searchItemsType === 'folders' && this.isFile(itemPath))){
+    
                 continue;
             }
-
+            
+            let isItemADir = this.isDirectory(itemPath);
+            
             if((new RegExp(searchRegexp)).test(item) &&
                !(searchItemsType === 'files' && isItemADir)){
 
@@ -311,7 +314,8 @@ export class FilesManager{
 
             if(depth !== 0 && isItemADir){
 
-                result = result.concat(this.findDirectoryItems(itemPath, searchRegexp, 'absolute', searchItemsType, depth - 1));
+                result = result.concat(
+                        this.findDirectoryItems(itemPath, searchRegexp, 'absolute', searchItemsType, depth - 1, excludeRegexp));
             }
         }
 

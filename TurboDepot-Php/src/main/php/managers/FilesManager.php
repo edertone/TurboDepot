@@ -128,13 +128,12 @@ class FilesManager extends BaseStrictClass{
         $pathToFile1 = $this->_composePath($pathToFile1, false, true);
         $pathToFile2 = $this->_composePath($pathToFile2, false, true);
 
-        $file1Hash = md5_file($pathToFile1);
-        $file2Hash = md5_file($pathToFile2);
+        if (filesize($pathToFile1) === filesize($pathToFile2)){
 
-        if (filesize($pathToFile1) === filesize($pathToFile2) &&
-            $file1Hash === $file2Hash){
+            $file1Hash = md5_file($pathToFile1);
+            $file2Hash = md5_file($pathToFile2);
 
-                return true;
+            return $file1Hash === $file2Hash;
         }
 
         return false;
@@ -256,13 +255,16 @@ class FilesManager extends BaseStrictClass{
      *        - If set to 0 the search will be performed only on the path root elements<br>
      *        - If set to 2 the search will be performed on the root, first and second depth level of subfolders
      *
+     * @param string $excludeRegexp A regular expression that will exclude all the results that match it
+     *
      * @return array A list formatted as defined in returnFormat, with all the elements that meet the search criteria
      */
     public function findDirectoryItems($path,
                                        string $searchRegexp,
                                        string $returnFormat = 'relative',
                                        string $searchItemsType = 'both',
-                                       int $depth = -1){
+                                       int $depth = -1,
+                                       string $excludeRegexp = ''){
 
         $result = [];
         $path = $this->_composePath($path);
@@ -270,13 +272,14 @@ class FilesManager extends BaseStrictClass{
         foreach ($this->getDirectoryList($path) as $item){
 
             $itemPath = $path.DIRECTORY_SEPARATOR.$item;
-            $isItemADir = is_dir($itemPath);
-            $isItemAFile = is_file($itemPath);
 
-            if($searchItemsType === 'folders' && $isItemAFile){
+            if(($excludeRegexp !== '' && preg_match($excludeRegexp, $itemPath)) ||
+               ($searchItemsType === 'folders' && is_file($itemPath))){
 
                 continue;
             }
+
+            $isItemADir = is_dir($itemPath);
 
             if(preg_match($searchRegexp, $item) &&
                !($searchItemsType === 'files' && $isItemADir)){
@@ -286,7 +289,8 @@ class FilesManager extends BaseStrictClass{
 
             if($depth !== 0 && $isItemADir){
 
-                $result = array_merge($result, $this->findDirectoryItems($itemPath, $searchRegexp, 'absolute', $searchItemsType, $depth - 1));
+                $result = array_merge($result,
+                    $this->findDirectoryItems($itemPath, $searchRegexp, 'absolute', $searchItemsType, $depth - 1, $excludeRegexp));
             }
         }
 

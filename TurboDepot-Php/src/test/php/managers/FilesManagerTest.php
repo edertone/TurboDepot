@@ -869,6 +869,11 @@ class FilesManagerTest extends TestCase {
         // Test finding all files that NOT end with .jpg and NOT end with .png and NOT end with gif
         $this->assertSame($this->sut->findDirectoryItems($temp2Folder, '/^(?!.*\.(jpg|png|gif)$)/i', 'name'), []);
 
+        // Test some exclusion patterns
+        $this->assertSame(['0.png', '1.png'], $this->sut->findDirectoryItems($temp2Folder, '/^.*\.(jpg|png)$/i', 'name', 'both', -1, '/.jpg$/i'));
+        $this->assertSame([], $this->sut->findDirectoryItems($temp2Folder, '/^.*\.(jpg|png)$/i', 'name', 'both', -1, '/g$/i'));
+        $this->assertSame(['1.jpg', '1.png'], $this->sut->findDirectoryItems($temp2Folder, '/^.*\.(jpg|png)$/i', 'name', 'both', -1, '/0/i'));
+
         // Test resultFormat = 'relative'
 
         // Test finding all *.txt files on the folder
@@ -912,6 +917,11 @@ class FilesManagerTest extends TestCase {
         $this->assertSame(['folder-1-0'.DIRECTORY_SEPARATOR.'folder-1-1'.DIRECTORY_SEPARATOR.'folder-1-2'], $this->sut->findDirectoryItems($this->tempFolder, '/^folder-1-2$/', 'relative'));
         $this->assertSame([], $this->sut->findDirectoryItems($this->tempFolder, '/^folder-1-2$/', 'relative', 'both', 0));
 
+        // Test some exclusion patterns
+        $this->assertSame([], $this->sut->findDirectoryItems($this->tempFolder, '/^folder-3-3$/', 'relative', 'both', -1, '/-3-0/'));
+        $this->assertSame([], $this->sut->findDirectoryItems($this->tempFolder, '/^folder-3-3$/', 'relative', 'both', -1, '/folder-3-1/'));
+        $this->assertSame([], $this->sut->findDirectoryItems($this->tempFolder, '/^folder-3-3$/', 'relative', 'both', -1, '/folder-3-2/'));
+
         // Test resultFormat = 'absolute'
 
         // Test finding all *.txt files on the folder
@@ -949,6 +959,10 @@ class FilesManagerTest extends TestCase {
 
         $sut2 = new FilesManager($this->tempFolder);
         $this->assertSame([$this->tempFolder.DIRECTORY_SEPARATOR.'folder-3-0'.DIRECTORY_SEPARATOR.'folder-3-1'.DIRECTORY_SEPARATOR.'folder-3-2'.DIRECTORY_SEPARATOR.'folder-3-3'], $sut2->findDirectoryItems('', '/^folder-3-3$/', 'absolute'));
+
+        // Test some exclusion patterns
+        $this->assertSame([], $this->sut->findDirectoryItems($this->tempFolder, '/^somefile-0-0-2.txt$/', 'absolute', 'both' , -1, '/folder-0-0/'));
+        $this->assertSame([], $this->sut->findDirectoryItems($this->tempFolder, '/^somefile-0-0-2.txt$/', 'absolute', 'both' , -1, '/-FilesManagerTest/'));
 
         // Test wrong values
         // Not necessary
