@@ -7,6 +7,8 @@
         {
             "name": "depot1",
             
+            "storageFolderPath": "",
+            
             "tmpFiles": {
                 "source": ""
             },

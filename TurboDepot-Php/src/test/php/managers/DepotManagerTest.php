@@ -143,6 +143,47 @@ class DepotManagerTest extends TestCase {
 
 
     /**
+     * testGetStorageFolderManager
+     *
+     * @return void
+     */
+    public function testGetStorageFolderManager(){
+
+        // Test empty values
+        try {
+            $this->sut->getStorageFolderManager();
+            $this->exceptionMessage = 'getStorageFolderManager did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/storageFolderManager not available. Check it is correctly configured on turbodepot setup/', $e->getMessage());
+        }
+
+        // Test ok values
+        $this->assertTrue($this->filesManager->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'custom', true));
+
+        $this->setup->depots[0]->storageFolderPath = $this->tempFolder.DIRECTORY_SEPARATOR.'storage';
+
+        $this->sut = new DepotManager($this->setup);
+
+        $this->assertSame('org\turbodepot\src\main\php\managers\StorageFolderManager',
+            get_class($this->sut->getStorageFolderManager()));
+
+        // Test wrong values
+        // Test exceptions
+
+        $this->setup->depots[0]->storageFolderPath = 'nonexistantpath';
+
+        $this->sut = new DepotManager($this->setup);
+
+        try {
+            $this->sut->getStorageFolderManager();
+            $this->exceptionMessage = 'nonexistantpath did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Could not find storage folder based on: nonexistantpath/', $e->getMessage());
+        }
+    }
+
+
+    /**
      * testGetFilesManager
      *
      * @return void
@@ -284,8 +325,10 @@ class DepotManagerTest extends TestCase {
         // Test exceptions
         $this->setup->sources->fileSystem[0]->path = '/invalidPath';
 
+        $this->sut = new DepotManager($this->setup);
+
         try {
-            $this->sut = new DepotManager($this->setup);
+            $this->sut->getLogsManager();
             $this->exceptionMessage = '"" did not cause exception';
         } catch (Throwable $e) {
             $this->assertRegExp('/LogsManager received an invalid rootPath: \/invalidPath/', $e->getMessage());
