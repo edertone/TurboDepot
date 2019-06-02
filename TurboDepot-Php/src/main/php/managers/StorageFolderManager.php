@@ -31,35 +31,26 @@ class StorageFolderManager extends BaseStrictClass{
 
 
     /**
-     * The storage folder is a standarized set of files and folders that are used to save the persistent information of an application.
+     * This class defines an instance that is used to manage an application main storage folder.
      *
-     * This class manages all the operations that are performed against this folder.
+     * The storage folder is a file system location where we store all our required application data. It is organized as a
+     * standardized set of files and folders which are used to save the most commonly required application data, just like logs,
+     * temporary files, executable binaries, extra libraries, cached data, custom files, etc..
+     *
+     * By defining a standard organization for all this information, we improve the structure and cleanliness of our project. And
+     * a faster learning curve when switching between projects.
+     *
+     * @param string $storageFolderRoot The full file system path to the root of the folder that we want to use as the storage folder.
+     *        all the required structure of folders and files must exist or this class will throw several errors.
      */
     public function __construct($storageFolderRoot = ''){
 
-        if($storageFolderRoot !== '' && is_dir($storageFolderRoot.DIRECTORY_SEPARATOR.'custom')){
-
-            $this->_storagePath = $storageFolderRoot;
-
-        } else {
-
-            // Try to find the storage path location and store it on the global variable so it is faster the next time
-            $lookupPath = $storageFolderRoot.DIRECTORY_SEPARATOR.'..';
-
-            for ($i = 0; $i < 5; $i++) {
-
-                if(is_dir($lookupPath.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'custom')){
-
-                    $this->_storagePath = StringUtils::formatPath($lookupPath.DIRECTORY_SEPARATOR.'storage');
-
-                    return;
-                }
-
-                $lookupPath .= DIRECTORY_SEPARATOR.'..';
-            }
+        if(!is_dir($storageFolderRoot.DIRECTORY_SEPARATOR.'custom')){
 
             throw new UnexpectedValueException('Could not find storage folder based on: '.$storageFolderRoot);
         }
+
+        $this->_storagePath = $storageFolderRoot;
     }
 
 
