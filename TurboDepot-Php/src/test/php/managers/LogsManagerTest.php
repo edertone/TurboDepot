@@ -49,9 +49,7 @@ class LogsManagerTest extends TestCase {
 
         // Create a temporary folder
         $this->tempFolder = $this->filesManager->createTempDirectory('TurboCommons-LogsManagerTest');
-        $this->assertTrue(strpos($this->tempFolder, 'TurboCommons-LogsManagerTest') !== false);
         $this->assertTrue($this->filesManager->isDirectoryEmpty($this->tempFolder));
-        $this->assertFalse($this->filesManager->isFile($this->tempFolder));
 
         $this->sut = new LogsManager($this->tempFolder);
     }
