@@ -181,14 +181,14 @@ class UsersManager extends BaseStrictClass{
      */
     private function saveToken(string $token){
 
-        $token = new DepotFile();
+//         $token = new DepotFile();
 
-        $token->setName($token);
-        $token->setContent(curddate() + $this->_setup->tokenLifetime);
+//         $token->setName($token);
+//         $token->setContent(curddate() + $this->_setup->tokenLifetime);
 
-        $this->_depotManager->saveFile('tokens', $token);
+//         $this->_depotManager->saveFile('tokens', $token);
 
-        return $token;
+//         return $token;
     }
 
 

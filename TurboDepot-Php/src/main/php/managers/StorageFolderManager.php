@@ -75,6 +75,17 @@ class StorageFolderManager extends BaseStrictClass{
 
 
     /**
+     * Gives the filesystem location to the storage/cache folder
+     *
+     * @return string
+     */
+    public function getPathToCache(){
+
+        return $this->_storagePath.DIRECTORY_SEPARATOR.'cache';
+    }
+
+
+    /**
      * Gives the filesystem location to the storage/custom folder
      *
      * @return string
