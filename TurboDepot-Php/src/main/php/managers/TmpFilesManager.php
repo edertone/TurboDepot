@@ -48,7 +48,7 @@ class TmpFilesManager extends BaseStrictClass{
      */
     public function __construct(string $rootPath){
 
-        $this->_rootPath = StringUtils::formatPath($rootPath);
+        $this->_rootPath = StringUtils::formatPath($rootPath, DIRECTORY_SEPARATOR);
 
         // Check specified folder exists
         if(!is_dir($this->_rootPath)){

@@ -66,7 +66,7 @@ class TmpFilesManagerTest extends TestCase {
     protected function tearDown(){
 
         // Delete temporary folder
-        $this->assertTrue($this->filesManager->deleteDirectory($this->tempFolder));
+        $this->filesManager->deleteDirectory($this->tempFolder);
 
         if($this->exceptionMessage != ''){
 
@@ -560,15 +560,34 @@ class TmpFilesManagerTest extends TestCase {
         $this->assertTrue($this->filesManager->isFile($this->tempFolder.DIRECTORY_SEPARATOR.$tmpFile2));
 
         $this->assertTrue($this->sut->deleteFile($tmpFile1));
-        $this->assertFalse($this->sut->deleteFile($tmpFile1));
+
+        try {
+            $this->sut->deleteFile($tmpFile1);
+            $this->exceptionMessage = '$tmpFile1 did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Not a file:/', $e->getMessage());
+        }
+
         $this->assertFalse($this->filesManager->isFile($this->tempFolder.DIRECTORY_SEPARATOR.$tmpFile1));
 
         $this->assertTrue($this->sut->deleteFile($tmpFile2));
-        $this->assertFalse($this->sut->deleteFile($tmpFile2));
+
+        try {
+            $this->sut->deleteFile($tmpFile2);
+            $this->exceptionMessage = '$tmpFile2 did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Not a file:/', $e->getMessage());
+        }
+
         $this->assertFalse($this->filesManager->isFile($this->tempFolder.DIRECTORY_SEPARATOR.$tmpFile2));
 
         // Test wrong values
-        $this->assertFalse($this->sut->deleteFile('non-existant-id'));
+        try {
+            $this->sut->deleteFile('non-existant-id');
+            $this->exceptionMessage = 'non-existant-id did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Not a file:/', $e->getMessage());
+        }
 
         // Test exceptions
         try {
@@ -623,7 +642,7 @@ class TmpFilesManagerTest extends TestCase {
         $tmpDir2 = $this->sut->addDirectory('dir');
         $this->assertTrue($this->filesManager->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.$tmpDir2));
 
-        $this->assertTrue($this->sut->deleteDirectory($tmpDir1));
+        $this->assertSame(0, $this->sut->deleteDirectory($tmpDir1));
 
         try {
             $this->sut->deleteDirectory($tmpDir1);
@@ -634,7 +653,7 @@ class TmpFilesManagerTest extends TestCase {
 
         $this->assertFalse($this->filesManager->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.$tmpDir1));
 
-        $this->assertTrue($this->sut->deleteDirectory($tmpDir2));
+        $this->assertSame(0, $this->sut->deleteDirectory($tmpDir2));
 
         try {
             $this->sut->deleteDirectory($tmpDir2);
