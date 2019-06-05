@@ -1,7 +1,7 @@
 <?php
 
 
-require_once __DIR__.'/resources/libs/turbocommons-php-2.1.0.phar';
+require_once __DIR__.'/resources/libs/turbocommons-php-2.1.1.phar';
 require_once __DIR__.'/../../main/php/autoloader.php';
 
 
