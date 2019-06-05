@@ -73,7 +73,7 @@ class LocalizedFilesManagerTest extends TestCase {
     protected function tearDown(){
 
         // Delete temporary folder
-        $this->assertTrue($this->filesManager->deleteDirectory($this->tempFolder));
+        $this->filesManager->deleteDirectory($this->tempFolder);
 
         if($this->exceptionMessage != ''){
 

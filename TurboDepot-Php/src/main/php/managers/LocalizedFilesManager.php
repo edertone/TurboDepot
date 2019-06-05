@@ -251,7 +251,7 @@ class LocalizedFilesManager extends FilesManager{
     /**
      * TODO - Implement
      */
-    public function mirrorDirectory($sourcePath, $destPath){
+    public function mirrorDirectory($sourcePath, $destPath, $timeout = 30){
     }
 
 
@@ -272,7 +272,7 @@ class LocalizedFilesManager extends FilesManager{
     /**
      * TODO - Implement
      */
-    public function deleteDirectory(string $path, bool $deleteDirectoryItself = true){
+    public function deleteDirectory(string $path, bool $deleteDirectoryItself = true, $timeout = 30){
     }
 
 
