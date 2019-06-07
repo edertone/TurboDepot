@@ -54,7 +54,8 @@ class CacheManagerTest extends TestCase {
 
         $this->sut = new CacheManager($this->tempFolder, 'test-zone');
 
-        $this->assertTrue($this->filesManager->isDirectoryEmpty($this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'));
+        $this->assertTrue($this->filesManager->isFile($this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR.'metadata'));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($this->tempFolder.DIRECTORY_SEPARATOR.'test-zone')));
     }
 
 
@@ -105,25 +106,27 @@ class CacheManagerTest extends TestCase {
             $this->sut = new CacheManager(0, 'test');
             $this->exceptionMessage = '0 did not cause exception';
         } catch (Throwable $e) {
-            $this->assertRegExp('/CacheManager received an invalid rootPath: 0/', $e->getMessage());
+            $this->assertRegExp('/Invalid rootPath Received: 0/', $e->getMessage());
         }
 
         try {
             $this->sut = new CacheManager('', 'test');
             $this->exceptionMessage = '"" did not cause exception';
         } catch (Throwable $e) {
-            $this->assertRegExp('/CacheManager received an invalid rootPath: /', $e->getMessage());
+            $this->assertRegExp('/Invalid rootPath Received: /', $e->getMessage());
         }
 
         try {
             $this->sut = new CacheManager('          ', 'test');
             $this->exceptionMessage = '"      " did not cause exception';
         } catch (Throwable $e) {
-            $this->assertRegExp('/CacheManager received an invalid rootPath:           /', $e->getMessage());
+            $this->assertRegExp('/Invalid rootPath Received:           /', $e->getMessage());
         }
 
         // Test ok values
         $this->assertSame('org\turbodepot\src\main\php\managers\CacheManager', get_class(new CacheManager($this->tempFolder, 'test')));
+
+        // TODO - test the timeToLive constructor parameter
 
         // Test wrong values
         // Test exceptions
@@ -131,7 +134,7 @@ class CacheManagerTest extends TestCase {
             $this->sut = new CacheManager('invalid/path/here', 'test');
             $this->exceptionMessage = 'null did not cause exception';
         } catch (Throwable $e) {
-            $this->assertRegExp('/CacheManager received an invalid rootPath: invalid\/path\/here/', $e->getMessage());
+            $this->assertRegExp('/Invalid rootPath Received: invalid\/path\/here/', $e->getMessage());
         }
 
         try {
@@ -161,6 +164,29 @@ class CacheManagerTest extends TestCase {
         } catch (Throwable $e) {
             $this->assertRegExp('/zone must be a non empty string/', $e->getMessage());
         }
+    }
+
+
+    /**
+     * testIsZoneExpired
+     *
+     * @return void
+     */
+    public function testIsZoneExpired(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 
@@ -218,6 +244,8 @@ class CacheManagerTest extends TestCase {
         $this->assertSame('someData2', $this->sut->get('someSection', 'someId2'));
         $this->assertSame('someData3', $this->sut->get('someSection2', 'someId'));
         $this->assertSame('someData4', $this->sut->get('someSection2', 'someId2'));
+
+        // TODO - test the zone timeToLive parameter
 
         // Test wrong values
         // Test exceptions
@@ -281,6 +309,8 @@ class CacheManagerTest extends TestCase {
         $this->assertSame('2', $this->sut->get('s2', '2'));
         $this->assertSame('3', $this->sut->get('s2', '3'));
 
+        // TODO - test the zone timeToLive parameter
+
         // Test wrong values
         $this->assertSame(null, $this->sut->get('nonexistantsection', 'nonexistantid'));
         $this->assertSame(null, $this->sut->get('someSection', 'nonexistantid'));
@@ -298,11 +328,34 @@ class CacheManagerTest extends TestCase {
 
 
     /**
-     * testClear
+     * testClearZone
      *
      * @return void
      */
-    public function testClear(){
+    public function testClearZone(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * testClearSection
+     *
+     * @return void
+     */
+    public function testClearSection(){
 
         // Test empty values
         // TODO

@@ -1,23 +1,24 @@
 # TurboDepot
 
-## General purpose multi storage library
+## One library for all your application storage requirements
 
 This library gives you total control over your application storage requirements: Anything you may need to store as part of your application development is managed in a super easy and centralized way. It is also designed to be cross language: Several versions like Php or Node are implemented with exactly the same features, APIs and classes. Just like all the other components of the turboframework platform: Super reusable and cross language. Learn once, code forever!
 
 ### Features
 
-- Super easy ORM: Save, read, list, filter and manipulate you application objects without caring about writing complex SQL queries (you can still execute plain SQL if necessary).
+- All the library configurations are centralized on a single json setup file.
+- Super easy ORM: Save, read, list, filter and manipulate you application objects without caring about writing complex SQL queries (you can still execute plain SQL when necessary).
+- All the stored database or file system elements are saved in a human readable way, so you can still easily manipulate them outside of this library when needed.
 - Write and read to log files and manage their lifetime and space usage.
 - Save, read, list and manage users, their permissions, tokens and security checks.
 - Manage the application temporary files
 - Manage the application cached data
 - Operate with the OS terminal with classes that emulate its features
 - Operate with the main application console with classes that emulate its features
-- All the storage configurations are centralized on a single json setup file.
-- All the stored database or file system elements are saved in a human readable way, so you can still easily manipulate them outside of this library when needed.
 - Easy but still powerful: Tested with massive amounts of stored objects. Heavily optimized under the hood for best performance.
-- Multiple depot instances can be managed: Each one with its own isolated storage space.
+- Multiple depot instances can be managed and configured on the same json setup file. Each one with its own isolated storage space.
 - Multiple file and database systems are supported.
+- Windows and Linux support.
 
 ### Language support
 

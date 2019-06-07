@@ -29,7 +29,21 @@ class CacheManager extends BaseStrictClass{
      * The full filesystem path to the root of the folder where cache files are stored
      * @var string
      */
-    private $_rootPath = '';
+    private $_zoneRoot = '';
+
+
+    /**
+     * See this class constructor for documentation
+     * @var string
+     */
+    private $_zoneTimeToLive = -1;
+
+
+    /**
+     * The full filesystem path to the metadata file that stores information about the current zone
+     * @var string
+     */
+    private $_metadataFilePath = '';
 
 
     /**
@@ -40,41 +54,85 @@ class CacheManager extends BaseStrictClass{
 
 
     /**
-     * Defines a general purpose file-system based storage cache.
+     * Defines a general purpose file-system based storage cache. Use this to fetch data that requires important amounts of time to be
+     * calculated or generated, and improve the time that's necessary to get it on successive requests.
      *
-     * Use this to fetch data that requires important amounts of time to be calculated or generated,
-     * and improve the time that's necessary to get it on successive requests.
+     * This cache system is divided into zones, which are different folders inside the cache root folder. Each zone is independent, and can
+     * be named and used for whatever purpose we want. Inside each of the zones, we can store cache "sections" which are another independent
+     * cache areas which can be also used and named for anything we want. Each section contains all the cached data that we generate.
      *
-     * This cache stores all the data on plain file system, so take it into consideration when requiring
-     * faster response times.
+     * All the data is stored on plain file system, so take it into consideration when fast response times are cryitcal.
+     *
+     * The expiration of the cache data is managed entirely by this class, so no cron or scheduled tasks should be required to clear outdated
+     * cache items.
      *
      * @param string $rootPath The full absolute filesystem path to the root of the folder where all the cache data files will be stored
      * @param string $zone To allow different types of cache data to be stored without colliding, the cache root folder is divided into
      *        several zones. We can define here the name for a zone we want to store our cached data, and it will be used. If the zone does
      *        not exist, it will be automatically created.
+     * @param string $timeToLive Defines the number of seconds after which the whole zone cache data will be deleted. Set it to -1 if you want to
+     *        manually manage the lifetime of the zone cached data. (1 hour = 3600 seconds, 1 day = 86400 seconds)
      *
      * @throws UnexpectedValueException
      */
-    public function __construct(string $rootPath, string $zone){
-
-        $this->_filesManager = new FilesManager();
-
-        if(!is_dir($rootPath)){
-
-            throw new UnexpectedValueException('CacheManager received an invalid rootPath: '.$rootPath);
-        }
+    public function __construct(string $rootPath, string $zone, int $timeToLive = -1){
 
         if(!StringUtils::isString($zone) || StringUtils::isEmpty($zone)){
 
             throw new UnexpectedValueException('zone must be a non empty string');
         }
 
-        if(!is_dir($rootPath.DIRECTORY_SEPARATOR.$zone)){
+        $this->_zoneTimeToLive = $timeToLive;
+        $this->_zoneRoot = $rootPath.DIRECTORY_SEPARATOR.$zone;
+        $this->_metadataFilePath = $this->_zoneRoot.DIRECTORY_SEPARATOR.'metadata';
 
-            $this->_filesManager->createDirectory($rootPath.DIRECTORY_SEPARATOR.$zone);
+        $this->_filesManager = new FilesManager();
+
+        // Make sure the metadata file for the current zone exists
+        if(!is_file($this->_metadataFilePath)){
+
+            if(!is_dir($rootPath)){
+
+                throw new UnexpectedValueException('Invalid rootPath Received: '.$rootPath);
+            }
+
+            if(!is_dir($this->_zoneRoot)){
+
+                $this->_filesManager->createDirectory($this->_zoneRoot);
+            }
+
+            // Add the timeToLive value to the current timestamp and store it on the metadata file.
+            // If timeToLive is disabled, an empty string will be stored
+            $this->_filesManager->saveFile($this->_metadataFilePath,
+                $this->_zoneTimeToLive === -1 ? '' : (string)(time() + $this->_zoneTimeToLive));
         }
 
-        $this->_rootPath = $rootPath.DIRECTORY_SEPARATOR.$zone;
+        if($this->isZoneExpired()){
+
+            $this->clearZone();
+        }
+    }
+
+
+    /**
+     * Tells if the currently active zone is expired or not.
+     * Expiration is based on the timeToLive setup and defines when the cache data needs to be renewed.
+     *If the current zone is expired, we must call to clearZone() to empty the zone cache files.
+     *
+     * @throws UnexpectedValueException
+     *
+     * @return boolean True if the zone expiration time has been exceeded. False otherwise
+     */
+    public function isZoneExpired(){
+
+        $zoneExpirationTime = file_get_contents($this->_metadataFilePath, true);
+
+        if($zoneExpirationTime === false){
+
+            throw new UnexpectedValueException('could not read cache metadata file: '.$this->_metadataFilePath);
+        }
+
+        return $zoneExpirationTime !== '' && (time() > (float)$zoneExpirationTime);
     }
 
 
@@ -87,16 +145,19 @@ class CacheManager extends BaseStrictClass{
      *
      * @throws UnexpectedValueException
      *
-     * @return string The received data
+     * @return string The same data
      */
-    public function add($section, $id, $data){
+    public function add($section, $id, $data, int $timeToLive = -1){
+
+        // TODO - implement time to live that is specific only to this data
+        // (The zone timeToLive value will have preference over this one)
 
         if(!StringUtils::isString($data)){
 
             throw new UnexpectedValueException('data must be a string');
         }
 
-        $fullPath = $this->_idToFullPath($section, $id);
+        $fullPath = $this->_fullPathToId($section, $id);
         $basePath = StringUtils::getPath($fullPath);
 
         if(!$this->_filesManager->isDirectory($basePath)){
@@ -120,18 +181,21 @@ class CacheManager extends BaseStrictClass{
      */
     public function get($section, $id){
 
-        $fullPath = $this->_idToFullPath($section, $id);
+        $fullPath = $this->_fullPathToId($section, $id);
 
-        try {
+        if(is_file($fullPath)){
 
-            if(($content = file_get_contents($fullPath, true)) !== false){
+            try {
 
-                return $content;
+                if(($content = file_get_contents($fullPath, true)) !== false){
+
+                    return $content;
+                }
+
+            } catch (Throwable $e) {
+
+                return null;
             }
-
-        } catch (Throwable $e) {
-
-            return null;
         }
 
         return null;
@@ -139,10 +203,44 @@ class CacheManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Totally delete all the contents of the actual cache zone.
      */
-    public function clear($section = '', $id = ''){
+    public function clearZone(){
 
+        // First of all, update the zone file with the new expiration time
+        $this->_filesManager->saveFile($this->_metadataFilePath,
+            $this->_zoneTimeToLive === -1 ? '' : (string)(time() + $this->_zoneTimeToLive));
+
+        // Delete all the other elements inside the current zone
+        $zoneItems = $this->_filesManager->getDirectoryList($this->_zoneRoot);
+
+        foreach ($zoneItems as $zoneItem) {
+
+            if(is_dir($this->_zoneRoot.DIRECTORY_SEPARATOR.$zoneItem)){
+
+                $this->_filesManager->deleteDirectory($this->_zoneRoot.DIRECTORY_SEPARATOR.$zoneItem);
+            }
+        }
+    }
+
+
+    /**
+     * Totally delete all the contents of the specified cache section
+     *
+     * @param string $section The name for a cache section (under the current zone) that will be deleted
+     *
+     * @throws UnexpectedValueException
+     *
+     * @return void
+     */
+    public function clearSection($section){
+
+        if(!is_dir($this->_zoneRoot.DIRECTORY_SEPARATOR.$section)){
+
+            throw new UnexpectedValueException('section <'.$section.'> does not exist');
+        }
+
+        $this->_filesManager->deleteDirectory($this->_zoneRoot.DIRECTORY_SEPARATOR.$section);
     }
 
 
@@ -156,7 +254,7 @@ class CacheManager extends BaseStrictClass{
      *
      * @return string A full file system path to the cache element. It may or may not exist
      */
-    private function _idToFullPath($section, $id){
+    private function _fullPathToId($section, $id){
 
         if(!StringUtils::isString($section) || StringUtils::isEmpty($section)){
 
@@ -170,7 +268,7 @@ class CacheManager extends BaseStrictClass{
 
         $idPath = implode(DIRECTORY_SEPARATOR, str_split(base64_encode($id), 4));
 
-        return StringUtils::formatPath($this->_rootPath.DIRECTORY_SEPARATOR.$section.DIRECTORY_SEPARATOR.$idPath.'.cache');
+        return StringUtils::formatPath($this->_zoneRoot.DIRECTORY_SEPARATOR.$section.DIRECTORY_SEPARATOR.$idPath.'.cache');
     }
 }
 
