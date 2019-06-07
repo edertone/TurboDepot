@@ -24,6 +24,12 @@
             "objects": {
                 "source": ""
             },
+            "googleDrive": {
+                "apiClientRoot": "",
+                "cacheRootPath": "",
+                "cacheZone": "",
+                "cacheZoneTimeToLive": -1
+            },
             "users": {
                 "source": "",
                 "tokenLength": 175,
