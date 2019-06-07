@@ -285,7 +285,7 @@ class DepotManagerTest extends TestCase {
 
 
     /**
-     * testTodo
+     * testGetLogsManager
      *
      * @return void
      */
@@ -332,6 +332,40 @@ class DepotManagerTest extends TestCase {
             $this->exceptionMessage = '"" did not cause exception';
         } catch (Throwable $e) {
             $this->assertRegExp('/LogsManager received an invalid rootPath: \/invalidPath/', $e->getMessage());
+        }
+    }
+
+
+    /**
+     * testGetGoogleDriveManager
+     *
+     * @return void
+     */
+    public function testGetGoogleDriveManager(){
+
+        // Test empty values
+        try {
+            $this->sut->getGoogleDriveManager();
+            $this->exceptionMessage = 'getGoogleDriveManager did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/googleDriveManager not available. Check it is correctly configured on turbodepot setup/', $e->getMessage());
+        }
+
+        // Test ok values
+        // Can't be tested, cause a connection to google drive must be performed.
+
+        // Test wrong values
+        // Not necessary
+
+        // Test exceptions
+        $this->setup->depots[0]->googleDrive->apiClientRoot = 'invalid path';
+        $this->sut = new DepotManager($this->setup);
+
+        try {
+            $this->sut->getGoogleDriveManager();
+            $this->exceptionMessage = '"" did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Specified googleApiPhpCLientRoot folder is not valid/', $e->getMessage());
         }
     }
 
