@@ -71,6 +71,13 @@ class DepotManager extends BaseStrictClass{
     private $_logsManager = null;
 
 
+/**
+     * A google drive manager instance that is used by this class
+     * @var GoogleDriveManager
+     */
+    private $_googleDriveManager = null;
+
+
     /**
      * A users manager instance that is used by this class
      * @var UsersManager
@@ -221,6 +228,32 @@ class DepotManager extends BaseStrictClass{
         }
 
         return $this->_logsManager;
+    }
+
+
+    /**
+     * Obtain the google drive manager instance that is available through this depot manager.
+     *
+     * @return GoogleDriveManager
+     */
+    public function getGoogleDriveManager(){
+
+        if($this->_googleDriveManager === null){
+
+            // Initialize the google drive manager to the folder that is defined on the depot setup
+            if(StringUtils::isEmpty($this->_loadedDepotSetup->googleDrive->apiClientRoot)){
+
+                throw new UnexpectedValueException('googleDriveManager not available. Check it is correctly configured on turbodepot setup');
+            }
+
+            $this->_googleDriveManager = new GoogleDriveManager(
+                $this->_loadedDepotSetup->googleDrive->apiClientRoot,
+                $this->_loadedDepotSetup->googleDrive->cacheRootPath,
+                $this->_loadedDepotSetup->googleDrive->cacheZone,
+                $this->_loadedDepotSetup->googleDrive->cacheZoneTimeToLive);
+        }
+
+        return $this->_googleDriveManager;
     }
 
 
