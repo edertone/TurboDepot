@@ -435,9 +435,12 @@ export class FilesManager{
      * Create a directory at the specified filesystem path
      *
      * @param path Absolute or relative path to the directoy we want to create. For example: c:\apps\my_new_folder
-     * @param recursive Allows the creation of nested directories specified in the pathname. Defaults to false.
+     * @param recursive Allows the creation of nested directories specified in the path. Defaults to false.
      *
-     * @return Returns true on success or false if the folder already exists (an exception may be thrown if a file exists with the same name or folder cannot be created).
+     * @throws An exception will be thrown if a file exists with the same name or folder cannot be created (If the folder already
+     *         exists, no exception will be thrown).
+     *
+     * @return True on success or false if the folder already exists.
      */
     createDirectory(path: string, recursive = false){
 
@@ -708,9 +711,21 @@ export class FilesManager{
     
     
     /**
-     * TODO - translate from php
+     * This method performs a one way sync process which consists in applying the minimum modifications to the destination path
+     * that will guarantee that it is an exact copy of the source path. Any files or folders that are identical on both provided paths
+     * will be left untouched
+     *
+     * @param sourcePath Absolute or relative path to the source directory where files and folders to mirror exist
+     * @param destPath Absolute or relative path to the destination directory that will be modified to exactly match the source one
+     * @param timeout The amount of seconds that this method will be trying to delete or modify a file in case it is blocked
+     *        by the OS or temporarily not accessible. If the file can't be deleted after the given amount of seconds, an exception
+     *        will be thrown.
+     *
+     * @throws Error in case any of the necessary file operations fail
+     *
+     * @return True on success
      */
-    mirrorDirectory(sourcePath: string, destPath: string){
+    mirrorDirectory(sourcePath: string, destPath: string, timeout = 30){
 
         sourcePath = this._composePath(sourcePath, true);
         destPath = this._composePath(destPath, true);
@@ -730,9 +745,9 @@ export class FilesManager{
             
             if(this.isDirectory(sourceItemPath)){
 
-                if(isDestItemPathAFile && !this.deleteFile(destItemPath)){
+                if(isDestItemPathAFile){
 
-                    throw new Error('Could not delete file from destination: ' + destItemPath);
+                    this.deleteFile(destItemPath, timeout);
                 }
 
                 if(!isDestItemPathADir){
@@ -740,13 +755,13 @@ export class FilesManager{
                     this.createDirectory(destItemPath);
                 }
 
-                this.mirrorDirectory(sourceItemPath, destItemPath);
+                this.mirrorDirectory(sourceItemPath, destItemPath, timeout);
 
             }else{
 
-                if(isDestItemPathADir && !this.deleteDirectory(destItemPath)){
+                if(isDestItemPathADir){
 
-                    throw new Error('Could not delete directory from destination: ' + destItemPath);
+                    this.deleteDirectory(destItemPath, true, timeout);
                 }
 
                 if((!isDestItemPathAFile || !this.isFileEqualTo(sourceItemPath, destItemPath)) &&
@@ -767,22 +782,16 @@ export class FilesManager{
 
                 if(!this.isDirectory(sourceItemPath)){
 
-                    if(!this.deleteDirectory(destItemPath)){
-
-                        throw new Error('Could not delete directory from destination: ' + destItemPath);
-                    }
+                    this.deleteDirectory(destItemPath, true, timeout);
 
                 }else{
 
-                    this.mirrorDirectory(sourceItemPath, destItemPath);
+                    this.mirrorDirectory(sourceItemPath, destItemPath, timeout);
                 }
 
-            }else{
+            }else if(!this.isFile(sourceItemPath)){
 
-                if(!this.isFile(sourceItemPath) && !this.deleteFile(destItemPath)){
-
-                    throw new Error('Could not delete file from destination: ' + destItemPath);
-                }
+                this.deleteFile(destItemPath, timeout);
             }
         }
 
@@ -832,33 +841,32 @@ export class FilesManager{
 
 
     /**
-     * Delete a directory from the filesystem and return a boolean telling if the directory delete succeeded or not
-     * Note: All directory contents, folders and files will be also removed.
-     * 
-     * @param path Absolute or relative path to the directory
-     * @param deleteDirectoryItself Set it to true if the specified directory must also be deleted.
+     * Delete a directory from the filesystem and all its contents (folders and files).
      *
-     * @return Returns true on success or false on failure.
+     * @param path Absolute or relative path to the directory that will be removed
+     * @param deleteDirectoryItself Set it to true if the specified directory must also be deleted.
+     * @param timeout The amount of seconds that this method will be trying to perform a delete operation in case it is blocked
+ *            by the OS or temporarily not accessible. If the operation can't be performed after the given amount of seconds,
+     *        an exception will be thrown.
+     *
+     * @return True on success
      */
-    deleteDirectory(path: string, deleteDirectoryItself = true){
+    deleteDirectory(path: string, deleteDirectoryItself = true, timeout = 30){
 
+        let deletedFilesCount = 0;
         path = this._composePath(path, true);
 
         for (let file of this.getDirectoryList(path)) {
   
             if(this.isDirectory(path + this.dirSep() + file)){
 
-                if(!this.deleteDirectory(path + this.dirSep() + file)){
-
-                    return false;
-                }
+                deletedFilesCount += this.deleteDirectory(path + this.dirSep() + file, true, timeout);
 
             }else{
 
-                if(!this.deleteFile(path + this.dirSep() + file)){
+                this.deleteFile(path + this.dirSep() + file, timeout);
 
-                    return false;
-                }
+                deletedFilesCount ++;
             }
         }
 
@@ -868,17 +876,13 @@ export class FilesManager{
 
                 this.fs.rmdirSync(path);
                 
-                return true;
-                
             } catch (e) {
 
-                return false;
+                throw new Error('Could not delete directory: ' + path);
             }
-            
-        } else {
-            
-            return true;
-        }
+        } 
+        
+        return deletedFilesCount;
     }
 
 
@@ -901,6 +905,10 @@ export class FilesManager{
 
         pathToFile = this._composePath(pathToFile);
 
+        // TODO : we should lock the file before writting to it.
+        // This feature is implemented on the PHP version of this library, but as it is not
+        // yet available on Nodejs, we cannot implement it here
+        
         try {
 
             if(append){
@@ -916,7 +924,7 @@ export class FilesManager{
             
         } catch (e) {
 
-            return false;
+            throw new Error('Could not write to file: ' + pathToFile);
         }
     }
 
@@ -1075,29 +1083,49 @@ export class FilesManager{
     /**
      * Delete a filesystem file.
      *
-     * @param pathToFile Absolute or relative path to the file to delete
+     * @param pathToFile Absolute or relative path to the file we want to delete
+     * @param timeout The amount of seconds that this method will be trying to delete the specified file in case it is blocked
+     *        by the OS or temporarily not accessible. If the file can't be deleted after the given amount of seconds, an exception
+     *        will be thrown.
      *
-     * @return Returns true on success or false on failure.
+     * @throws Error if the file cannot be deleted, an exception will be thrown
+     *
+     * @return True on success
      */
-    deleteFile(pathToFile: string){
+    deleteFile(pathToFile: string, timeout = 30){
 
         pathToFile = this._composePath(pathToFile);
 
         if(!this.isFile(pathToFile)){
 
-            return false;
+            throw new Error('Not a file: ' + pathToFile);
+        }
+        
+        let lastError = '';
+        let fileHasBeenDeleted = false;
+        let deleteStartTime = Math.floor(Date.now() / 1000);
+
+        while (!fileHasBeenDeleted && (Math.floor(Date.now() / 1000) - deleteStartTime) < timeout) {
+
+            try {
+
+                this.fs.unlinkSync(pathToFile);
+                
+                fileHasBeenDeleted = true;
+                
+            } catch (e) {
+                
+                lastError = e.toString();
+                fileHasBeenDeleted = false;
+            }
         }
 
-        try {
+        if(!fileHasBeenDeleted){
 
-            this.fs.unlinkSync(pathToFile);
-            
-            return true;
-            
-        } catch (e) {
-            
-            return false;
+            throw new Error('Error deleting file: ' + pathToFile + ' ' + lastError);
         }
+
+        return true;
     }
     
     
@@ -1105,22 +1133,22 @@ export class FilesManager{
      * Delete a list of filesystem files.
      *
      * @param pathsToFiles A list of filesystem absolute or relative paths to files to delete
+     * @param timeout The amount of seconds that this method will be trying to delete a file in case it is blocked
+     *        by the OS or temporarily not accessible. If the file can't be deleted after the given amount of seconds, an exception
+     *        will be thrown.
      *
-     * @return Returns true on success or false if any of the files failed to be deleted
+     * @throws Error if any of the files cannot be deleted, an exception will be thrown
+     *
+     * @return True on success
      */
-    deleteFiles(pathsToFiles: string[]){
+    deleteFiles(pathsToFiles: string[], timeout = 30){
 
-        let result = true;
+        for (let pathToFile of pathsToFiles) {
 
-        for (let i = 0; i < pathsToFiles.length; i++) {
-
-            if(!this.deleteFile(this._composePath(pathsToFiles[i]))){
-
-                result = false;
-            }
+            this.deleteFile(pathToFile, timeout);
         }
 
-        return result;
+        return true;
     }
     
     

@@ -1640,7 +1640,7 @@ class FilesManagerTest extends TestCase {
         $this->assertTrue($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
 
         // Delete one folder from the previously mirrored temp folder and make sure the mirror process restores it
-        $this->assertTrue($this->sut->deleteDirectory($this->tempFolder.'/test-1/c'));
+        $this->assertSame(1, $this->sut->deleteDirectory($this->tempFolder.'/test-1/c'));
         $this->assertFalse($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
         $this->assertTrue($this->sut->mirrorDirectory($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
         $this->assertTrue($this->sut->isDirectoryEqualTo($this->basePath.'/mirrorDirectory/test-1', $this->tempFolder.'/test-1'));
@@ -1781,12 +1781,13 @@ class FilesManagerTest extends TestCase {
         $this->createDummyDirectoryStucture($dir1, 4, 4, 'somefile', 5, 'file content');
         $this->createDummyDirectoryStucture($dir2, 8, 2, 'somefile', 2, 'f');
 
-        $this->assertTrue($this->sut->deleteDirectory($dir1, false));
+        $this->assertSame(80, $this->sut->deleteDirectory($dir1, false));
         $this->assertTrue($this->sut->isDirectory($dir1));
-        $this->assertTrue($this->sut->deleteDirectory($dir1, true));
+        $this->assertTrue($this->sut->isDirectoryEmpty($dir1));
+        $this->assertSame(0, $this->sut->deleteDirectory($dir1, true));
         $this->assertFalse($this->sut->isDirectory($dir1));
 
-        $this->assertTrue($this->sut->deleteDirectory($dir2));
+        $this->assertSame(32 ,$this->sut->deleteDirectory($dir2));
         $this->assertFalse($this->sut->isDirectory($dir1));
 
         // Test wrong values
@@ -1815,18 +1816,76 @@ class FilesManagerTest extends TestCase {
     public function testSaveFile(){
 
         // Test empty values
-        // TODO
+        try {
+            $this->sut->saveFile(null, null, null);
+            $this->exceptionMessage = 'null did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path must be a string/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->saveFile('', null, null);
+            $this->exceptionMessage = 'null did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Filename cannot be empty/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->saveFile('', '', null);
+            $this->exceptionMessage = 'null did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Filename cannot be empty/', $e->getMessage());
+        }
 
         // Test ok values
-        // TODO
+        $this->assertFalse($this->sut->isFile($this->tempFolder.DIRECTORY_SEPARATOR.'empty.txt'));
+        $this->assertTrue($this->sut->saveFile($this->tempFolder.DIRECTORY_SEPARATOR.'empty.txt'));
+        $this->assertSame('', $this->sut->readFile($this->tempFolder.DIRECTORY_SEPARATOR.'empty.txt'));
+
+        $this->assertFalse($this->sut->isFile($this->tempFolder.DIRECTORY_SEPARATOR.'file.txt'));
+        $this->assertTrue($this->sut->saveFile($this->tempFolder.DIRECTORY_SEPARATOR.'file.txt', 'test'));
+        $this->assertSame('test', $this->sut->readFile($this->tempFolder.DIRECTORY_SEPARATOR.'file.txt'));
+
+        $this->assertTrue($this->sut->saveFile($this->tempFolder.DIRECTORY_SEPARATOR.'file.txt', 'test', true));
+        $this->assertSame('testtest', $this->sut->readFile($this->tempFolder.DIRECTORY_SEPARATOR.'file.txt'));
+
+        $this->assertTrue($this->sut->saveFile($this->tempFolder.DIRECTORY_SEPARATOR.'file.txt', 'replaced', false));
+        $this->assertSame('replaced', $this->sut->readFile($this->tempFolder.DIRECTORY_SEPARATOR.'file.txt'));
+
+        $this->assertFalse($this->sut->isFile($this->tempFolder.DIRECTORY_SEPARATOR.'file2.txt'));
+        $this->assertTrue($this->sut->saveFile($this->tempFolder.DIRECTORY_SEPARATOR.'file2.txt', 'file2', true));
+        $this->assertSame('file2', $this->sut->readFile($this->tempFolder.DIRECTORY_SEPARATOR.'file2.txt'));
+
+        $sut2 = new FilesManager($this->tempFolder);
+        $this->assertFalse($sut2->isFile('file3.txt'));
+        $this->assertTrue($sut2->saveFile('file3.txt', 'file3'));
+        $this->assertSame('file3', $sut2->readFile('file3.txt'));
 
         // Test wrong values
-        // TODO
+        try {
+            $this->sut->saveFile('nonexistantpath/nonexistantfile');
+            $this->exceptionMessage = 'nonexistantpath/nonexistantfile did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/No such file or directory/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->saveFile([1,2,3,4,5]);
+            $this->exceptionMessage = '[1,2,3,4,5] did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path must be a string/', $e->getMessage());
+        }
 
         // Test exceptions
-        // TODO
+        $this->assertFalse($this->sut->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'dir'));
+        $this->assertTrue($this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'dir'));
 
-        $this->markTestIncomplete('This test has not been implemented yet.');
+        try {
+            $this->sut->saveFile($this->tempFolder.DIRECTORY_SEPARATOR.'dir');
+            $this->exceptionMessage = 'dir did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/failed to open stream/', $e->getMessage());
+        }
     }
 
 

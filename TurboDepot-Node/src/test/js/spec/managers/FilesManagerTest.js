@@ -298,7 +298,7 @@ describe('FilesManager', function() {
         expect(this.sut.isDirectoryEqualTo(this.basePath + '/mirrorDirectory/test-1', this.tempFolder + '/test-1')).toBe(true);
         
         // Delete one folder from the previously mirrored temp folder and make sure the mirror process restores it
-        expect(this.sut.deleteDirectory(this.tempFolder + '/test-1/c')).toBe(true);
+        expect(this.sut.deleteDirectory(this.tempFolder + '/test-1/c')).toBe(1);
         expect(this.sut.isDirectoryEqualTo(this.basePath + '/mirrorDirectory/test-1', this.tempFolder + '/test-1')).toBe(false);
         expect(this.sut.mirrorDirectory(this.basePath + '/mirrorDirectory/test-1', this.tempFolder + '/test-1')).toBe(true);
         expect(this.sut.isDirectoryEqualTo(this.basePath + '/mirrorDirectory/test-1', this.tempFolder + '/test-1')).toBe(true);
@@ -326,6 +326,83 @@ describe('FilesManager', function() {
         expect(() => {
             this.sut.mirrorDirectory([1,2,3,4], [1,2,3,4]);
         }).toThrowError(Error, /Path must be a string/);
+    });
+    
+    
+    it('should have a correctly implemented syncDirectories method', function() {
+
+        // TODO - translate from php      
+    });
+    
+    
+    it('should have a correctly implemented renameDirectory method', function() {
+
+        // TODO - translate from php      
+    });
+    
+    
+    it('should have a correctly implemented deleteDirectory method', function() {
+
+        // TODO - translate from php      
+    });
+    
+    
+    it('should have a correctly implemented saveFile method', function() {
+
+        // Test empty values
+        expect(() => {
+            this.sut.saveFile(null, null, null);
+        }).toThrowError(Error, /Path must be a string/);
+        
+        expect(() => {
+            this.sut.saveFile('', null, null);
+        }).toThrowError(Error, /Could not write to file/);
+        
+        expect(() => {
+            this.sut.saveFile('', '', null);
+        }).toThrowError(Error, /Could not write to file/);
+        
+
+        // Test ok values
+        expect(this.sut.isFile(this.tempFolder + '/empty.txt')).toBe(false);
+        expect(this.sut.saveFile(this.tempFolder + '/empty.txt')).toBe(true);
+        expect(this.sut.readFile(this.tempFolder + '/empty.txt')).toBe('');
+
+        expect(this.sut.isFile(this.tempFolder + '/file.txt')).toBe(false);
+        expect(this.sut.saveFile(this.tempFolder + '/file.txt', 'test')).toBe(true);
+        expect(this.sut.readFile(this.tempFolder + '/file.txt')).toBe('test');
+
+        expect(this.sut.saveFile(this.tempFolder + '/file.txt', 'test', true)).toBe(true);
+        expect(this.sut.readFile(this.tempFolder + '/file.txt')).toBe('testtest');
+
+        expect(this.sut.saveFile(this.tempFolder + '/file.txt', 'replaced', false)).toBe(true);
+        expect(this.sut.readFile(this.tempFolder + '/file.txt')).toBe('replaced');
+
+        expect(this.sut.isFile(this.tempFolder + '/file2.txt')).toBe(false);
+        expect(this.sut.saveFile(this.tempFolder + '/file2.txt', 'file2', true)).toBe(true);
+        expect(this.sut.readFile(this.tempFolder + '/file2.txt')).toBe('file2');
+
+        let sut2 = new FilesManager(this.tempFolder);
+        expect(sut2.isFile('file3.txt')).toBe(false);
+        expect(sut2.saveFile('file3.txt', 'file3')).toBe(true);
+        expect(sut2.readFile('file3.txt')).toBe('file3');
+
+        // Test wrong values
+        expect(() => {
+            this.sut.saveFile('nonexistantpath/nonexistantfile');
+        }).toThrowError(Error, /Could not write to file/);
+        
+        expect(() => {
+            this.sut.saveFile([1,2,3,4,5]);
+        }).toThrowError(Error, /Path must be a string/);
+        
+        // Test exceptions
+        expect(this.sut.isDirectory(this.tempFolder + '/dir')).toBe(false);
+        expect(this.sut.createDirectory(this.tempFolder + '/dir')).toBe(true);
+
+        expect(() => {
+            this.sut.saveFile(this.tempFolder + '/dir');
+        }).toThrowError(Error, /Could not write to file/);
     });
 });
 

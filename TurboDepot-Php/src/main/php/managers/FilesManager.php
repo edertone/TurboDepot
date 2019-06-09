@@ -13,6 +13,7 @@ namespace org\turbodepot\src\main\php\managers;
 
 use DirectoryIterator;
 use Exception;
+use Throwable;
 use UnexpectedValueException;
 use org\turbocommons\src\main\php\utils\StringUtils;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
@@ -410,9 +411,12 @@ class FilesManager extends BaseStrictClass{
      * Create a directory at the specified filesystem path
      *
      * @param string $path Absolute or relative path to the directoy we want to create. For example: c:\apps\my_new_folder
-     * @param bool $recursive Allows the creation of nested directories specified in the pathname. Defaults to false.
+     * @param bool $recursive Allows the creation of nested directories specified in the path. Defaults to false.
      *
-     * @return bool Returns true on success or false if the folder already exists (an exception may be thrown if a file exists with the same name or folder cannot be created).
+     * @throws Throwable An exception will be thrown if a file exists with the same name or folder cannot be created (If the folder already
+     *         exists, no exception will be thrown).
+     *
+     * @return boolean True on success or false if the folder already exists.
      */
     public function createDirectory(string $path, bool $recursive = false){
 
@@ -433,26 +437,9 @@ class FilesManager extends BaseStrictClass{
         // Create the requested folder
         try{
 
-            if(!$recursive){
+            mkdir($path, 0755, $recursive);
 
-                mkdir($path, null, false);
-
-            }else{
-
-                $reconstructedPath = '';
-
-                for ($i = 0, $l = StringUtils::countPathElements($path); $i < $l; $i++) {
-
-                    $reconstructedPath .= StringUtils::getPathElement($path, $i).$this->dirSep();
-
-                    if(!is_dir($reconstructedPath)){
-
-                        mkdir($reconstructedPath, null, false);
-                    }
-                }
-            }
-
-        }catch(Exception $e){
+        }catch(Throwable $e){
 
             // It is possible that multiple concurrent calls create the same folder at the same time.
             // We will ignore those exceptions cause there's no problen with this situation, the first of the calls creates it and we are ok with it.
@@ -690,10 +677,21 @@ class FilesManager extends BaseStrictClass{
 
 
     /**
-     * // TODO - this method will apply the minimum modifications to the destination path to make sure it is an exact copy
-     * // of the source one. It is a one way sync process
+     * This method performs a one way sync process which consists in applying the minimum modifications to the destination path
+     * that will guarantee that it is an exact copy of the source path. Any files or folders that are identical on both provided paths
+     * will be left untouched
+     *
+     * @param string $sourcePath Absolute or relative path to the source directory where files and folders to mirror exist
+     * @param string $destPath Absolute or relative path to the destination directory that will be modified to exactly match the source one
+     * @param int $timeout The amount of seconds that this method will be trying to delete or modify a file in case it is blocked
+     *            by the OS or temporarily not accessible. If the file can't be deleted after the given amount of seconds, an exception
+     *            will be thrown.
+     *
+     * @throws UnexpectedValueException In case any of the necessary file operations fail
+     *
+     * @return boolean True on success
      */
-    public function mirrorDirectory($sourcePath, $destPath){
+    public function mirrorDirectory($sourcePath, $destPath, $timeout = 30){
 
         $sourcePath = $this->_composePath($sourcePath, true);
         $destPath = $this->_composePath($destPath, true);
@@ -713,9 +711,9 @@ class FilesManager extends BaseStrictClass{
 
             if(is_dir($sourceItemPath)){
 
-                if($isDestItemPathAFile && !$this->deleteFile($destItemPath)){
+                if($isDestItemPathAFile){
 
-                    throw new UnexpectedValueException('Could not delete file from destination: '.$destItemPath);
+                    $this->deleteFile($destItemPath, $timeout);
                 }
 
                 if(!$isDestItemPathADir){
@@ -723,13 +721,13 @@ class FilesManager extends BaseStrictClass{
                     $this->createDirectory($destItemPath);
                 }
 
-                $this->mirrorDirectory($sourceItemPath, $destItemPath);
+                $this->mirrorDirectory($sourceItemPath, $destItemPath, $timeout);
 
             }else{
 
-                if($isDestItemPathADir && !$this->deleteDirectory($destItemPath)){
+                if($isDestItemPathADir){
 
-                    throw new UnexpectedValueException('Could not delete directory from destination: '.$destItemPath);
+                    $this->deleteDirectory($destItemPath, true, $timeout);
                 }
 
                 if((!$isDestItemPathAFile || !$this->isFileEqualTo($sourceItemPath, $destItemPath)) &&
@@ -750,22 +748,16 @@ class FilesManager extends BaseStrictClass{
 
                 if(!is_dir($sourceItemPath)){
 
-                    if(!$this->deleteDirectory($destItemPath)){
-
-                        throw new UnexpectedValueException('Could not delete directory from destination: '.$destItemPath);
-                    }
+                    $this->deleteDirectory($destItemPath, true, $timeout);
 
                 }else{
 
-                    $this->mirrorDirectory($sourceItemPath, $destItemPath);
+                    $this->mirrorDirectory($sourceItemPath, $destItemPath, $timeout);
                 }
 
-            }else{
+            }elseif(!is_file($sourceItemPath)){
 
-                if(!is_file($sourceItemPath) && !$this->deleteFile($destItemPath)){
-
-                    throw new UnexpectedValueException('Could not delete file from destination: '.$destItemPath);
-                }
+                $this->deleteFile($destItemPath, $timeout);
             }
         }
 
@@ -805,16 +797,19 @@ class FilesManager extends BaseStrictClass{
 
 
     /**
-     * Delete a directory from the filesystem and return a boolean telling if the directory delete succeeded or not
-     * Note: All directory contents, folders and files will be also removed.
+     * Delete a directory from the filesystem and all its contents (folders and files).
      *
-     * @param string $path Absolute or relative path to the directory
+     * @param string $path Absolute or relative path to the directory that will be removed
      * @param string $deleteDirectoryItself Set it to true if the specified directory must also be deleted.
+     * @param int $timeout The amount of seconds that this method will be trying to perform a delete operation in case it is blocked
+     *            by the OS or temporarily not accessible. If the operation can't be performed after the given amount of seconds,
+     *            an exception will be thrown.
      *
-     * @return bool Returns true on success or false on failure.
+     * @return boolean True on success
      */
-    public function deleteDirectory(string $path, bool $deleteDirectoryItself = true){
+    public function deleteDirectory(string $path, bool $deleteDirectoryItself = true, $timeout = 30){
 
+        $deletedFilesCount = 0;
         $path = $this->_composePath($path, true);
 
         $dirIterator = new DirectoryIterator($path);
@@ -825,17 +820,13 @@ class FilesManager extends BaseStrictClass{
 
                 if(is_dir($path.DIRECTORY_SEPARATOR.$fileInfo->getFilename())){
 
-                    if(!$this->deleteDirectory($path.DIRECTORY_SEPARATOR.$fileInfo->getFilename())){
-
-                        return false;
-                    }
+                    $deletedFilesCount += $this->deleteDirectory($path.DIRECTORY_SEPARATOR.$fileInfo->getFilename(), true, $timeout);
 
                 }else{
 
-                    if(!unlink($path.DIRECTORY_SEPARATOR.$fileInfo->getFilename())){
+                    $this->deleteFile($path.DIRECTORY_SEPARATOR.$fileInfo->getFilename(), $timeout);
 
-                        return false;
-                    }
+                    $deletedFilesCount ++;
                 }
             }
         }
@@ -844,7 +835,12 @@ class FilesManager extends BaseStrictClass{
         unset($fileInfo);
         unset($dirIterator);
 
-        return $deleteDirectoryItself ? rmdir($path) : true;
+        if($deleteDirectoryItself && !rmdir($path)){
+
+            throw new UnexpectedValueException('Could not delete directory: '.$path);
+        }
+
+        return $deletedFilesCount;
     }
 
 
@@ -863,13 +859,35 @@ class FilesManager extends BaseStrictClass{
      *
      * @return True on success or false on failure.
      */
-    public function saveFile(string $pathToFile, string $data = '', bool $append = false){
+    public function saveFile($pathToFile, $data = '', $append = false){
 
         $pathToFile = $this->_composePath($pathToFile);
 
-        $flags = $append ? FILE_APPEND : null;
+        $filePointer = fopen($pathToFile, $append ? 'a' : 'w');
 
-        return file_put_contents($pathToFile, $data, $flags) !== false;
+        if($filePointer === false){
+
+            throw new UnexpectedValueException('Could not write to file: '.$pathToFile);
+        }
+
+        // Acquire exclusive lock. If any other process is already writting to this file and has it locked,
+        // this method will wait till the lock is released
+        if(flock($filePointer, LOCK_EX)) {
+
+            fwrite($filePointer, $data);
+
+            // flush output before releasing the lock
+            fflush($filePointer);
+
+            // Release the lock so other processes can write to the file
+            flock($filePointer, LOCK_UN);
+
+        } else {
+
+            throw new UnexpectedValueException('Could not lock file: '.$pathToFile);
+        }
+
+        return fclose($filePointer);
     }
 
 
@@ -1069,20 +1087,38 @@ class FilesManager extends BaseStrictClass{
     /**
      * Delete a filesystem file.
      *
-     * @param string $pathToFile Absolute or relative path to the file to delete
+     * @param string $pathToFile Absolute or relative path to the file we want to delete
+     * @param int $timeout The amount of seconds that this method will be trying to delete the specified file in case it is blocked
+     *            by the OS or temporarily not accessible. If the file can't be deleted after the given amount of seconds, an exception
+     *            will be thrown.
      *
-     * @return boolean Returns true on success or false on failure.
+     * @throws UnexpectedValueException If the file cannot be deleted, an exception will be thrown
+     *
+     * @return boolean True on success
      */
-    public function deleteFile(string $pathToFile){
+    public function deleteFile(string $pathToFile, int $timeout = 30){
 
         $pathToFile = $this->_composePath($pathToFile);
 
         if(!is_file($pathToFile)){
 
-            return false;
+            throw new UnexpectedValueException('Not a file: '.$pathToFile);
         }
 
-        return unlink($pathToFile);
+        $fileHasBeenDeleted = false;
+        $deleteStartTime = time();
+
+        while (!$fileHasBeenDeleted && (time() - $deleteStartTime) < $timeout) {
+
+            $fileHasBeenDeleted = unlink($pathToFile);
+        }
+
+        if(!$fileHasBeenDeleted){
+
+            throw new UnexpectedValueException('Error deleting file: '.$pathToFile.' '.error_get_last()['message']);
+        }
+
+        return true;
     }
 
 
@@ -1090,22 +1126,22 @@ class FilesManager extends BaseStrictClass{
      * Delete a list of filesystem files.
      *
      * @param array $pathsToFiles A list of filesystem absolute or relative paths to files to delete
+     * @param int $timeout The amount of seconds that this method will be trying to delete a file in case it is blocked
+     *            by the OS or temporarily not accessible. If the file can't be deleted after the given amount of seconds, an exception
+     *            will be thrown.
      *
-     * @return boolean Returns true on success or false if any of the files failed to be deleted
+     * @throws UnexpectedValueException If any of the files cannot be deleted, an exception will be thrown
+     *
+     * @return boolean True on success
      */
-    public function deleteFiles(array $pathsToFiles){
+    public function deleteFiles(array $pathsToFiles, int $timeout = 30){
 
-        $result = true;
+        foreach ($pathsToFiles as $pathToFile) {
 
-        for ($i = 0, $l = count($pathsToFiles); $i < $l; $i++) {
-
-            if(!$this->deleteFile($this->_composePath($pathsToFiles[$i]))){
-
-                $result = false;
-            }
+            $this->deleteFile($pathToFile, $timeout);
         }
 
-        return $result;
+        return true;
     }
 
 
