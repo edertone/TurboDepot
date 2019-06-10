@@ -157,7 +157,7 @@ class CacheManager extends BaseStrictClass{
             throw new UnexpectedValueException('data must be a string');
         }
 
-        $fullPath = $this->_fullPathToId($section, $id);
+        $fullPath = $this->_getFullPathToId($section, $id);
         $basePath = StringUtils::getPath($fullPath);
 
         if(!$this->_filesManager->isDirectory($basePath)){
@@ -181,7 +181,7 @@ class CacheManager extends BaseStrictClass{
      */
     public function get($section, $id){
 
-        $fullPath = $this->_fullPathToId($section, $id);
+        $fullPath = $this->_getFullPathToId($section, $id);
 
         if(is_file($fullPath)){
 
@@ -204,6 +204,8 @@ class CacheManager extends BaseStrictClass{
 
     /**
      * Totally delete all the contents of the actual cache zone.
+     *
+     * @return boolean True on success
      */
     public function clearZone(){
 
@@ -221,6 +223,8 @@ class CacheManager extends BaseStrictClass{
                 $this->_filesManager->deleteDirectory($this->_zoneRoot.DIRECTORY_SEPARATOR.$zoneItem);
             }
         }
+
+        return true;
     }
 
 
@@ -231,7 +235,7 @@ class CacheManager extends BaseStrictClass{
      *
      * @throws UnexpectedValueException
      *
-     * @return void
+     * @return boolean True on success
      */
     public function clearSection($section){
 
@@ -241,6 +245,8 @@ class CacheManager extends BaseStrictClass{
         }
 
         $this->_filesManager->deleteDirectory($this->_zoneRoot.DIRECTORY_SEPARATOR.$section);
+
+        return true;
     }
 
 
@@ -254,16 +260,16 @@ class CacheManager extends BaseStrictClass{
      *
      * @return string A full file system path to the cache element. It may or may not exist
      */
-    private function _fullPathToId($section, $id){
+    private function _getFullPathToId($section, $id){
 
         if(!StringUtils::isString($section) || StringUtils::isEmpty($section)){
 
             throw new UnexpectedValueException('section must be a non empty string');
         }
 
-        if(!StringUtils::isString($id) || StringUtils::isEmpty($id)){
+        if(!StringUtils::isString($id)){
 
-            throw new UnexpectedValueException('id must be a non empty string');
+            throw new UnexpectedValueException('id must be a string');
         }
 
         $idPath = implode(DIRECTORY_SEPARATOR, str_split(base64_encode($id), 4));

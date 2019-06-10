@@ -206,6 +206,7 @@ class CacheManagerTest extends TestCase {
         }
 
         foreach ($this->emptyValues as $emptyValue) {
+
             try {
                 $this->sut->add($emptyValue, 'validId', 'validData');
                 $this->exceptionMessage = '$emptyValue section did not cause exception';
@@ -213,11 +214,18 @@ class CacheManagerTest extends TestCase {
                 $this->assertRegExp('/section must be a non empty string/', $e->getMessage());
             }
 
-            try {
-                $this->sut->add('validSection', $emptyValue, 'validData');
-                $this->exceptionMessage = '$emptyValue id did not cause exception';
-            } catch (Throwable $e) {
-                $this->assertRegExp('/id must be a non empty string/', $e->getMessage());
+            if($emptyValue === '' || $emptyValue === '     ' || $emptyValue === "\n\n\n"){
+
+                $this->assertSame('validData', $this->sut->add('validSection', $emptyValue, 'validData'));
+
+            }else{
+
+                try {
+                    $this->sut->add('validSection', $emptyValue, 'validData');
+                    $this->exceptionMessage = '$emptyValue id did not cause exception';
+                } catch (Throwable $e) {
+                    $this->assertRegExp('/id must be a string/', $e->getMessage());
+                }
             }
         }
 
@@ -229,8 +237,10 @@ class CacheManagerTest extends TestCase {
         }
 
         $this->sut->add('validSection', 'validId', '');
-
         $this->assertTrue($this->filesManager->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR.'validSection'));
+
+        $this->assertSame('data', $this->sut->add('validSection', '', 'data'));
+        $this->assertSame('data', $this->filesManager->readFile($this->tempFolder.'/test-zone/validSection/.cache'));
 
         // Test ok values
         $this->sut->add('someSection', 'someId', 'someData1');
@@ -239,11 +249,12 @@ class CacheManagerTest extends TestCase {
         $this->assertSame('someData2', $this->sut->add('someSection', 'someId2', 'someData2'));
         $this->assertSame('someData3', $this->sut->add('someSection2', 'someId', 'someData3'));
         $this->assertSame('someData4', $this->sut->add('someSection2', 'someId2', 'someData4'));
+        $this->assertSame('someData4-overriden', $this->sut->add('someSection2', 'someId2', 'someData4-overriden'));
 
         $this->assertSame('someData1', $this->sut->get('someSection', 'someId'));
         $this->assertSame('someData2', $this->sut->get('someSection', 'someId2'));
         $this->assertSame('someData3', $this->sut->get('someSection2', 'someId'));
-        $this->assertSame('someData4', $this->sut->get('someSection2', 'someId2'));
+        $this->assertSame('someData4-overriden', $this->sut->get('someSection2', 'someId2'));
 
         // TODO - test the zone timeToLive parameter
 
@@ -260,7 +271,7 @@ class CacheManagerTest extends TestCase {
             $this->sut->add('validSection', [1,2,3,4], 'valid');
             $this->exceptionMessage = '123123 data did not cause exception';
         } catch (Throwable $e) {
-            $this->assertRegExp('/id must be a non empty string/', $e->getMessage());
+            $this->assertRegExp('/id must be a string/', $e->getMessage());
         }
 
         try {
@@ -291,10 +302,11 @@ class CacheManagerTest extends TestCase {
             $this->sut->get('someSection', null);
             $this->exceptionMessage = 'null id did not cause exception';
         } catch (Throwable $e) {
-            $this->assertRegExp('/id must be a non empty string/', $e->getMessage());
+            $this->assertRegExp('/id must be a string/', $e->getMessage());
         }
 
         // Test ok values
+        $this->sut->add('s0', '', '0');
         $this->sut->add('s1', '1', '1');
         $this->sut->add('s1', '2', '2');
         $this->sut->add('s1', '3', '3');
@@ -302,6 +314,7 @@ class CacheManagerTest extends TestCase {
         $this->sut->add('s2', '2', '2');
         $this->sut->add('s2', '3', '3');
 
+        $this->assertSame('0', $this->sut->get('s0', ''));
         $this->assertSame('1', $this->sut->get('s1', '1'));
         $this->assertSame('2', $this->sut->get('s1', '2'));
         $this->assertSame('3', $this->sut->get('s1', '3'));
