@@ -849,7 +849,8 @@ export class FilesManager{
  *            by the OS or temporarily not accessible. If the operation can't be performed after the given amount of seconds,
      *        an exception will be thrown.
      *
-     * @return True on success
+     * @return The number of files that have been deleted as part of the directory removal process. If directory does not exist
+     *         or it could not be deleted, an exception will be thrown
      */
     deleteDirectory(path: string, deleteDirectoryItself = true, timeout = 30){
 

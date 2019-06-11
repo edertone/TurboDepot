@@ -13,6 +13,7 @@
 namespace org\turbodepot\src\main\php\managers;
 
 
+use Throwable;
 use UnexpectedValueException;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
 use org\turbocommons\src\main\php\utils\StringUtils;
@@ -94,7 +95,11 @@ class TmpFilesManager extends BaseStrictClass{
         $uniqueId = $this->_filesManager->findUniqueFileName($this->_rootPath, $expiryDate.'_'.$id);
 
         // Store the file
-        if(!$this->_filesManager->saveFile($this->_rootPath.DIRECTORY_SEPARATOR.$uniqueId, $binaryData)){
+        try {
+
+            $this->_filesManager->saveFile($this->_rootPath.DIRECTORY_SEPARATOR.$uniqueId, $binaryData);
+
+        } catch (Throwable $e) {
 
             throw new UnexpectedValueException('Could not create temporary file: '.$this->_rootPath.DIRECTORY_SEPARATOR.$uniqueId);
         }
@@ -235,7 +240,8 @@ class TmpFilesManager extends BaseStrictClass{
      *
      * @param string $id Identifier for the directory we want to delete
      *
-     * @return bool True on success or false on failure
+     * @return bool The number of files that have been deleted as part of the directory removal process. If directory does not exist
+     *         or it could not be deleted, an exception will be thrown
      */
     public function deleteDirectory($id){
 
