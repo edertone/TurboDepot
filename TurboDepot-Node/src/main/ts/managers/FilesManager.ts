@@ -725,7 +725,7 @@ export class FilesManager{
      *
      * @return True on success
      */
-    mirrorDirectory(sourcePath: string, destPath: string, timeout = 30){
+    mirrorDirectory(sourcePath: string, destPath: string, timeout = 15){
 
         sourcePath = this._composePath(sourcePath, true);
         destPath = this._composePath(destPath, true);
@@ -852,7 +852,7 @@ export class FilesManager{
      * @return The number of files that have been deleted as part of the directory removal process. If directory does not exist
      *         or it could not be deleted, an exception will be thrown
      */
-    deleteDirectory(path: string, deleteDirectoryItself = true, timeout = 30){
+    deleteDirectory(path: string, deleteDirectoryItself = true, timeout = 15){
 
         let deletedFilesCount = 0;
         path = this._composePath(path, true);
@@ -871,18 +871,32 @@ export class FilesManager{
             }
         }
 
-        if(deleteDirectoryItself){
-            
-            try {
+        if(deleteDirectoryItself) {
 
-                this.fs.rmdirSync(path);
+            let lastError = '';
+            let passedTime = 0;
+            let deleteStartTime = Math.floor(Date.now() / 1000);
+
+            do {
+
+                try {
+
+                    this.fs.rmdirSync(path);
+                    
+                    return deletedFilesCount;
+                    
+                } catch (e) {
+                    
+                    lastError = e.toString();
+                }
                 
-            } catch (e) {
+                passedTime = Math.floor(Date.now() / 1000) - deleteStartTime;
+                
+            } while(passedTime < timeout);
 
-                throw new Error('Could not delete directory: ' + path);
-            }
-        } 
-        
+            throw new Error(`Could not delete directory itself (${passedTime} seconds timeout):\n${path}\n${lastError}`);
+        }   
+
         return deletedFilesCount;
     }
 
@@ -1093,7 +1107,7 @@ export class FilesManager{
      *
      * @return True on success
      */
-    deleteFile(pathToFile: string, timeout = 30){
+    deleteFile(pathToFile: string, timeout = 15){
 
         pathToFile = this._composePath(pathToFile);
 
@@ -1103,30 +1117,27 @@ export class FilesManager{
         }
         
         let lastError = '';
-        let fileHasBeenDeleted = false;
+        let passedTime = 0;
         let deleteStartTime = Math.floor(Date.now() / 1000);
 
-        while (!fileHasBeenDeleted && (Math.floor(Date.now() / 1000) - deleteStartTime) < timeout) {
+        do {
 
             try {
 
                 this.fs.unlinkSync(pathToFile);
                 
-                fileHasBeenDeleted = true;
+                return true;
                 
             } catch (e) {
                 
                 lastError = e.toString();
-                fileHasBeenDeleted = false;
             }
-        }
+            
+            passedTime = Math.floor(Date.now() / 1000) - deleteStartTime;
+            
+        } while (passedTime < timeout);
 
-        if(!fileHasBeenDeleted){
-
-            throw new Error('Error deleting file: ' + pathToFile + ' ' + lastError);
-        }
-
-        return true;
+        throw new Error(`Error deleting file (${passedTime} seconds timeout):\n${pathToFile}\n${lastError}`);
     }
     
     
@@ -1142,7 +1153,7 @@ export class FilesManager{
      *
      * @return True on success
      */
-    deleteFiles(pathsToFiles: string[], timeout = 30){
+    deleteFiles(pathsToFiles: string[], timeout = 15){
 
         for (let pathToFile of pathsToFiles) {
 

@@ -691,7 +691,7 @@ class FilesManager extends BaseStrictClass{
      *
      * @return boolean True on success
      */
-    public function mirrorDirectory($sourcePath, $destPath, $timeout = 30){
+    public function mirrorDirectory($sourcePath, $destPath, $timeout = 15){
 
         $sourcePath = $this->_composePath($sourcePath, true);
         $destPath = $this->_composePath($destPath, true);
@@ -808,7 +808,7 @@ class FilesManager extends BaseStrictClass{
      * @return boolean The number of files that have been deleted as part of the directory removal process. If directory does not exist
      *         or it could not be deleted, an exception will be thrown
      */
-    public function deleteDirectory(string $path, bool $deleteDirectoryItself = true, $timeout = 30){
+    public function deleteDirectory(string $path, bool $deleteDirectoryItself = true, $timeout = 15){
 
         $deletedFilesCount = 0;
         $path = $this->_composePath($path, true);
@@ -836,9 +836,23 @@ class FilesManager extends BaseStrictClass{
         unset($fileInfo);
         unset($dirIterator);
 
-        if($deleteDirectoryItself && !rmdir($path)){
+        if($deleteDirectoryItself) {
 
-            throw new UnexpectedValueException('Could not delete directory: '.$path);
+            $passedTime = 0;
+            $deleteStartTime = time();
+
+            do {
+
+                if(rmdir($path) === true){
+
+                    return $deletedFilesCount;
+                }
+
+                $passedTime = time() - $deleteStartTime;
+
+            } while ($passedTime < $timeout);
+
+            throw new UnexpectedValueException("Could not delete directory itself ($passedTime seconds timeout):\n$path\n".error_get_last()['message']);
         }
 
         return $deletedFilesCount;
@@ -1097,7 +1111,7 @@ class FilesManager extends BaseStrictClass{
      *
      * @return boolean True on success
      */
-    public function deleteFile(string $pathToFile, int $timeout = 30){
+    public function deleteFile(string $pathToFile, int $timeout = 15){
 
         $pathToFile = $this->_composePath($pathToFile);
 
@@ -1106,20 +1120,21 @@ class FilesManager extends BaseStrictClass{
             throw new UnexpectedValueException('Not a file: '.$pathToFile);
         }
 
-        $fileHasBeenDeleted = false;
+        $passedTime = 0;
         $deleteStartTime = time();
 
-        while (!$fileHasBeenDeleted && (time() - $deleteStartTime) < $timeout) {
+        do {
 
-            $fileHasBeenDeleted = unlink($pathToFile);
-        }
+            if(unlink($pathToFile) === true){
 
-        if(!$fileHasBeenDeleted){
+                return true;
+            }
 
-            throw new UnexpectedValueException('Error deleting file: '.$pathToFile.' '.error_get_last()['message']);
-        }
+            $passedTime = time() - $deleteStartTime;
 
-        return true;
+        } while ($passedTime < $timeout);
+
+        throw new UnexpectedValueException("Error deleting file ($passedTime seconds timeout):\n$pathToFile\n".error_get_last()['message']);
     }
 
 
@@ -1135,7 +1150,7 @@ class FilesManager extends BaseStrictClass{
      *
      * @return boolean True on success
      */
-    public function deleteFiles(array $pathsToFiles, int $timeout = 30){
+    public function deleteFiles(array $pathsToFiles, int $timeout = 15){
 
         foreach ($pathsToFiles as $pathToFile) {
 
