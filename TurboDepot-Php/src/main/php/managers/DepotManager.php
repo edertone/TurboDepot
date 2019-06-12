@@ -98,13 +98,13 @@ class DepotManager extends BaseStrictClass{
         $this->_filesManager = new FilesManager();
 
         // Load the provided setup data
-        if(is_string($setup) && is_file($setup)){
-
-            $this->_setup = json_decode($this->_filesManager->readFile($setup));
-
-        }else if (is_object($setup) && property_exists($setup, '$schema')){
+        if(is_object($setup) && property_exists($setup, '$schema')){
 
             $this->_setup = $setup;
+
+        }else if (is_string($setup) && is_file($setup)){
+
+            $this->_setup = json_decode($this->_filesManager->readFile($setup));
 
         }else{
 
