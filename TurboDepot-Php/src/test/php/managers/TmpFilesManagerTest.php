@@ -565,7 +565,7 @@ class TmpFilesManagerTest extends TestCase {
             $this->sut->deleteFile($tmpFile1);
             $this->exceptionMessage = '$tmpFile1 did not cause exception';
         } catch (Throwable $e) {
-            $this->assertRegExp('/Not a file:/', $e->getMessage());
+            $this->assertRegExp('/File does not exist:/', $e->getMessage());
         }
 
         $this->assertFalse($this->filesManager->isFile($this->tempFolder.DIRECTORY_SEPARATOR.$tmpFile1));
@@ -576,7 +576,7 @@ class TmpFilesManagerTest extends TestCase {
             $this->sut->deleteFile($tmpFile2);
             $this->exceptionMessage = '$tmpFile2 did not cause exception';
         } catch (Throwable $e) {
-            $this->assertRegExp('/Not a file:/', $e->getMessage());
+            $this->assertRegExp('/File does not exist:/', $e->getMessage());
         }
 
         $this->assertFalse($this->filesManager->isFile($this->tempFolder.DIRECTORY_SEPARATOR.$tmpFile2));
@@ -586,7 +586,7 @@ class TmpFilesManagerTest extends TestCase {
             $this->sut->deleteFile('non-existant-id');
             $this->exceptionMessage = 'non-existant-id did not cause exception';
         } catch (Throwable $e) {
-            $this->assertRegExp('/Not a file:/', $e->getMessage());
+            $this->assertRegExp('/File does not exist:/', $e->getMessage());
         }
 
         // Test exceptions

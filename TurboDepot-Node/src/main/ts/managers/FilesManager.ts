@@ -1109,13 +1109,8 @@ export class FilesManager{
      */
     deleteFile(pathToFile: string, timeout = 15){
 
-        pathToFile = this._composePath(pathToFile);
+        pathToFile = this._composePath(pathToFile, false, true);
 
-        if(!this.isFile(pathToFile)){
-
-            throw new Error('Not a file: ' + pathToFile);
-        }
-        
         let lastError = '';
         let passedTime = 0;
         let deleteStartTime = Math.floor(Date.now() / 1000);

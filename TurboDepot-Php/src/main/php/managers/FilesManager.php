@@ -1113,12 +1113,7 @@ class FilesManager extends BaseStrictClass{
      */
     public function deleteFile(string $pathToFile, int $timeout = 15){
 
-        $pathToFile = $this->_composePath($pathToFile);
-
-        if(!is_file($pathToFile)){
-
-            throw new UnexpectedValueException('Not a file: '.$pathToFile);
-        }
+        $pathToFile = $this->_composePath($pathToFile, false, true);
 
         $passedTime = 0;
         $deleteStartTime = time();
