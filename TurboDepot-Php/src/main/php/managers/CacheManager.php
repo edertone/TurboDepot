@@ -154,7 +154,7 @@ class CacheManager extends BaseStrictClass{
 
         if(!StringUtils::isString($data)){
 
-            throw new UnexpectedValueException('data must be a string');
+            throw new UnexpectedValueException('data must be a string but was '.gettype($data));
         }
 
         $fullPath = $this->_getFullPathToId($section, $id);
@@ -203,6 +203,24 @@ class CacheManager extends BaseStrictClass{
 
 
     /**
+     * Gives the full OS filesystem path to the file which contains the specified cached data.
+     * Normally useful when the cached data is so big that should be streamed, or when we need to perform some kind of
+     * extra file operations with it.
+     *
+     * @param string $section The name for a cache section (under the current zone) where the data is stored
+     * @param string $id The identifier we previously used to store the data
+     *
+     * @return string|null The requested path or null if id or section were not found
+     */
+    public function getPath($section, $id){
+
+        $fullPath = $this->_getFullPathToId($section, $id);
+
+        return is_file($fullPath) ? $fullPath : null;
+    }
+
+
+    /**
      * Totally delete all the contents of the actual cache zone.
      *
      * @return boolean True on success
@@ -245,6 +263,31 @@ class CacheManager extends BaseStrictClass{
         }
 
         $this->_filesManager->deleteDirectory($this->_zoneRoot.DIRECTORY_SEPARATOR.$section);
+
+        return true;
+    }
+
+
+    /**
+     * Totally delete all the cache data contents for the specified Id under the specified section
+     *
+     * @param string $section The name for a cache section (under the current zone) which id data will be deleted
+     * @param string $id The identifier we previously used to store the data
+     *
+     * @throws UnexpectedValueException
+     *
+     * @return boolean True on success
+     */
+    public function clearId($section, $id){
+
+        $fullPath = $this->_getFullPathToId($section, $id);
+
+        if(!is_file($fullPath)){
+
+            throw new UnexpectedValueException('Id <'.$id.'> does not contain data for the specified section');
+        }
+
+        $this->_filesManager->deleteFile($fullPath);
 
         return true;
     }

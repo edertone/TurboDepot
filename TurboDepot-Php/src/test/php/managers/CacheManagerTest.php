@@ -341,6 +341,63 @@ class CacheManagerTest extends TestCase {
 
 
     /**
+     * testGetPath
+     *
+     * @return void
+     */
+    public function testGetPath(){
+
+        // Test empty values
+        try {
+            $this->sut->getPath(null, null);
+            $this->exceptionMessage = 'null section did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/section must be a non empty string/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->getPath('someSection', null);
+            $this->exceptionMessage = 'null id did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/id must be a string/', $e->getMessage());
+        }
+
+        // Test ok values
+        $this->sut->add('s0', '', '0');
+        $this->sut->add('s1', '1', '1');
+        $this->sut->add('s1', '2', '2');
+        $this->sut->add('s1', '3', '3');
+        $this->sut->add('s2', '1', '1');
+        $this->sut->add('s2', '2', '2');
+        $this->sut->add('s2', '3', '3');
+
+        $this->assertContains('.cache', $this->sut->getPath('s0', ''));
+        $this->assertContains('.cache', $this->sut->getPath('s1', '1'));
+        $this->assertContains('.cache', $this->sut->getPath('s1', '2'));
+        $this->assertContains('.cache', $this->sut->getPath('s1', '3'));
+        $this->assertContains('.cache', $this->sut->getPath('s2', '1'));
+        $this->assertContains('.cache', $this->sut->getPath('s2', '2'));
+        $this->assertContains('.cache', $this->sut->getPath('s2', '3'));
+
+        // TODO - test the zone timeToLive parameter
+
+        // Test wrong values
+        $this->assertSame(null, $this->sut->getPath('nonexistantsection', 'nonexistantid'));
+        $this->assertSame(null, $this->sut->getPath('someSection', 'nonexistantid'));
+        $this->assertSame(null, $this->sut->getPath('s1', '4'));
+        $this->assertSame(null, $this->sut->getPath('s3', '1'));
+
+        // Test exceptions
+        try {
+            $this->sut->getPath([1,2,3,4,5], '1');
+            $this->exceptionMessage = '[1,2,3,4,5] id did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/section must be a non empty string/', $e->getMessage());
+        }
+    }
+
+
+    /**
      * testClearZone
      *
      * @return void
@@ -369,6 +426,29 @@ class CacheManagerTest extends TestCase {
      * @return void
      */
     public function testClearSection(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * testClearId
+     *
+     * @return void
+     */
+    public function testClearId(){
 
         // Test empty values
         // TODO
