@@ -13,6 +13,7 @@
 namespace org\turbodepot\src\main\php\managers;
 
 
+use Throwable;
 use stdClass;
 use UnexpectedValueException;
 use org\turbocommons\src\main\php\utils\StringUtils;
@@ -43,6 +44,20 @@ class GoogleDriveManager {
      * @var CacheManager
      */
     private $_cacheManager = null;
+
+
+    /**
+     * Tells if the manager has correctly authenticated to the google drive api
+     * @var boolean
+     */
+    private $_isAuthenticated = false;
+
+
+    /**
+     * Stores the path to the service account credentials for authentication
+     * @var string
+     */
+    private $_serviceAccountCredentials = '';
 
 
     /**
@@ -92,26 +107,51 @@ class GoogleDriveManager {
 
 
     /**
-     * Perform the login to the google drive api with the specified credentials
+     * Specifies that the google drive manager will authenticate to google drive api with a service account credentials
      *
      * @param string $serviceAccountCredentials A full file system path to the json file that contains the service account credentials that will be used to
      *        authenticate with the google drive api (See this class constructor for more info on service accounts).
      *
      * @throws UnexpectedValueException
      */
-    public function authenticateWithServiceAccount($serviceAccountCredentials){
+    public function setServiceAccountCredentials($serviceAccountCredentials){
 
         if(!is_file($serviceAccountCredentials)){
 
             throw new UnexpectedValueException('Could not find serviceAccountCredentials file. Make sure you download the generated service account key json file and specify it here');
         }
 
-        $this->_client = new \Google_Client();
-        $this->_client->setScopes(['https://www.googleapis.com/auth/drive']);
-        $this->_client->setAuthConfig($serviceAccountCredentials);
-        $this->_client->useApplicationDefaultCredentials();
+        $this->_serviceAccountCredentials = $serviceAccountCredentials;
+    }
 
-        $this->_service = new \Google_Service_Drive($this->_client);
+
+    /**
+     * Auxiliary method to perform google drive authentication on demand.
+     */
+    private function authenticate(){
+
+        if($this->_isAuthenticated){
+
+            return;
+        }
+
+        // Check if authentication must be performed with service account credentials
+        if($this->_serviceAccountCredentials !== ''){
+
+            $this->_client = new \Google_Client();
+            $this->_client->setScopes(['https://www.googleapis.com/auth/drive']);
+            $this->_client->setAuthConfig($this->_serviceAccountCredentials);
+            $this->_client->useApplicationDefaultCredentials();
+
+            $this->_service = new \Google_Service_Drive($this->_client);
+
+            $this->_isAuthenticated = true;
+        }
+
+        if(!$this->_isAuthenticated){
+
+            throw new UnexpectedValueException('Could not perform google drive authentication');
+        }
     }
 
 
@@ -128,10 +168,13 @@ class GoogleDriveManager {
     public function getDirectoryList($parentId = ''){
 
         if($this->_cacheManager !== null &&
-           ($cachedList = $this->_cacheManager->get('getDirectoryList', $parentId)) !== null){
+           ($cachedList = $this->_cacheManager->get(__FUNCTION__, $parentId)) !== null){
 
             return json_decode($cachedList);
         }
+
+        // Authentication is performed here to improve response time when data is cached
+        $this->authenticate();
 
         // Request the list to the google drive API
         $query = StringUtils::isEmpty($parentId) ? 'sharedWithMe=true' : "'".$parentId."' in parents";
@@ -157,10 +200,70 @@ class GoogleDriveManager {
 
         if($this->_cacheManager !== null){
 
-            $this->_cacheManager->add('getDirectoryList', $parentId, json_encode($result));
+            $this->_cacheManager->add(__FUNCTION__, $parentId, json_encode($result));
         }
 
         return $result;
+    }
+
+
+    /**
+     * This method will return the local filesystem path where we can find the specified google drive file.
+     * Before giving us this path, the method will download all the file data locally, and once all the file is
+     * stored in our machine, the path to it will be provided.
+     *
+     * Cache must be enabled for this method to work, cause the local file copy is stored on the cache folder.
+     *
+     * @param string $id The google drive id for the file we want to retrieve
+     *
+     * @return string The full file system path to the file we want to get
+     */
+    public function getFileLocalPath($id){
+
+        // This method requires that local cache is enabled
+        if($this->_cacheManager === null){
+
+            throw new UnexpectedValueException('This method requires that local cache is enabled for this GoogleDriveManager instance');
+        }
+
+        // Check if the file is cached
+        if(($filePath = $this->_cacheManager->getPath(__FUNCTION__, $id)) !== null){
+
+            return $filePath;
+        }
+
+        // Authentication is performed here to improve response time when data is cached
+        $this->authenticate();
+
+        // Create a new cache entry to store all the file data
+        $this->_cacheManager->add(__FUNCTION__, $id, '');
+        $cachePath = $this->_cacheManager->getPath(__FUNCTION__, $id);
+
+        try {
+
+            // Request the file to google drive api
+            $file = $this->_service->files->get($id, array('alt' => 'media'));
+            $fileContents = $file->getBody();
+
+            // Save all the file data into the cache entry
+            $outHandle = fopen($cachePath, "w+");
+
+            // Until we have reached the EOF, read 1024 bytes at a time and write to the output file handle.
+            while (!$fileContents->eof()) {
+
+                fwrite($outHandle, $fileContents->read(1024));
+            }
+
+        } catch (Throwable $e) {
+
+            $this->_cacheManager->clearId(__FUNCTION__, $id);
+
+            throw $e;
+        }
+
+        fclose($outHandle);
+
+        return $cachePath;
     }
 
 
