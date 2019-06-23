@@ -10,19 +10,55 @@
  */
 
 
-namespace org\turbodepot\src\main\php\model;
+namespace org\turbodepot\src\main\php\managers;
+
+
+use UnexpectedValueException;
+use org\turbocommons\src\main\php\utils\NumericUtils;
+
 
 /**
- * PDFObject class
+ * PdfFilesManager class
  */
-class PDFObject {
+class PdfFilesManager {
 
 
     /**
-     * TODO
+     * see class constructor
      */
-    public function __construct($filePath, $ghostScriptPath, $pdfInfoPath, $pdftkPath){
+    private $_ghostScriptPath = '';
 
+
+    /**
+     * Manager class that contains several pdf files manipulation tools.
+     *
+     * @param string $filePath Full filesystem path to an existing pdf file that we want to . Example: ProjectPaths::RESOURCES.'/pdf/mypdf.pdf'
+     * @param string $ghostScriptPath Full path to the ghostscript executable. For example: 'gs' if we are using the version installed on our machine, or its full file system path if we have
+     *        it somewhere else (It is recommended to use always the latest version).
+     *        GhostScript is an open source library to manipulate PS and PDF files, that normally comes bundled with linux distributions.
+     *        If not natively available we must install it on our machine, or better download (http://www.ghostscript.com/download/gsdnld.html) the pre compiled binaries and place them on a
+     *        location that is reachable by this class.
+     */
+    public function __construct($ghostScriptPath = 'gs'){
+
+        // Check that ghostscript is enabled on the current machine
+        if($ghostScriptPath === 'gs'){
+
+            $checkGhostScript = 1;
+
+            system('which gs > /dev/null', $checkGhostScript);
+
+            if($checkGhostScript !== 0) {
+
+                throw new UnexpectedValueException('Ghostscript is not installed on the system');
+            }
+
+        }else if(!is_executable($ghostScriptPath)){
+
+            throw new UnexpectedValueException('Specified application binary does not exist or execute permisions are disabled: '.$ghostScriptPath);
+        }
+
+        $this->_ghostScriptPath = $ghostScriptPath;
     }
 
 
@@ -37,16 +73,16 @@ class PDFObject {
      * 2. Make sure you are using the binary executable of pdfinfo that fits your OS (centos, windows...) and processor (32bit / 64bit) or it may not work
      *
      * @param string $pdfInfoPath Full executable path to the pdfInfo tool. For example: $fileStorageManager->binaryGetAppPath('pdfinfo')
-     * @param string $pdfPath Full path to the pdf source file. Example: ProjectPaths::RESOURCES.'/pdf/mypdf.pdf'
+     * @param string $pdfFilePath Full path to the pdf source file. Example: ProjectPaths::RESOURCES.'/pdf/mypdf.pdf'
      *
      * @return int The total number of calculated pages
      */
     public function getPagesCount($pdfInfoPath){
 
         // Check that the specified pdf file exists
-//         if(!is_file($pdfPath)){
+//         if(!is_file($pdfFilePath)){
 
-//             trigger_error('PdfUtils::getPagesCount Error: Specified PDF file ('.$pdfPath.') does not exist', E_USER_WARNING);
+//             trigger_error('PdfUtils::getPagesCount Error: Specified PDF file ('.$pdfFilePath.') does not exist', E_USER_WARNING);
 
 //             return 0;
 //         }
@@ -60,7 +96,7 @@ class PDFObject {
 //         }
 
 //         // Execute the pdfinfo tool that gives us the information we need
-//         exec($pdfInfoPath.' "'.$pdfPath.'"', $output, $return);
+//         exec($pdfInfoPath.' "'.$pdfFilePath.'"', $output, $return);
 
 //         // Check any problem on jpegtran execution
 //         if ($return != 0) {
@@ -90,81 +126,53 @@ class PDFObject {
     /**
      * Given a PDF document, this method will generate a picture for the specified page.
      *
-     * Requires GhostScript, that is an open source library to manipulate PS and PDF files, that normally comes bundled with linux distributions.
-     * If not available, we must install it on our machine, or better download (http://www.ghostscript.com/download/gsdnld.html) the pre compiled binaries and place it on storage/binary
-     *
-     * @param string $ghostScriptPath  Full executable path to the ghostscript tool. For example: 'gs' if we are using the version installed on our machine or  $fileStorageManager->binaryGetAppPath('gs') if we have placed it on our storage binary folder. It is recommended to user always the latest version, so we better download it and place it on storage/binary
-     * @param string $pdfPath  Full path to the pdf source file. Example: ProjectPaths::RESOURCES.'/pdf/mypdf.pdf'
-     * @param string $page The number of the page we want to convert to a picture. FIRST PAGE STARTS AT 0
+     * @param string $pdfFilePath Full filesystem path to a valid pdf file
+     * @param string $page The number of the page we want to get (0 is always the first page)
      * @param number $jpgQuality 90 by default. Specifies the jpg quality for the generated picture
-     * @param string $dpi 200 by default, defines the pixel density for the generated picture. This will in fact affect the final resolution of the image.
+     * @param string $dpi 150 by default, defines the pixel density for the generated picture. This will in fact affect the final
+     *        resolution for the generated image. The bigger dpi we set, the bigger resolution image we will get.
      *
-     * @return string A binary string containing the generated picture, or null if some problem happened
+     * @return string A binary string containing the generated picture
      */
-    public function generatePageJpgPicture($ghostScriptPath, $pdfPath, $page, $jpgQuality = 90, $dpi = '200'){
+    public function getPageAsJpg($pdfFilePath, $page, $jpgQuality = 90, $dpi = '150'){
 
-        // Check that ghostscript is enabled on the current machine
-//         if($ghostScriptPath == 'gs'){
+        // Check that page value is ok
+        if(!NumericUtils::isInteger($page) || $page < 0){
 
-//             system('which gs > /dev/null', $checkGhostScript);
+            throw new UnexpectedValueException('Specified page must be a positive integer');
+        }
 
-//             if($checkGhostScript != 0) {
+        // Check that the specified pdf file exists
+        if(!is_file($pdfFilePath)){
 
-//                 trigger_error('PdfUtils::generatePageJpgPicture Error: Ghostscript is not enabled on the system.', E_USER_WARNING);
+            throw new UnexpectedValueException('Specified PDF file does not exist'.$pdfFilePath);
+        }
 
-//                 return null;
-//             }
-//         }else{
+        // Generate the ghostscript command line call
+        $gsQuery  = $this->_ghostScriptPath.' -dNOPAUSE -sDEVICE=jpeg -dUseCIEColor -dDOINTERPOLATE -dTextAlphaBits=4 -dGraphicsAlphaBits=4 -sOutputFile=- ';
+        $gsQuery .= '-dFirstPage='.($page + 1).' -dLastPage='.($page + 1).' ';
+        $gsQuery .= '-r'.$dpi.' ';
+        $gsQuery .= '-dJPEGQ='.$jpgQuality.' ';
+        $gsQuery .= '-q '.$pdfFilePath;
 
-//             if(!is_executable($ghostScriptPath)){
+        // Get the processed image directly to stdOut
+        ob_start();
 
-//                 trigger_error('PdfUtils::generatePageJpgPicture Error: Specified '.$ghostScriptPath.' application binary ('.$ghostScriptPath.') does not exist or execute permisions are disabled', E_USER_WARNING);
+        $gsQueryResult = 1;
 
-//                 return null;
-//             }
-//         }
+        passthru($gsQuery, $gsQueryResult);
 
-//         // Check that page value is ok
-//         if(!is_numeric($page) || $page < 0){
+        $imageData = ob_get_contents();
 
-//             trigger_error('PdfUtils::generatePageJpgPicture Error: Specified page must be a positive integer > 0', E_USER_WARNING);
+        ob_end_clean();
 
-//             return null;
-//         }
+        // Check any problem on ghostscript execution
+        if ($gsQueryResult !== 0) {
 
-//         // Check that the specified pdf file exists
-//         if(!is_file($pdfPath)){
+            throw new UnexpectedValueException('Ghostscript failed '.$gsQueryResult);
+        }
 
-//             trigger_error('PdfUtils::generatePageJpgPicture Error: Specified PDF file ('.$pdfPath.') does not exist', E_USER_WARNING);
-
-//             return null;
-//         }
-
-//         // Generate the ghostscript command line call from the received parameters
-//         $gsQuery  = $ghostScriptPath.' -dNOPAUSE -sDEVICE=jpeg -dUseCIEColor -dDOINTERPOLATE -dTextAlphaBits=4 -dGraphicsAlphaBits=4 -sOutputFile=- ';
-//         $gsQuery .= '-dFirstPage='.($page + 1).' -dLastPage='.($page + 1).' ';
-//         $gsQuery .= '-r'.$dpi.' ';
-//         $gsQuery .= '-dJPEGQ='.$jpgQuality.' ';
-//         $gsQuery .= '-q '.$pdfPath;
-
-//         // Get the processed image directly to stdOut
-//         ob_start();
-
-//         passthru($gsQuery, $return);
-
-//         $image = ob_get_contents();
-
-//         ob_end_clean();
-
-//         // Check any problem on ghostscript execution
-//         if ($return != 0) {
-
-//             trigger_error('PdfUtils::generatePageJpgPicture Ghostscript failed :'.$image, E_USER_WARNING);
-
-//             return null;
-//         }
-
-//         return $image;
+        return $imageData;
     }
 
 
@@ -175,7 +183,7 @@ class PDFObject {
      * If not available, we must install it on our machine, or better download (http://www.ghostscript.com/download/gsdnld.html) the pre compiled binaries and place it on storage/binary
      *
      * @param string $ghostScriptPath  Full executable path to the ghostscript tool. For example: 'gs' if we are using the version installed on our machine or  $fileStorageManager->binaryGetAppPath('gs') if we have placed it on our storage binary folder. It is recommended to user always the latest version, so we better download it and place it on storage/binary
-     * @param string $pdfPath  Full path to the pdf source file. Example: ProjectPaths::RESOURCES.'/pdf/mypdf.pdf'
+     * @param string $pdfFilePath  Full path to the pdf source file. Example: ProjectPaths::RESOURCES.'/pdf/mypdf.pdf'
      * @param string $outputPath Full path to a file system EMPTY folder where all the generated pictures will be stored. If the specified folder is not empty or does not exist, an exception will happen.
      * @param number $jpgQuality 90 by default. Specifies the jpg quality for all the generated pictures
      * @param string $dpi 200 by default, defines the pixel density for all the generated pictures. This will in fact affect the final resolution of the images.
@@ -183,33 +191,12 @@ class PDFObject {
      *
      * @return number The total number of generated pages or -1 if an error happened
      */
-    public function generateDocumentJpgPictures($ghostScriptPath, $pdfPath, $outputPath, $jpgQuality = 90, $dpi = '200', $outFileMask = '/%d.jpg'){
-
-        // Check that ghostscript is enabled on the current machine
-//         if($ghostScriptPath == 'gs'){
-
-//             system('which gs > /dev/null', $checkGhostScript);
-
-//             if($checkGhostScript != 0) {
-
-//                 trigger_error('PdfUtils::generateDocumentJpgPictures Error: Ghostscript is not enabled on the system.', E_USER_WARNING);
-
-//                 return -1;
-//             }
-//         }else{
-
-//             if(!is_executable($ghostScriptPath)){
-
-//                 trigger_error('PdfUtils::generateDocumentJpgPictures Error: Specified '.$ghostScriptPath.' application binary ('.$ghostScriptPath.') does not exist or execute permisions are disabled', E_USER_WARNING);
-
-//                 return -1;
-//             }
-//         }
+    public function generateDocumentJpgPictures($ghostScriptPath, $pdfFilePath, $outputPath, $jpgQuality = 90, $dpi = '200', $outFileMask = '/%d.jpg'){
 
 //         // Check that the specified pdf file exists
-//         if(!is_file($pdfPath)){
+//         if(!is_file($pdfFilePath)){
 
-//             trigger_error('PdfUtils::generateDocumentJpgPictures Error: Specified PDF file ('.$pdfPath.') does not exist', E_USER_WARNING);
+//             trigger_error('PdfUtils::generateDocumentJpgPictures Error: Specified PDF file ('.$pdfFilePath.') does not exist', E_USER_WARNING);
 
 //             return -1;
 //         }
@@ -240,7 +227,7 @@ class PDFObject {
 //         $gsQuery .= '-o'.$outputPath.$outFileMask.' ';
 //         $gsQuery .= '-r'.$dpi.' ';
 //         $gsQuery .= '-dJPEGQ='.$jpgQuality.' ';
-//         $gsQuery .= "'".$pdfPath."'";
+//         $gsQuery .= "'".$pdfFilePath."'";
 
 //         exec($gsQuery, $output, $return);
 
@@ -269,17 +256,17 @@ class PDFObject {
      * 2. Make sure you are using the binary executable of pdftk that fits your OS (centos, windows...) and processor (32bit / 64bit) or it may not work
      *
      * @param string $pdftkPath Full executable path to the pdftk tool. For example:  $fileStorageManager->binaryGetAppPath('pdftk')
-     * @param string $pdfPath Full path to the pdf source file. Example: ProjectPaths::RESOURCES.'/pdf/mypdf.pdf'
+     * @param string $pdfFilePath Full path to the pdf source file. Example: ProjectPaths::RESOURCES.'/pdf/mypdf.pdf'
      * @param string $outputPath Leave it empty (default value) to override the source pdf document or specify a full system path (including the destination filename) where the compressed result will be stored.
      *
      * @return boolean True if compression was performed or false if something failed
      */
-    public function compressDocument($pdftkPath, $pdfPath, $outputPath = ''){
+    public function compressDocument($pdftkPath, $pdfFilePath, $outputPath = ''){
 
         // Check that the specified pdf file exists
-//         if(!is_file($pdfPath)){
+//         if(!is_file($pdfFilePath)){
 
-//             trigger_error('PdfUtils::compressDocument Error: Specified PDF file ('.$pdfPath.') does not exist', E_USER_WARNING);
+//             trigger_error('PdfUtils::compressDocument Error: Specified PDF file ('.$pdfFilePath.') does not exist', E_USER_WARNING);
 
 //             return false;
 //         }
@@ -297,14 +284,14 @@ class PDFObject {
 
 //         // We are using output - so the result of the pdftk command is shown directly on stdout.
 //         // We then capture it with the php passthru method
-//         passthru($pdftkPath.' '.$pdfPath.' output - compress');
+//         passthru($pdftkPath.' '.$pdfFilePath.' output - compress');
 
 //         $processedPdf = ob_get_contents();
 
 //         ob_end_clean();
 
 //         // Check that we have gained size improvements by applying the pdftk app
-//         $originalSize = filesize($pdfPath);
+//         $originalSize = filesize($pdfFilePath);
 //         $processedSize = strlen($processedPdf);
 
 //         if($originalSize > $processedSize && $processedSize > 0){
@@ -312,7 +299,7 @@ class PDFObject {
 //             // Store the compressed file
 //             if($outputPath == ''){
 
-//                 file_put_contents($pdfPath, $processedPdf);
+//                 file_put_contents($pdfFilePath, $processedPdf);
 
 //             }else{
 
@@ -323,7 +310,7 @@ class PDFObject {
 
 //             if($outputPath != ''){
 
-//                 copy($pdfPath, $outputPath);
+//                 copy($pdfFilePath, $outputPath);
 //             }
 //         }
 
@@ -334,11 +321,11 @@ class PDFObject {
     /**
      * Extract all the possible text from the given pdf document
      *
-     * @param string $pdfPath Full path to the pdf source file. Example: ProjectPaths::RESOURCES.'/pdf/mypdf.pdf'
+     * @param string $pdfFilePath Full path to the pdf source file. Example: ProjectPaths::RESOURCES.'/pdf/mypdf.pdf'
      *
      * @return string All the text that could be extracted from the pdf
      */
-    public function extractDocumentText($pdfPath) {
+    public function extractDocumentText($pdfFilePath) {
 
         // TODO: fer aixo
 //         return 'TODO';
