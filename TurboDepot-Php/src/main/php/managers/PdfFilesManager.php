@@ -30,16 +30,26 @@ class PdfFilesManager {
 
 
     /**
+     * see class constructor
+     */
+    private $_pdfInfoPath = '';
+
+
+    /**
      * Manager class that contains several pdf files manipulation tools.
      *
-     * @param string $filePath Full filesystem path to an existing pdf file that we want to . Example: ProjectPaths::RESOURCES.'/pdf/mypdf.pdf'
      * @param string $ghostScriptPath Full path to the ghostscript executable. For example: 'gs' if we are using the version installed on our machine, or its full file system path if we have
-     *        it somewhere else (It is recommended to use always the latest version).
-     *        GhostScript is an open source library to manipulate PS and PDF files, that normally comes bundled with linux distributions.
+     *        it somewhere else (It is recommended to use always the latest version).<br>
+     *        GhostScript is an open source library to manipulate PS and PDF files, that normally comes bundled with linux distributions.<br>
      *        If not natively available we must install it on our machine, or better download (http://www.ghostscript.com/download/gsdnld.html) the pre compiled binaries and place them on a
      *        location that is reachable by this class.
+     * @param string $pdfInfoPath Full path to the pdfinfo executable. PdfInfo is a command line tool that is required on some of this class methods. It is free and can be downloaded from:
+     *        http://www.foolabs.com/xpdf/download.html (note that the download is a bundle with several other tools)<br>
+     *        VERY IMPORTANT:<br>
+     *            1. pdfinfo execute permission MUST be enabled at least for the file owner<br>
+     *            2. Make sure you are using the binary executable that fits your OS (centos, windows...) and processor (32bit / 64bit) or it may not work
      */
-    public function __construct($ghostScriptPath = 'gs'){
+    public function __construct($ghostScriptPath = 'gs', $pdfInfoPath = ''){
 
         // Check that ghostscript is enabled on the current machine
         if($ghostScriptPath === 'gs'){
@@ -55,71 +65,65 @@ class PdfFilesManager {
 
         }else if(!is_executable($ghostScriptPath)){
 
-            throw new UnexpectedValueException('Specified application binary does not exist or execute permisions are disabled: '.$ghostScriptPath);
+            throw new UnexpectedValueException('Specified Ghostscript binary does not exist or execute permisions are disabled: '.$ghostScriptPath);
         }
 
         $this->_ghostScriptPath = $ghostScriptPath;
+
+        // Check that the cmd pdfinfo tool exists and is executable
+        if($pdfInfoPath !== '' && !is_executable($pdfInfoPath)){
+
+            throw new UnexpectedValueException('Specified pdfinfo binary does not exist or execute permisions are disabled: '.$pdfInfoPath);
+        }
+
+        $this->_pdfInfoPath = $pdfInfoPath;
     }
 
 
     /**
-     * Count the number of pages on a PDF document.
+     * Count the number of pages on a PDF document (the pdfinfo executable must be available and already defined at this class constructor)
      *
-     * This method requires an external command line tool called pdfinfo, that we should place on our project storage/binary folder
-     * Its free and can be downloaded from: http://www.foolabs.com/xpdf/download.html
-     *
-     * VERY IMPORTANT:
-     * 1. pdfinfo execute permission MUST be enabled at least for the file owner
-     * 2. Make sure you are using the binary executable of pdfinfo that fits your OS (centos, windows...) and processor (32bit / 64bit) or it may not work
-     *
-     * @param string $pdfInfoPath Full executable path to the pdfInfo tool. For example: $fileStorageManager->binaryGetAppPath('pdfinfo')
-     * @param string $pdfFilePath Full path to the pdf source file. Example: ProjectPaths::RESOURCES.'/pdf/mypdf.pdf'
+     * @param string $pdfFilePath Full filesystem path to a valid pdf file
      *
      * @return int The total number of calculated pages
      */
-    public function getPagesCount($pdfInfoPath){
+    public function countPages($pdfFilePath){
+
+        if($this->_pdfInfoPath === ''){
+
+            throw new UnexpectedValueException('pdinfo executable path is not defined and is required to count pdf pages');
+        }
 
         // Check that the specified pdf file exists
-//         if(!is_file($pdfFilePath)){
+        if(!is_file($pdfFilePath)){
 
-//             trigger_error('PdfUtils::getPagesCount Error: Specified PDF file ('.$pdfFilePath.') does not exist', E_USER_WARNING);
+            throw new UnexpectedValueException('Specified PDF file does not exist: '.$pdfFilePath);
+        }
 
-//             return 0;
-//         }
+        // Execute the pdfinfo tool that gives us the information we need
+        $output = 1;
+        $pdfInfoResult = 1;
 
-//         // Check that the cmd pdfinfo tool exists and is executable
-//         if(!is_executable($pdfInfoPath)){
+        exec($this->_pdfInfoPath.' "'.$pdfFilePath.'"', $output, $pdfInfoResult);
 
-//             trigger_error('PdfUtils::getPagesCount Error: Specified pdfinfo CMD binary ('.$pdfInfoPath.') does not exist or execute permisions are disabled', E_USER_WARNING);
+        // Check any problem on pdfinfo execution
+        if ($pdfInfoResult !== 0) {
 
-//             return 0;
-//         }
+            throw new UnexpectedValueException('countPages pdfinfo failed :'.implode("\n", $output));
+        }
 
-//         // Execute the pdfinfo tool that gives us the information we need
-//         exec($pdfInfoPath.' "'.$pdfFilePath.'"', $output, $return);
+        // Get the number of pages from the pdfinfo command line output, by using a regular expression.
+        $matches = [];
 
-//         // Check any problem on jpegtran execution
-//         if ($return != 0) {
+        foreach($output as $op){
 
-//             trigger_error('PdfUtils::getPagesCount pdfinfo failed :'.implode("\n", $output), E_USER_WARNING);
+            if(preg_match('/Pages:\s*(\d+)/i', $op, $matches) === 1){
 
-//             return 0;
-//         }
+                return intval($matches[1]);
+            }
+        }
 
-//         // Iterate through lines
-//         $pageCount = 0;
-
-//         // We will get the number of pages from the pdinfo command line output.
-//         // It is extracted by using a regular expression
-//         foreach($output as $op){
-
-//             if(preg_match('/Pages:\s*(\d+)/i', $op, $matches) === 1){
-
-//                 return intval($matches[1]);
-//             }
-//         }
-
-//         return $pageCount;
+        return 0;
     }
 
 
@@ -145,7 +149,7 @@ class PdfFilesManager {
         // Check that the specified pdf file exists
         if(!is_file($pdfFilePath)){
 
-            throw new UnexpectedValueException('Specified PDF file does not exist'.$pdfFilePath);
+            throw new UnexpectedValueException('Specified PDF file does not exist: '.$pdfFilePath);
         }
 
         // Generate the ghostscript command line call
