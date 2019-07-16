@@ -1002,6 +1002,15 @@ export class FilesManager{
             throw new Error('Error reading file size');
         }
     }
+    
+    
+    /**
+     * TODO - adapt from PHP 
+     */
+    getFileModificationTime(pathToFile: string){
+
+        // TODO - adapt from PHP
+    }
 
 
     /**

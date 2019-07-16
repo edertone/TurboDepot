@@ -105,6 +105,8 @@ class FilesManager extends BaseStrictClass{
 
         try {
 
+            clearstatcache();
+
             return is_file($this->_composePath($path));
 
         } catch (Exception $e) {
@@ -163,6 +165,8 @@ class FilesManager extends BaseStrictClass{
         }
 
         try {
+
+            clearstatcache();
 
             return is_dir($path);
 
@@ -960,6 +964,30 @@ class FilesManager extends BaseStrictClass{
         }
 
         return $fileSize;
+    }
+
+
+    /**
+     * Get the time when a file has been last modified
+     *
+     * @param string $pathToFile Absolute or relative file path, including the file name and extension
+     *
+     * @return int A Unix timestamp containing the data when the file was last modified. An exception will be thrown if value cannot be obtained
+     */
+    public function getFileModificationTime(string $pathToFile){
+
+        $pathToFile = $this->_composePath($pathToFile, false, true);
+
+        clearstatcache();
+
+        $modificationDate = filemtime($pathToFile);
+
+        if($modificationDate === false){
+
+            throw new UnexpectedValueException('Error reading file modification date');
+        }
+
+        return $modificationDate;
     }
 
 
