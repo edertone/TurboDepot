@@ -178,7 +178,7 @@ class CacheManagerTest extends TestCase {
 
         $this->sut->setZoneTimeToLive(1);
 
-        $this->assertSame('someData1', $this->sut->add('someSection', 'someId', 'someData1'));
+        $this->assertSame('someData1', $this->sut->save('someSection', 'someId', 'someData1'));
 
         $this->assertTrue($this->filesManager->isDirectory($sectionFolder));
 
@@ -188,20 +188,20 @@ class CacheManagerTest extends TestCase {
 
         $this->sut = new CacheManager($this->tempFolder, 'test-zone');
 
-        $this->assertFalse($this->filesManager->isDirectory($sectionFolder));
+        $this->assertTrue($this->filesManager->isDirectoryEmpty($sectionFolder));
 
         $this->assertFalse($this->sut->isZoneExpired());
 
         sleep(2);
 
-        $this->assertSame('someData', $this->sut->add('someSection', 'someId', 'someData'));
+        $this->assertSame('someData', $this->sut->save('someSection', 'someId', 'someData'));
         $this->assertTrue($this->filesManager->isDirectory($sectionFolder));
         $this->assertFalse($this->sut->isZoneExpired());
 
         sleep(2);
         $this->assertTrue($this->filesManager->isDirectory($sectionFolder));
         $this->assertTrue($this->sut->isZoneExpired());
-        $this->assertFalse($this->filesManager->isDirectory($sectionFolder));
+        $this->assertTrue($this->filesManager->isDirectoryEmpty($sectionFolder));
     }
 
 
@@ -215,23 +215,23 @@ class CacheManagerTest extends TestCase {
         // This test checks the time to live feature for the cache zones
         $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
 
-        $this->sut->setZoneTimeToLive(2);
+        $this->sut->setZoneTimeToLive(3);
 
         $this->assertTrue($this->filesManager->isFile($zoneRoot.'metadata'));
-        $this->assertSame('2|', $this->filesManager->readFile($zoneRoot.'metadata'));
+        $this->assertSame('3|', $this->filesManager->readFile($zoneRoot.'metadata'));
 
-        $this->assertSame('someData1', $this->sut->add('someSection', 'someId', 'someData1'));
-        $this->assertSame('someData2', $this->sut->add('someSection', 'someId2', 'someData2'));
+        $this->assertSame('someData1', $this->sut->save('someSection', 'someId', 'someData1'));
+        $this->assertSame('someData2', $this->sut->save('someSection', 'someId2', 'someData2'));
 
         // Test that expiry part of the metadata contains at least 8 digits
         $metadataFileContents = $this->filesManager->readFile($zoneRoot.'metadata');
-        $this->assertRegExp('/2|\d{8,}/', $metadataFileContents);
+        $this->assertRegExp('/3\|\d{8,}/', $metadataFileContents);
 
         $this->assertSame('someData1', $this->sut->get('someSection', 'someId'));
 
         sleep(1);
 
-        $this->assertSame('someData3', $this->sut->add('someSection', 'someId3', 'someData3'));
+        $this->assertSame('someData3', $this->sut->save('someSection', 'someId3', 'someData3'));
         $this->assertSame($metadataFileContents, $this->filesManager->readFile($zoneRoot.'metadata'));
         $this->assertSame('someData1', $this->sut->get('someSection', 'someId'));
         $this->assertSame('someData3', $this->sut->get('someSection', 'someId3'));
@@ -244,7 +244,74 @@ class CacheManagerTest extends TestCase {
 
         $this->assertTrue($this->filesManager->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'));
         $this->assertTrue($this->filesManager->isFile($zoneRoot.'metadata'));
-        $this->assertSame('2|', $this->filesManager->readFile($zoneRoot.'metadata'));
+        $this->assertSame('3|', $this->filesManager->readFile($zoneRoot.'metadata'));
+    }
+
+
+    /**
+     * testSetZoneTimeToLive_infinite_value
+     *
+     * @return void
+     */
+    public function testSetZoneTimeToLive_infinite_value(){
+
+        // This test checks the time to live feature for the cache zones
+        $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
+
+        $this->sut->setZoneTimeToLive(0);
+
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertSame('0|', $this->filesManager->readFile($zoneRoot.'metadata'));
+
+        $this->assertSame('someData1', $this->sut->save('someSection', 'someId', 'someData1'));
+
+        // Test that expiry part of the metadata contains at least 8 digits
+        $metadataFileContents = $this->filesManager->readFile($zoneRoot.'metadata');
+        $this->assertRegExp('/0\|\d{8,}/', $metadataFileContents);
+
+        $this->assertSame('someData1', $this->sut->get('someSection', 'someId'));
+
+        // As we cannot wait infinite to check that the cache zone never expires, we use a 10 secs value
+        sleep(10);
+
+        $this->assertSame('someData2', $this->sut->save('someSection', 'someId2', 'someData2'));
+        $this->assertSame($metadataFileContents, $this->filesManager->readFile($zoneRoot.'metadata'));
+        $this->assertSame('someData1', $this->sut->get('someSection', 'someId'));
+        $this->assertSame('someData2', $this->sut->get('someSection', 'someId2'));
+    }
+
+
+    /**
+     * testSetZoneTimeToLive_Metadata_Not_Changes_When_Value_Is_Already_TheSame
+     *
+     * @return void
+     */
+    public function testSetZoneTimeToLive_Metadata_Not_Changes_When_Value_Is_Already_TheSame(){
+
+        $zoneFile = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR.'metadata';
+
+        $this->assertFalse($this->filesManager->isFile($zoneFile));
+
+        $this->sut->setZoneTimeToLive(2);
+
+        $this->assertTrue($this->filesManager->isFile($zoneFile));
+        $modificationTime = $this->filesManager->getFileModificationTime($zoneFile);
+
+        sleep(1);
+
+        $this->sut->setZoneTimeToLive(2);
+
+        $this->assertSame($modificationTime, $this->filesManager->getFileModificationTime($zoneFile));
+
+        sleep(1);
+
+        $this->sut->setZoneTimeToLive(2);
+
+        $this->assertSame($modificationTime, $this->filesManager->getFileModificationTime($zoneFile));
+
+        $this->sut->setZoneTimeToLive(3);
+
+        $this->assertNotSame($modificationTime, $this->filesManager->getFileModificationTime($zoneFile));
     }
 
 
@@ -263,8 +330,8 @@ class CacheManagerTest extends TestCase {
         $this->assertFalse($this->filesManager->isFile($zoneRoot.'metadata'));
         $this->assertFalse($this->filesManager->isFile($sectionRoot.'metadata'));
 
-        $this->sut->setZoneTimeToLive(3);
-        $this->assertSame('3|', $this->filesManager->readFile($zoneRoot.'metadata'));
+        $this->sut->setZoneTimeToLive(4);
+        $this->assertSame('4|', $this->filesManager->readFile($zoneRoot.'metadata'));
         $this->assertTrue($this->filesManager->isDirectory($zoneRoot));
         $this->assertTrue($this->filesManager->isFile($zoneRoot.'metadata'));
         $this->assertFalse($this->filesManager->isFile($sectionRoot.'metadata'));
@@ -272,11 +339,11 @@ class CacheManagerTest extends TestCase {
         $this->sut->setSectionTimeToLive('someSection', 2);
         $this->assertSame('2|', $this->filesManager->readFile($sectionRoot.'metadata'));
 
-        $this->assertSame('someData', $this->sut->add('someSection', 'someId', 'someData'));
+        $this->assertSame('someData', $this->sut->save('someSection', 'someId', 'someData'));
 
         // Test that expiry part of the metadata files contain at least 8 digits
-        $this->assertRegExp('/3|\d{8,}/', $this->filesManager->readFile($zoneRoot.'metadata'));
-        $this->assertRegExp('/2|\d{8,}/', $this->filesManager->readFile($sectionRoot.'metadata'));
+        $this->assertRegExp('/4\|\d{8,}/', $this->filesManager->readFile($zoneRoot.'metadata'));
+        $this->assertRegExp('/2\|\d{8,}/', $this->filesManager->readFile($sectionRoot.'metadata'));
 
         $this->assertFalse($this->sut->isZoneExpired());
         $this->assertFalse($this->sut->isSectionExpired('someSection'));
@@ -289,10 +356,56 @@ class CacheManagerTest extends TestCase {
         $this->assertSame('2|', $this->filesManager->readFile($sectionRoot.'metadata'));
         $this->assertSame(null, $this->sut->getPath('someSection', 'someId'));
 
-        sleep(1);
+        sleep(2);
 
         $this->assertTrue($this->sut->isZoneExpired());
-        $this->assertSame('3|', $this->filesManager->readFile($zoneRoot.'metadata'));
+        $this->assertSame('4|', $this->filesManager->readFile($zoneRoot.'metadata'));
+    }
+
+
+    /**
+     * testSetSectionTimeToLive_infinite_value
+     *
+     * @return void
+     */
+    public function testSetSectionTimeToLive_infinite_value(){
+
+        // This test checks the time to live feature for the cache sections
+        $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
+        $sectionRoot = $zoneRoot.'someSection'.DIRECTORY_SEPARATOR;
+
+        $this->sut->setZoneTimeToLive(2);
+        $this->assertSame('2|', $this->filesManager->readFile($zoneRoot.'metadata'));
+        $this->assertTrue($this->filesManager->isDirectory($zoneRoot));
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertFalse($this->filesManager->isFile($sectionRoot.'metadata'));
+
+        $this->sut->setSectionTimeToLive('someSection', 0);
+        $this->assertSame('0|', $this->filesManager->readFile($sectionRoot.'metadata'));
+
+        $this->assertSame('someData', $this->sut->save('someSection', 'someId', 'someData'));
+
+        // Test that expiry part of the metadata files contain at least 8 digits
+        $this->assertRegExp('/2\|\d{8,}/', $this->filesManager->readFile($zoneRoot.'metadata'));
+        $this->assertRegExp('/0\|\d{8,}/', $this->filesManager->readFile($sectionRoot.'metadata'));
+
+        $this->assertFalse($this->sut->isZoneExpired());
+        $this->assertFalse($this->sut->isSectionExpired('someSection'));
+        $this->assertTrue($this->filesManager->isFile($this->sut->getPath('someSection', 'someId')));
+
+        sleep(2);
+
+        $this->assertTrue($this->sut->isZoneExpired());
+        $this->assertFalse($this->sut->isSectionExpired('someSection'));
+        $this->assertSame('2|', $this->filesManager->readFile($zoneRoot.'metadata'));
+
+        // As we cannot wait infinite to check that the cache zone never expires, we use a 8 secs value
+        sleep(8);
+
+        $this->assertFalse($this->sut->isZoneExpired());
+        $this->assertFalse($this->sut->isSectionExpired('someSection'));
+        $this->assertSame('2|', $this->filesManager->readFile($zoneRoot.'metadata'));
+        $this->assertRegExp('/0\|\d{8,}/', $this->filesManager->readFile($sectionRoot.'metadata'));
     }
 
 
@@ -303,19 +416,41 @@ class CacheManagerTest extends TestCase {
      */
     public function testIsZoneExpired(){
 
-        // Test empty values
-        // TODO
+        $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
 
-        // Test ok values
-        // TODO
+        $this->assertFalse($this->sut->isZoneExpired());
 
-        // Test wrong values
-        // TODO
+        $this->assertSame('someData', $this->sut->save('someSection', 'someId', 'someData'));
 
-        // Test exceptions
-        // TODO
+        $this->assertFalse($this->sut->isZoneExpired());
 
-        $this->markTestIncomplete('This test has not been implemented yet.');
+        sleep(1);
+
+        $this->assertSame('someData2', $this->sut->save('someSection', 'someId2', 'someData2'));
+        $this->assertFalse($this->sut->isZoneExpired());
+        $this->assertFalse($this->filesManager->isFile($zoneRoot.'metadata'));
+
+        $this->sut->setZoneTimeToLive(2);
+        $this->assertFalse($this->sut->isZoneExpired());
+        $this->assertSame('2|', $this->filesManager->readFile($zoneRoot.'metadata'));
+
+        sleep(1);
+
+        $this->assertSame('someData3', $this->sut->save('someSection', 'someId3', 'someData3'));
+        $this->assertFalse($this->sut->isZoneExpired());
+
+        $metadataFileContents = $this->filesManager->readFile($zoneRoot.'metadata');
+        $this->assertRegExp('/2\|\d{8,}/', $metadataFileContents);
+
+        sleep(1);
+
+        $this->assertFalse($this->sut->isZoneExpired());
+        $this->assertSame($metadataFileContents, $this->filesManager->readFile($zoneRoot.'metadata'));
+
+        sleep(1);
+
+        $this->assertTrue($this->sut->isZoneExpired());
+        $this->assertSame('2|', $this->filesManager->readFile($zoneRoot.'metadata'));
     }
 
 
@@ -326,32 +461,159 @@ class CacheManagerTest extends TestCase {
      */
     public function testIsSectionExpired(){
 
-        // Test empty values
-        // TODO
+        try {
+            $this->sut->isSectionExpired('nonexistantsection');
+            $this->exceptionMessage = 'nonexistantsection did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/section <nonexistantsection> does not exist/', $e->getMessage());
+        }
 
-        // Test ok values
-        // TODO
+        $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
+        $sectionRoot = $zoneRoot.'section'.DIRECTORY_SEPARATOR;
 
-        // Test wrong values
-        // TODO
+        $this->assertFalse($this->sut->isZoneExpired());
 
-        // Test exceptions
-        // TODO
+        try {
+            $this->sut->isSectionExpired('section');
+            $this->exceptionMessage = 'section did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/section <section> does not exist/', $e->getMessage());
+        }
 
-        $this->markTestIncomplete('This test has not been implemented yet.');
+        $this->assertFalse($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertFalse($this->filesManager->isFile($sectionRoot.'metadata'));
+
+        $this->assertSame('data', $this->sut->save('section', 'id', 'data'));
+        $this->assertFalse($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertFalse($this->filesManager->isFile($sectionRoot.'metadata'));
+        $this->assertFalse($this->sut->isZoneExpired());
+        $this->assertFalse($this->sut->isSectionExpired('section'));
+
+        $this->sut->setSectionTimeToLive('section', 2);
+        $this->assertFalse($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertTrue($this->filesManager->isFile($sectionRoot.'metadata'));
+        $this->assertFalse($this->sut->isZoneExpired());
+        $this->assertFalse($this->sut->isSectionExpired('section'));
+
+        sleep(1);
+
+        $this->assertSame('data2', $this->sut->save('section', 'id2', 'data2'));
+        $this->assertFalse($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertTrue($this->filesManager->isFile($sectionRoot.'metadata'));
+        $this->assertFalse($this->sut->isZoneExpired());
+        $this->assertFalse($this->sut->isSectionExpired('section'));
+
+        $metadataFileContents = $this->filesManager->readFile($sectionRoot.'metadata');
+        $this->assertRegExp('/2\|\d{8,}/', $metadataFileContents);
+
+        sleep(1);
+
+        $this->assertSame('data3', $this->sut->save('section', 'id3', 'data3'));
+        $this->assertSame($metadataFileContents, $this->filesManager->readFile($sectionRoot.'metadata'));
+        $this->assertFalse($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertTrue($this->filesManager->isFile($sectionRoot.'metadata'));
+        $this->assertFalse($this->sut->isZoneExpired());
+        $this->assertFalse($this->sut->isSectionExpired('section'));
+
+        sleep(1);
+
+        $this->assertSame($metadataFileContents, $this->filesManager->readFile($sectionRoot.'metadata'));
+        $this->assertFalse($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertTrue($this->filesManager->isFile($sectionRoot.'metadata'));
+        $this->assertFalse($this->sut->isZoneExpired());
+        $this->assertTrue($this->sut->isSectionExpired('section'));
+        $this->assertSame('2|', $this->filesManager->readFile($sectionRoot.'metadata'));
     }
 
 
     /**
-     * testAdd
+     * testIsSectionExpired_BeforeZoneExpiration
      *
      * @return void
      */
-    public function testAdd(){
+    public function testIsSectionExpired_BeforeZoneExpiration(){
+
+        $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
+        $sectionRoot = $zoneRoot.'section'.DIRECTORY_SEPARATOR;
+
+        $this->sut->setZoneTimeToLive(4);
+        $this->sut->setSectionTimeToLive('section', 2);
+        $this->sut->setSectionTimeToLive('section2', 0);
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertTrue($this->filesManager->isFile($sectionRoot.'metadata'));
+        $this->assertFalse($this->sut->isZoneExpired());
+        $this->assertFalse($this->sut->isSectionExpired('section'));
+        $this->assertFalse($this->sut->isSectionExpired('section2'));
+
+        $this->assertSame('data', $this->sut->save('section', 'id', 'data'));
+        $this->assertSame('data2', $this->sut->save('section2', 'id2', 'data2'));
+
+        sleep(2);
+
+        $this->assertTrue($this->sut->isSectionExpired('section'));
+        $this->assertFalse($this->sut->isSectionExpired('section2'));
+        $this->assertFalse($this->sut->isZoneExpired());
+        $this->assertSame(null, $this->sut->get('section', 'id'));
+
+        sleep(2);
+
+        $this->assertTrue($this->sut->isZoneExpired());
+        $this->assertFalse($this->sut->isSectionExpired('section'));
+        $this->assertFalse($this->sut->isSectionExpired('section2'));
+        $this->assertSame(null, $this->sut->get('section', 'id'));
+    }
+
+
+    /**
+     * testIsSectionExpired_AfterZoneExpiration
+     *
+     * @return void
+     */
+    public function testIsSectionExpired_AfterZoneExpiration(){
+
+        $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
+        $sectionRoot = $zoneRoot.'section'.DIRECTORY_SEPARATOR;
+
+        try {
+            $this->sut->isSectionExpired('section');
+            $this->exceptionMessage = 'section did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/section <section> does not exist/', $e->getMessage());
+        }
+
+        $this->sut->setZoneTimeToLive(1);
+        $this->sut->setSectionTimeToLive('section', 3);
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertTrue($this->filesManager->isFile($sectionRoot.'metadata'));
+        $this->assertFalse($this->sut->isZoneExpired());
+        $this->assertFalse($this->sut->isSectionExpired('section'));
+
+        $this->assertSame('data', $this->sut->save('section', 'id', 'data'));
+
+        sleep(1);
+
+        $this->assertTrue($this->sut->isZoneExpired());
+        $this->assertFalse($this->sut->isSectionExpired('section'));
+        $this->assertSame('data', $this->sut->get('section', 'id'));
+
+        sleep(2);
+
+        $this->assertFalse($this->sut->isZoneExpired());
+        $this->assertTrue($this->sut->isSectionExpired('section'));
+        $this->assertSame(null, $this->sut->get('section', 'id'));
+    }
+
+
+    /**
+     * testSave
+     *
+     * @return void
+     */
+    public function testSave(){
 
         // Test empty values
         try {
-            $this->sut->add(null, null, null);
+            $this->sut->save(null, null, null);
             $this->exceptionMessage = '$emptyValue section did not cause exception';
         } catch (Throwable $e) {
             $this->assertRegExp('/data must be a string/', $e->getMessage());
@@ -360,7 +622,7 @@ class CacheManagerTest extends TestCase {
         foreach ($this->emptyValues as $emptyValue) {
 
             try {
-                $this->sut->add($emptyValue, 'validId', 'validData');
+                $this->sut->save($emptyValue, 'validId', 'validData');
                 $this->exceptionMessage = '$emptyValue section did not cause exception';
             } catch (Throwable $e) {
                 $this->assertRegExp('/section must be a non empty string/', $e->getMessage());
@@ -368,12 +630,12 @@ class CacheManagerTest extends TestCase {
 
             if($emptyValue === '' || $emptyValue === '     ' || $emptyValue === "\n\n\n"){
 
-                $this->assertSame('validData', $this->sut->add('validSection', $emptyValue, 'validData'));
+                $this->assertSame('validData', $this->sut->save('validSection', $emptyValue, 'validData'));
 
             }else{
 
                 try {
-                    $this->sut->add('validSection', $emptyValue, 'validData');
+                    $this->sut->save('validSection', $emptyValue, 'validData');
                     $this->exceptionMessage = '$emptyValue id did not cause exception';
                 } catch (Throwable $e) {
                     $this->assertRegExp('/id must be a string/', $e->getMessage());
@@ -382,52 +644,50 @@ class CacheManagerTest extends TestCase {
         }
 
         try {
-            $this->sut->add('validSection', 'validId', null);
+            $this->sut->save('validSection', 'validId', null);
             $this->exceptionMessage = '$emptyValue data did not cause exception';
         } catch (Throwable $e) {
             $this->assertRegExp('/data must be a string/', $e->getMessage());
         }
 
-        $this->sut->add('validSection', 'validId', '');
+        $this->sut->save('validSection', 'validId', '');
         $this->assertTrue($this->filesManager->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR.'validSection'));
 
-        $this->assertSame('data', $this->sut->add('validSection', '', 'data'));
+        $this->assertSame('data', $this->sut->save('validSection', '', 'data'));
         $this->assertSame('data', $this->filesManager->readFile($this->tempFolder.'/test-zone/validSection/.cache'));
 
         // Test ok values
-        $this->sut->add('someSection', 'someId', 'someData1');
+        $this->sut->save('someSection', 'someId', 'someData1');
         $this->assertFalse($this->filesManager->isDirectoryEmpty($this->tempFolder));
 
-        $this->assertSame('someData2', $this->sut->add('someSection', 'someId2', 'someData2'));
-        $this->assertSame('someData3', $this->sut->add('someSection2', 'someId', 'someData3'));
-        $this->assertSame('someData4', $this->sut->add('someSection2', 'someId2', 'someData4'));
-        $this->assertSame('someData4-overriden', $this->sut->add('someSection2', 'someId2', 'someData4-overriden'));
+        $this->assertSame('someData2', $this->sut->save('someSection', 'someId2', 'someData2'));
+        $this->assertSame('someData3', $this->sut->save('someSection2', 'someId', 'someData3'));
+        $this->assertSame('someData4', $this->sut->save('someSection2', 'someId2', 'someData4'));
+        $this->assertSame('someData4-overriden', $this->sut->save('someSection2', 'someId2', 'someData4-overriden'));
 
         $this->assertSame('someData1', $this->sut->get('someSection', 'someId'));
         $this->assertSame('someData2', $this->sut->get('someSection', 'someId2'));
         $this->assertSame('someData3', $this->sut->get('someSection2', 'someId'));
         $this->assertSame('someData4-overriden', $this->sut->get('someSection2', 'someId2'));
 
-        // TODO - test the zone timeToLive parameter
-
         // Test wrong values
         // Test exceptions
         try {
-            $this->sut->add(123123, 'validId', 'valid');
+            $this->sut->save(123123, 'validId', 'valid');
             $this->exceptionMessage = '123123 data did not cause exception';
         } catch (Throwable $e) {
             $this->assertRegExp('/section must be a non empty string/', $e->getMessage());
         }
 
         try {
-            $this->sut->add('validSection', [1,2,3,4], 'valid');
+            $this->sut->save('validSection', [1,2,3,4], 'valid');
             $this->exceptionMessage = '123123 data did not cause exception';
         } catch (Throwable $e) {
             $this->assertRegExp('/id must be a string/', $e->getMessage());
         }
 
         try {
-            $this->sut->add('validSection', 'validId', new stdClass());
+            $this->sut->save('validSection', 'validId', new stdClass());
             $this->exceptionMessage = 'stdClass data did not cause exception';
         } catch (Throwable $e) {
             $this->assertRegExp('/data must be a string/', $e->getMessage());
@@ -436,34 +696,34 @@ class CacheManagerTest extends TestCase {
 
 
     /**
-     * testAddDoesNotIncrementZoneExpiryTime
+     * testSave_DoesNotIncrementZoneExpiryTime
      *
      * @return void
      */
-    public function testAddDoesNotIncrementZoneExpiryTime(){
+    public function testSave_DoesNotIncrementZoneExpiryTime(){
 
         $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
 
         $this->sut->setZoneTimeToLive(3);
         $this->assertSame('3|', $this->filesManager->readFile($zoneRoot.'metadata'));
 
-        $this->sut->add('someSection', 'someId1', 'someData1');
+        $this->sut->save('someSection', 'someId1', 'someData1');
         $metadataContents = $this->filesManager->readFile($zoneRoot.'metadata');
-        $this->assertRegExp('/3|\d{8,}/', $metadataContents);
+        $this->assertRegExp('/3\|\d{8,}/', $metadataContents);
 
-        $this->sut->add('someSection', 'someId2', 'someData2');
+        $this->sut->save('someSection', 'someId2', 'someData2');
         $this->assertSame($metadataContents, $this->filesManager->readFile($zoneRoot.'metadata'));
 
         sleep(1);
-        $this->sut->add('someSection', 'someId3', 'someData3');
+        $this->sut->save('someSection', 'someId3', 'someData3');
         $this->assertSame($metadataContents, $this->filesManager->readFile($zoneRoot.'metadata'));
 
         sleep(1);
-        $this->sut->add('someSection', 'someId4', 'someData4');
+        $this->sut->save('someSection', 'someId4', 'someData4');
         $this->assertSame($metadataContents, $this->filesManager->readFile($zoneRoot.'metadata'));
 
         sleep(2);
-        $this->sut->add('someSection', 'someId5', 'someData5');
+        $this->sut->save('someSection', 'someId5', 'someData5');
         $this->assertNotSame($metadataContents, $this->filesManager->readFile($zoneRoot.'metadata'));
     }
 
@@ -491,13 +751,13 @@ class CacheManagerTest extends TestCase {
         }
 
         // Test ok values
-        $this->sut->add('s0', '', '0');
-        $this->sut->add('s1', '1', '1');
-        $this->sut->add('s1', '2', '2');
-        $this->sut->add('s1', '3', '3');
-        $this->sut->add('s2', '1', '1');
-        $this->sut->add('s2', '2', '2');
-        $this->sut->add('s2', '3', '3');
+        $this->sut->save('s0', '', '0');
+        $this->sut->save('s1', '1', '1');
+        $this->sut->save('s1', '2', '2');
+        $this->sut->save('s1', '3', '3');
+        $this->sut->save('s2', '1', '1');
+        $this->sut->save('s2', '2', '2');
+        $this->sut->save('s2', '3', '3');
 
         $this->assertSame('0', $this->sut->get('s0', ''));
         $this->assertSame('1', $this->sut->get('s1', '1'));
@@ -508,10 +768,22 @@ class CacheManagerTest extends TestCase {
         $this->assertSame('3', $this->sut->get('s2', '3'));
 
         // Test wrong values
-        $this->assertSame(null, $this->sut->get('nonexistantsection', 'nonexistantid'));
-        $this->assertSame(null, $this->sut->get('someSection', 'nonexistantid'));
+        try {
+            $this->sut->get('nonexistantsection', 'nonexistantid');
+            $this->exceptionMessage = 'nonexistantsection did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/section <nonexistantsection> does not exist/', $e->getMessage());
+        }
+
+        $this->assertSame(null, $this->sut->get('s0', 'nonexistantid'));
         $this->assertSame(null, $this->sut->get('s1', '4'));
-        $this->assertSame(null, $this->sut->get('s3', '1'));
+
+        try {
+            $this->sut->get('s3', '1');
+            $this->exceptionMessage = 's3 did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/section <s3> does not exist/', $e->getMessage());
+        }
 
         // Test exceptions
         try {
@@ -546,13 +818,13 @@ class CacheManagerTest extends TestCase {
         }
 
         // Test ok values
-        $this->sut->add('s0', '', '0');
-        $this->sut->add('s1', '1', '1');
-        $this->sut->add('s1', '2', '2');
-        $this->sut->add('s1', '3', '3');
-        $this->sut->add('s2', '1', '1');
-        $this->sut->add('s2', '2', '2');
-        $this->sut->add('s2', '3', '3');
+        $this->sut->save('s0', '', '0');
+        $this->sut->save('s1', '1', '1');
+        $this->sut->save('s1', '2', '2');
+        $this->sut->save('s1', '3', '3');
+        $this->sut->save('s2', '1', '1');
+        $this->sut->save('s2', '2', '2');
+        $this->sut->save('s2', '3', '3');
 
         $this->assertContains('.cache', $this->sut->getPath('s0', ''));
         $this->assertContains('.cache', $this->sut->getPath('s1', '1'));
@@ -561,8 +833,6 @@ class CacheManagerTest extends TestCase {
         $this->assertContains('.cache', $this->sut->getPath('s2', '1'));
         $this->assertContains('.cache', $this->sut->getPath('s2', '2'));
         $this->assertContains('.cache', $this->sut->getPath('s2', '3'));
-
-        // TODO - test the zone timeToLive parameter
 
         // Test wrong values
         $this->assertSame(null, $this->sut->getPath('nonexistantsection', 'nonexistantid'));

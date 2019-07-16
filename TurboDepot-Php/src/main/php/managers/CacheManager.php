@@ -67,19 +67,19 @@ class CacheManager extends BaseStrictClass{
      */
     public function __construct(string $rootPath, string $zone){
 
+        $this->_filesManager = new FilesManager();
+
         if(!StringUtils::isString($zone) || StringUtils::isEmpty($zone)){
 
             throw new UnexpectedValueException('zone must be a non empty string');
         }
 
-        if(!is_dir($rootPath)){
+        if(!$this->_filesManager->isDirectory($rootPath)){
 
             throw new UnexpectedValueException('Invalid rootPath received: '.$rootPath);
         }
 
         $this->_zoneRoot = $rootPath.DIRECTORY_SEPARATOR.$zone;
-
-        $this->_filesManager = new FilesManager();
 
         // Clear the current zone if expired
         $this->isZoneExpired();
@@ -89,7 +89,8 @@ class CacheManager extends BaseStrictClass{
     /**
      * Define the expiration time limit for all the zone cached data.
      *
-     * @param string $timeToLive Defines the number of seconds after which the whole zone cache data will be deleted. (1 hour = 3600 seconds, 1 day = 86400 seconds)
+     * @param string $timeToLive Defines the number of seconds after which the whole zone cache data will be deleted.
+     *        (1 hour = 3600 seconds, 1 day = 86400 seconds). Set it to 0 for an infinite timeout.
      *
      * @return void
      */
@@ -102,7 +103,8 @@ class CacheManager extends BaseStrictClass{
     /**
      * Define the expiration time limit for all the cached data on the specified section
      *
-     * @param string $timeToLive Defines the number of seconds after which the whole section cached data will be deleted. (1 hour = 3600 seconds, 1 day = 86400 seconds)
+     * @param string $timeToLive Defines the number of seconds after which the whole section cached data will be deleted.
+     *        (1 hour = 3600 seconds, 1 day = 86400 seconds). Set it to 0 for an infinite timeout.
      *
      * @return void
      */
@@ -123,7 +125,7 @@ class CacheManager extends BaseStrictClass{
      */
     public function isZoneExpired(){
 
-        return $this->_isMetadataFileExpired($this->_zoneRoot.DIRECTORY_SEPARATOR.'metadata');
+        return $this->_isMetadataFileExpired($this->_zoneRoot.DIRECTORY_SEPARATOR.'metadata', true);
     }
 
 
@@ -138,30 +140,37 @@ class CacheManager extends BaseStrictClass{
      */
     public function isSectionExpired($section){
 
-        // Zone expiration has preference over section expiration
-        if($this->isZoneExpired()){
+        if(!$this->_filesManager->isDirectory($this->_zoneRoot.DIRECTORY_SEPARATOR.$section)){
+
+            throw new UnexpectedValueException('section <'.$section.'> does not exist');
+        }
+
+        // Zone expiration will be checked if this section has no metadata defined
+        if(!$this->_filesManager->isFile($this->_zoneRoot.DIRECTORY_SEPARATOR.$section.DIRECTORY_SEPARATOR.'metadata') &&
+           $this->isZoneExpired()){
 
             return true;
         }
 
-        return $this->_isMetadataFileExpired($this->_zoneRoot.DIRECTORY_SEPARATOR.$section.DIRECTORY_SEPARATOR.'metadata');
+        return $this->_isMetadataFileExpired($this->_zoneRoot.DIRECTORY_SEPARATOR.$section.DIRECTORY_SEPARATOR.'metadata', true);
     }
 
 
     /**
      * Auxiliary method to check if a metadata file is expired, and delete all its related cache data if true.
      *
-     * @param string $metadataPath
+     * @param string $metadataPath Full file system path to the metadata file we want to check
+     * @param boolean $clearRelatedFiles If set to true, when the metadata file is expired, all its related cache files will be deleted
      *
      * @throws UnexpectedValueException
      *
      * @return boolean True if the metadata file was expired (and the related cache data cleared), false otherwise
      */
-    private function _isMetadataFileExpired($metadataPath){
+    private function _isMetadataFileExpired($metadataPath, $clearRelatedFiles){
 
         $isMetadataExpired = false;
 
-        if(is_file($metadataPath)){
+        if($this->_filesManager->isFile($metadataPath)){
 
             $metadataContents = file_get_contents($metadataPath, true);
 
@@ -172,9 +181,9 @@ class CacheManager extends BaseStrictClass{
 
             $metadataContents = explode($this->_metadataDelimiter, $metadataContents);
 
-            $isMetadataExpired = $metadataContents[1] !== '' && (time() >= (float)$metadataContents[1]);
+            $isMetadataExpired = $metadataContents[0] !== '0' && $metadataContents[1] !== '' && (time() >= (float)$metadataContents[1]);
 
-            if($isMetadataExpired){
+            if($isMetadataExpired && $clearRelatedFiles){
 
                 $this->_clearMetadataRelatedFiles($metadataPath);
             }
@@ -185,7 +194,7 @@ class CacheManager extends BaseStrictClass{
 
 
     /**
-     * Save arbitrary information into the cache under a specific section and identifier.
+     * Save arbitrary information into the cache under a specific section and identifier (overwirte without warning if already exist).
      *
      * @param string $section The name for a cache section (under the current zone) where we want to store the data.
      * @param string $id A unique identifier that we want to use for the stored data. This will be required to obtain it later
@@ -195,7 +204,7 @@ class CacheManager extends BaseStrictClass{
      *
      * @return string The same data
      */
-    public function add($section, $id, $data){
+    public function save($section, $id, $data){
 
         if(!StringUtils::isString($data)){
 
@@ -205,7 +214,10 @@ class CacheManager extends BaseStrictClass{
         $fullPath = $this->_getFullPathToId($section, $id);
         $basePath = StringUtils::getPath($fullPath);
 
-        $this->isSectionExpired($section);
+        if($this->_filesManager->isDirectory($this->_zoneRoot.DIRECTORY_SEPARATOR.$section)){
+
+            $this->isSectionExpired($section);
+        }
 
         if(!$this->_filesManager->isDirectory($basePath)){
 
@@ -214,8 +226,17 @@ class CacheManager extends BaseStrictClass{
 
         $this->_filesManager->saveFile($fullPath, $data);
 
-        $this->_updateMetadataFile($this->_zoneRoot, true);
-        $this->_updateMetadataFile($this->_zoneRoot.DIRECTORY_SEPARATOR.$section, true);
+
+        // Update expiration times if necessary
+        if($this->_filesManager->isFile($this->_zoneRoot.DIRECTORY_SEPARATOR.'metadata')){
+
+            $this->_updateMetadataFile($this->_zoneRoot, true);
+        }
+
+        if($this->_filesManager->isFile($this->_zoneRoot.DIRECTORY_SEPARATOR.$section.DIRECTORY_SEPARATOR.'metadata')){
+
+            $this->_updateMetadataFile($this->_zoneRoot.DIRECTORY_SEPARATOR.$section, true);
+        }
 
         return $data;
     }
@@ -238,7 +259,7 @@ class CacheManager extends BaseStrictClass{
             return null;
         }
 
-        if(is_file($fullPath)){
+        if($this->_filesManager->isFile($fullPath)){
 
             try {
 
@@ -271,7 +292,7 @@ class CacheManager extends BaseStrictClass{
 
         $fullPath = $this->_getFullPathToId($section, $id);
 
-        return is_file($fullPath) ? $fullPath : null;
+        return $this->_filesManager->isFile($fullPath) ? $fullPath : null;
     }
 
 
@@ -297,7 +318,7 @@ class CacheManager extends BaseStrictClass{
      */
     public function clearSection($section){
 
-        if(!is_dir($this->_zoneRoot.DIRECTORY_SEPARATOR.$section)){
+        if(!$this->_filesManager->isDirectory($this->_zoneRoot.DIRECTORY_SEPARATOR.$section)){
 
             throw new UnexpectedValueException('section <'.$section.'> does not exist');
         }
@@ -320,7 +341,7 @@ class CacheManager extends BaseStrictClass{
 
         $fullPath = $this->_getFullPathToId($section, $id);
 
-        if(!is_file($fullPath)){
+        if(!$this->_filesManager->isFile($fullPath)){
 
             throw new UnexpectedValueException('Id <'.$id.'> does not contain data for the specified section');
         }
@@ -348,19 +369,35 @@ class CacheManager extends BaseStrictClass{
         $this->_filesManager->saveFile($metadataFilePath, $metadataContents[0].$this->_metadataDelimiter);
 
         // Delete all the other elements inside the current zone
-        $zoneItems = $this->_filesManager->getDirectoryList($metadataFileRoot);
+        $items = $this->_filesManager->getDirectoryList($metadataFileRoot);
 
-        foreach ($zoneItems as $zoneItem) {
+        foreach ($items as $item) {
 
-            if($zoneItem !== 'metadata'){
+            $itemPath = $metadataFileRoot.DIRECTORY_SEPARATOR.$item;
 
-                if($this->_filesManager->isFile($metadataFileRoot.DIRECTORY_SEPARATOR.$zoneItem)){
+            if($item === 'metadata'){
 
-                    $this->_filesManager->deleteFile($metadataFileRoot.DIRECTORY_SEPARATOR.$zoneItem);
+                continue;
+            }
 
-                }else{
+            if($this->_filesManager->isFile($itemPath)){
 
-                    $this->_filesManager->deleteDirectory($metadataFileRoot.DIRECTORY_SEPARATOR.$zoneItem);
+                $this->_filesManager->deleteFile($itemPath);
+
+            }else{
+
+                $mustBeDeleted = true;
+                $itemMetadataPath = $itemPath.DIRECTORY_SEPARATOR.'metadata';
+
+                if($this->_filesManager->isFile($itemMetadataPath) && !$this->_isMetadataFileExpired($itemMetadataPath, false)){
+
+                    $mustBeDeleted = false;
+                }
+
+                if($mustBeDeleted){
+
+                    // Note that section directories will be left to prevent section not found errors
+                    $this->_filesManager->deleteDirectory($itemPath, false);
                 }
             }
         }
@@ -401,19 +438,27 @@ class CacheManager extends BaseStrictClass{
      * Update the contents for the specified metadata file
      *
      * @param string $rootPath Filesystem path to the root folder of the metadata file we want to update
-     *
-     * @throws UnexpectedValueException
+     * @param boolean $calculateExpiration If set to true, the metadata file expiration time will be calculated only if not already defined
+     * @param string $timeToLive The value that will be stored as the time to live of the metadata file
      */
     private function _updateMetadataFile($rootPath, $calculateExpiration = false, $timeToLive = null){
 
-        if(!is_dir($rootPath)){
+        if(!$this->_filesManager->isDirectory($rootPath)){
 
             $this->_filesManager->createDirectory($rootPath, true);
         }
 
-        $metadataContents = is_file($rootPath.DIRECTORY_SEPARATOR.'metadata') ?
+        $metadataContents = $this->_filesManager->isFile($rootPath.DIRECTORY_SEPARATOR.'metadata') ?
             explode($this->_metadataDelimiter, file_get_contents($rootPath.DIRECTORY_SEPARATOR.'metadata', true)) :
             ['', ''];
+
+        // Time to live must have changed in order to effectively update the metadata file
+        if($timeToLive !== null &&
+           $metadataContents[0] !== '' &&
+           $metadataContents[0] === (string)$timeToLive){
+
+            return;
+        }
 
         if($timeToLive !== null){
 
