@@ -79,18 +79,10 @@ class GoogleDriveManager {
      *
      * @throws UnexpectedValueException
      *
-     * @see CacheManager::__construct
-     *
      * @param string $googleApiPhpCLientRoot A full file system path to the root of the downloaded google-api-php-client library, that must be accessible by our
      *        project. A "vendor" folder must exist at the root of the provided folder.
-     * @param string $cacheRootPath If we want to cache all the results of the google drive api requests, we must specify here the root of a folder where
-     *        all the cached data will be stored. If we leave this parameter empty, no caching will happen
-     * @param string $cacheZone To isolate all the cached data from any other elements that may exist on the cache folder, we must define a cache zone name.
-     *        we can leave here the default name or use any other we want.
-     * @param int $cacheTimeToLive Defines the number of seconds after which the whole zone cache data will be deleted. Set it to -1 if you want to
-     *        manually manage the lifetime of the zone cached data. (1 hour = 3600 seconds, 1 day = 86400 seconds)
      */
-    public function __construct($googleApiPhpCLientRoot, $cacheRootPath = '', $cacheZone = 'google-drive', $cacheTimeToLive = -1){
+    public function __construct($googleApiPhpCLientRoot){
 
         if(!is_file($googleApiPhpCLientRoot.'/vendor/autoload.php')){
 
@@ -98,11 +90,36 @@ class GoogleDriveManager {
         }
 
         require_once $googleApiPhpCLientRoot.'/vendor/autoload.php';
+    }
 
-        if($cacheRootPath !== ''){
 
-            $this->_cacheManager = new CacheManager($cacheRootPath, $cacheZone, $cacheTimeToLive);
+    /**
+     * Enables cache to store google drive files locally for speed improvements
+     *
+     * @param string $rootPath Full file system path to the root of a folder where all the cached data will be stored.
+     * @param string $zoneName To isolate all the cached data from any other elements that may exist on the cache folder, we must define a cache zone name.
+     *        we can leave here the default name or use any other we want.
+     * @param int $listsTimeToLive Defines the number of seconds after which the operations related to listing files and folder cache data will be deleted.
+     *        Set it to 0 to for an infinite time. (1 hour = 3600 seconds, 1 day = 86400 seconds)
+     * @param int $filesTimeToLive Defines the number of seconds after which the operations related to getting files content cache data will be deleted.
+     *        Set it to 0 to for an infinite time. (1 hour = 3600 seconds, 1 day = 86400 seconds)
+     *
+     * @throws UnexpectedValueException
+     *
+     * @see CacheManager::__construct
+     *
+     * @return void
+     */
+    public function enableCache($rootPath, $zoneName = 'google-drive', $listsTimeToLive = 0, $filesTimeToLive = 0){
+
+        if($this->_cacheManager !== null){
+
+            throw new UnexpectedValueException('Google drive cache can only be enabled once');
         }
+
+        $this->_cacheManager = new CacheManager($rootPath, $zoneName);
+        $this->_cacheManager->setSectionTimeToLive('getDirectoryList', $listsTimeToLive);
+        $this->_cacheManager->setSectionTimeToLive('getFileLocalPath', $filesTimeToLive);
     }
 
 
@@ -200,7 +217,7 @@ class GoogleDriveManager {
 
         if($this->_cacheManager !== null){
 
-            $this->_cacheManager->add(__FUNCTION__, $parentId, json_encode($result));
+            $this->_cacheManager->save(__FUNCTION__, $parentId, json_encode($result));
         }
 
         return $result;
@@ -236,7 +253,7 @@ class GoogleDriveManager {
         $this->authenticate();
 
         // Create a new cache entry to store all the file data
-        $this->_cacheManager->add(__FUNCTION__, $id, '');
+        $this->_cacheManager->save(__FUNCTION__, $id, '');
         $cachePath = $this->_cacheManager->getPath(__FUNCTION__, $id);
 
         try {
@@ -264,6 +281,22 @@ class GoogleDriveManager {
         fclose($outHandle);
 
         return $cachePath;
+    }
+
+
+    /**
+     * Gives the name for the cache zone that is currently being used
+     *
+     * @throws UnexpectedValueException
+     */
+    public function getCacheZoneName(){
+
+        if($this->_cacheManager === null){
+
+            throw new UnexpectedValueException('Cache is not enabled for this instance');
+        }
+
+        return $this->_cacheManager->getZoneName();
     }
 
 
