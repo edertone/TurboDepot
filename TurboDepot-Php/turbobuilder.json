@@ -47,7 +47,7 @@
                     "path": "extras/copyright headers/TurboDepot-Php.txt",
                     "affectedPaths": ["src"],
                     "includes": ["php"],
-                    "excludes": ["autoloader.php", "libs"]
+                    "excludes": ["autoloader.php", "libs", "test/php/resources"]
                 }
             ]
         },
