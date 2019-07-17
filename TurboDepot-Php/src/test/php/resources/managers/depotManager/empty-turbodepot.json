@@ -25,10 +25,12 @@
                 "source": ""
             },
             "googleDrive": {
+                "accountCredentialsPath": "",
                 "apiClientRoot": "",
                 "cacheRootPath": "",
                 "cacheZone": "",
-                "cacheZoneTimeToLive": -1
+                "listsTimeToLive": 0,
+                "filesTimeToLive": 0
             },
             "users": {
                 "source": "",
