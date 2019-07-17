@@ -206,6 +206,17 @@ class CacheManagerTest extends TestCase {
 
 
     /**
+     * testGetZoneName
+     *
+     * @return void
+     */
+    public function testGetZoneName(){
+
+        $this->assertSame('test-zone', $this->sut->getZoneName());
+    }
+
+
+    /**
      * testSetZoneTimeToLive
      *
      * @return void

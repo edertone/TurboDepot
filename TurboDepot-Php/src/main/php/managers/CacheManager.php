@@ -63,6 +63,7 @@ class CacheManager extends BaseStrictClass{
      * @param string $zone To allow different types of cache data to be stored without colliding, the cache root folder is divided into
      *        several zones. We can define here the name for a zone we want to store our cached data, and it will be used. If the zone does
      *        not exist, it will be automatically created.
+     *
      * @throws UnexpectedValueException
      */
     public function __construct(string $rootPath, string $zone){
@@ -83,6 +84,17 @@ class CacheManager extends BaseStrictClass{
 
         // Clear the current zone if expired
         $this->isZoneExpired();
+    }
+
+
+    /**
+     * Obtain the name for the current cache zone
+     *
+     * @return string
+     */
+    public function getZoneName(){
+
+        return StringUtils::getPathElement($this->_zoneRoot);
     }
 
 
