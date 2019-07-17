@@ -363,10 +363,48 @@ class DepotManagerTest extends TestCase {
 
         try {
             $this->sut->getGoogleDriveManager();
-            $this->exceptionMessage = '"" did not cause exception';
+            $this->exceptionMessage = 'invalid path did not cause exception';
         } catch (Throwable $e) {
             $this->assertRegExp('/Specified googleApiPhpCLientRoot folder is not valid/', $e->getMessage());
         }
+
+        // Set a valid api client root and check missing serviceAccountCredentials file
+        $this->setup->depots[0]->googleDrive->apiClientRoot = __DIR__.'/../resources/managers/depotManager/fake-api-root';
+        $this->sut = new DepotManager($this->setup);
+
+        try {
+            $this->sut->getGoogleDriveManager();
+            $this->exceptionMessage = 'invalid serviceAccountCredentials did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Could not find serviceAccountCredentials file/', $e->getMessage());
+        }
+
+        // Set a valid accountCredentialsPath and check that cache is not enabled
+        $this->setup->depots[0]->googleDrive->accountCredentialsPath = __DIR__.'/../resources/managers/depotManager/fake-service-account-credentials.json';
+        $this->sut = new DepotManager($this->setup);
+
+        try {
+            $this->sut->getGoogleDriveManager()->getCacheZoneName();
+            $this->exceptionMessage = 'getCacheZoneName did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Cache is not enabled for this instance/', $e->getMessage());
+        }
+
+        // Set a valid cache setup and make sure it is correctly enabled
+        $this->setup->depots[0]->googleDrive->cacheRootPath = $this->tempFolder;
+        $this->sut = new DepotManager($this->setup);
+
+        try {
+            $this->sut->getGoogleDriveManager();
+            $this->exceptionMessage = 'empty zone did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/zone must be a non empty string/', $e->getMessage());
+        }
+
+        $this->setup->depots[0]->googleDrive->cacheZone = 'test-zone';
+        $this->sut = new DepotManager($this->setup);
+
+        $this->assertSame('test-zone', $this->sut->getGoogleDriveManager()->getCacheZoneName());
     }
 
 

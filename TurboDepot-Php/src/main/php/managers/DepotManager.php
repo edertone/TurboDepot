@@ -246,11 +246,17 @@ class DepotManager extends BaseStrictClass{
                 throw new UnexpectedValueException('googleDriveManager not available. Check it is correctly configured on turbodepot setup');
             }
 
-            $this->_googleDriveManager = new GoogleDriveManager(
-                $this->_loadedDepotSetup->googleDrive->apiClientRoot,
-                $this->_loadedDepotSetup->googleDrive->cacheRootPath,
-                $this->_loadedDepotSetup->googleDrive->cacheZone,
-                $this->_loadedDepotSetup->googleDrive->cacheZoneTimeToLive);
+            $this->_googleDriveManager = new GoogleDriveManager($this->_loadedDepotSetup->googleDrive->apiClientRoot);
+
+            if(!StringUtils::isEmpty($this->_loadedDepotSetup->googleDrive->cacheRootPath)){
+
+                $this->_googleDriveManager->enableCache($this->_loadedDepotSetup->googleDrive->cacheRootPath,
+                    $this->_loadedDepotSetup->googleDrive->cacheZone,
+                    $this->_loadedDepotSetup->googleDrive->listsTimeToLive,
+                    $this->_loadedDepotSetup->googleDrive->filesTimeToLive);
+            }
+
+            $this->_googleDriveManager->setServiceAccountCredentials($this->_loadedDepotSetup->googleDrive->accountCredentialsPath);
         }
 
         return $this->_googleDriveManager;
