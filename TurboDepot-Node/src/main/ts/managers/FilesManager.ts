@@ -814,29 +814,49 @@ export class FilesManager{
      *
      * @param sourcePath Absolute or relative path to the source directory that must be renamed (including the directoy itself).
      * @param destPath Absolute or relative path to the new directoy name (including the directoy itself). It must not exist.
+     * @param timeout The amount of seconds that this method will be trying to rename the specified directory in case it is blocked
+     *        by the OS or temporarily not accessible. If the directory can't be renamed after the given amount of seconds, an exception
+     *        will be thrown.
      *
-     * @return boolean true on success or false on failure.
+     * @return boolean True on success
      */
-    renameDirectory(sourcePath:string, destPath:string){
+    renameDirectory(sourcePath:string, destPath:string, timeout = 15){
 
         sourcePath = this._composePath(sourcePath);
         destPath = this._composePath(destPath);
 
-        if(!this.isDirectory(sourcePath) || this.isDirectory(destPath) || this.isFile(destPath)){
+        if(!this.isDirectory(sourcePath)){
 
-            return false;
+            throw new Error('Source directory does not exist: ' + sourcePath);
         }
         
-        try {
-            
-            this.fs.renameSync(sourcePath, destPath);
-            
-            return true;
-            
-        } catch (e) {
+        if(this.isDirectory(destPath) || this.isFile(destPath)){
 
-            return false;
+            throw new Error('Invalid destination: ' + destPath);
         }
+        
+        let lastError = '';
+        let passedTime = 0;
+        let startTime = Math.floor(Date.now() / 1000);
+        
+        do {
+                
+            try {
+                
+                this.fs.renameSync(sourcePath, destPath);
+                
+                return true;
+                
+            } catch (e) {
+    
+                lastError = e.toString();
+            }
+        
+            passedTime = Math.floor(Date.now() / 1000) - startTime;
+            
+        } while (passedTime < timeout);
+        
+        throw new Error(`Error renaming directory (${passedTime} seconds timeout):\n${sourcePath}\n${lastError}`);
     }
 
 
@@ -1010,6 +1030,7 @@ export class FilesManager{
     getFileModificationTime(pathToFile: string){
 
         // TODO - adapt from PHP
+        return pathToFile;
     }
 
 
@@ -1078,29 +1099,49 @@ export class FilesManager{
      *
      * @param sourceFilePath Absolute or relative path to the source file that must be renamed (including the filename itself).
      * @param destFilePath Absolute or relative path to the new file name (including the filename itself). It must not exist.
+     * @param timeout The amount of seconds that this method will be trying to rename the specified file in case it is blocked
+     *            by the OS or temporarily not accessible. If the file can't be renamed after the given amount of seconds, an exception
+     *            will be thrown.
      *
-     * @return True on success or false on failure.
+     * @return boolean True on success
      */
-    renameFile(sourceFilePath: string, destFilePath: string){
+    renameFile(sourceFilePath: string, destFilePath: string, timeout = 15){
 
         sourceFilePath = this._composePath(sourceFilePath);
         destFilePath = this._composePath(destFilePath);
 
-        if(!this.isFile(sourceFilePath) || this.isDirectory(destFilePath) || this.isFile(destFilePath)){
+        if(!this.isFile(sourceFilePath)){
 
-            return false;
+            throw new Error('Source file does not exist: ' + sourceFilePath);
         }
+        
+        if(this.isDirectory(destFilePath) || this.isFile(destFilePath)){
 
-        try {
-            
-            this.fs.renameSync(sourceFilePath, destFilePath);
-            
-            return true;
-            
-        } catch (e) {
-
-            return false;
+            throw new Error('Invalid destination: ' + destFilePath);
         }
+        
+        let lastError = '';
+        let passedTime = 0;
+        let startTime = Math.floor(Date.now() / 1000);
+
+        do {
+            
+            try {
+            
+                this.fs.renameSync(sourceFilePath, destFilePath);
+                
+                return true;
+                
+            } catch (e) {
+    
+                lastError = e.toString();
+            }
+        
+            passedTime = Math.floor(Date.now() / 1000) - startTime;
+            
+        } while (passedTime < timeout);
+        
+        throw new Error(`Error renaming file (${passedTime} seconds timeout):\n${sourceFilePath}\n${lastError}`);
     }
 
 

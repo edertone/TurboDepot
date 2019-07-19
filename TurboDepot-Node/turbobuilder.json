@@ -5,7 +5,7 @@
     "metadata": {
         "name": "turbodepot-node",
         "description": "General purpose multi storage library (ORM, Logs, Users, Files, Objects)",
-        "builderVersion": "2.0.0"
+        "builderVersion": "2.1.0"
     },
     
     "validate": {

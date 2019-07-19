@@ -783,20 +783,42 @@ class FilesManager extends BaseStrictClass{
      *
      * @param string $sourcePath Absolute or relative path to the source directory that must be renamed (including the directoy itself).
      * @param string $destPath Absolute or relative path to the new directoy name (including the directoy itself). It must not exist.
+     * @param int $timeout The amount of seconds that this method will be trying to rename the specified directory in case it is blocked
+     *            by the OS or temporarily not accessible. If the directory can't be renamed after the given amount of seconds, an exception
+     *            will be thrown.
      *
-     * @return boolean true on success or false on failure.
+     * @return boolean True on success
      */
-    public function renameDirectory(string $sourcePath, string $destPath){
+    public function renameDirectory(string $sourcePath, string $destPath, int $timeout = 15){
 
         $sourcePath = $this->_composePath($sourcePath);
         $destPath = $this->_composePath($destPath);
 
-        if(!$this->isDirectory($sourcePath) || $this->isDirectory($destPath) || $this->isFile($destPath)){
+        if(!$this->isDirectory($sourcePath)){
 
-            return false;
+            throw new UnexpectedValueException('Source directory does not exist: '.$sourcePath);
         }
 
-        return rename($sourcePath, $destPath);
+        if($this->isDirectory($destPath) || $this->isFile($destPath)){
+
+            throw new UnexpectedValueException('Invalid destination: '.$destPath);
+        }
+
+        $passedTime = 0;
+        $startTime = time();
+
+        do {
+
+            if(rename($sourcePath, $destPath) === true){
+
+                return true;
+            }
+
+            $passedTime = time() - $startTime;
+
+        } while ($passedTime < $timeout);
+
+        throw new UnexpectedValueException("Error renaming directory ($passedTime seconds timeout):\n$sourcePath\n".error_get_last()['message']);
     }
 
 
@@ -1110,20 +1132,42 @@ class FilesManager extends BaseStrictClass{
      *
      * @param string $sourceFilePath Absolute or relative path to the source file that must be renamed (including the filename itself).
      * @param string $destFilePath Absolute or relative path to the new file name (including the filename itself). It must not exist.
+     * @param int $timeout The amount of seconds that this method will be trying to rename the specified file in case it is blocked
+     *            by the OS or temporarily not accessible. If the file can't be renamed after the given amount of seconds, an exception
+     *            will be thrown.
      *
-     * @return boolean True on success or false on failure.
+     * @return boolean True on success
      */
-    public function renameFile(string $sourceFilePath, string $destFilePath){
+    public function renameFile(string $sourceFilePath, string $destFilePath, int $timeout = 15){
 
         $sourceFilePath = $this->_composePath($sourceFilePath);
         $destFilePath = $this->_composePath($destFilePath);
 
-        if(!$this->isFile($sourceFilePath) || $this->isDirectory($destFilePath) || $this->isFile($destFilePath)){
+        if(!$this->isFile($sourceFilePath)){
 
-            return false;
+            throw new UnexpectedValueException('Source file does not exist: '.$sourceFilePath);
         }
 
-        return rename ($sourceFilePath, $destFilePath);
+        if($this->isDirectory($destFilePath) || $this->isFile($destFilePath)){
+
+            throw new UnexpectedValueException('Invalid destination: '.$destFilePath);
+        }
+
+        $passedTime = 0;
+        $startTime = time();
+
+        do {
+
+            if(rename($sourceFilePath, $destFilePath) === true){
+
+                return true;
+            }
+
+            $passedTime = time() - $startTime;
+
+        } while ($passedTime < $timeout);
+
+        throw new UnexpectedValueException("Error renaming file ($passedTime seconds timeout):\n$sourceFilePath\n".error_get_last()['message']);
     }
 
 
