@@ -265,7 +265,7 @@ class LocalizedFilesManager extends FilesManager{
     /**
      * TODO - Implement
      */
-    public function renameDirectory(string $sourcePath, string $destPath){
+    public function renameDirectory(string $sourcePath, string $destPath, int $timeout = 15){
     }
 
 
@@ -328,7 +328,7 @@ class LocalizedFilesManager extends FilesManager{
     /**
      * TODO - Implement
      */
-    public function renameFile(string $sourceFilePath, string $destFilePath){
+    public function renameFile(string $sourceFilePath, string $destFilePath, int $timeout = 15){
     }
 }
 
