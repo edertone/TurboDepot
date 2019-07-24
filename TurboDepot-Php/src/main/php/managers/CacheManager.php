@@ -102,7 +102,8 @@ class CacheManager extends BaseStrictClass{
      * Define the expiration time limit for all the zone cached data.
      *
      * @param string $timeToLive Defines the number of seconds after which the whole zone cache data will be deleted.
-     *        (1 hour = 3600 seconds, 1 day = 86400 seconds). Set it to 0 for an infinite timeout.
+     *        (1 hour = 3600 seconds, 1 day = 86400 seconds, 1 month = 2592000, 1 year = 31536000).
+     *        Set it to 0 for an infinite timeout.
      *
      * @return void
      */
@@ -116,7 +117,8 @@ class CacheManager extends BaseStrictClass{
      * Define the expiration time limit for all the cached data on the specified section
      *
      * @param string $timeToLive Defines the number of seconds after which the whole section cached data will be deleted.
-     *        (1 hour = 3600 seconds, 1 day = 86400 seconds). Set it to 0 for an infinite timeout.
+     *        (1 hour = 3600 seconds, 1 day = 86400 seconds, 1 month = 2592000, 1 year = 31536000).
+     *        Set it to 0 for an infinite timeout.
      *
      * @return void
      */

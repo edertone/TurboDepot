@@ -100,9 +100,9 @@ class GoogleDriveManager {
      * @param string $zoneName To isolate all the cached data from any other elements that may exist on the cache folder, we must define a cache zone name.
      *        we can leave here the default name or use any other we want.
      * @param int $listsTimeToLive Defines the number of seconds after which the operations related to listing files and folder cache data will be deleted.
-     *        Set it to 0 to for an infinite time. (1 hour = 3600 seconds, 1 day = 86400 seconds)
+     *        Set it to 0 to for an infinite time. (1 hour = 3600 seconds, 1 day = 86400 seconds, 1 month = 2592000, 1 year = 31536000)
      * @param int $filesTimeToLive Defines the number of seconds after which the operations related to getting files content cache data will be deleted.
-     *        Set it to 0 to for an infinite time. (1 hour = 3600 seconds, 1 day = 86400 seconds)
+     *        Set it to 0 to for an infinite time. (1 hour = 3600 seconds, 1 day = 86400 seconds, 1 month = 2592000, 1 year = 31536000)
      *
      * @throws UnexpectedValueException
      *
