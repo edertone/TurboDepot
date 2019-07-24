@@ -441,9 +441,9 @@ class CacheManagerTest extends TestCase {
         $this->assertFalse($this->sut->isZoneExpired());
         $this->assertFalse($this->filesManager->isFile($zoneRoot.'metadata'));
 
-        $this->sut->setZoneTimeToLive(2);
+        $this->sut->setZoneTimeToLive(3);
         $this->assertFalse($this->sut->isZoneExpired());
-        $this->assertSame('2|', $this->filesManager->readFile($zoneRoot.'metadata'));
+        $this->assertSame('3|', $this->filesManager->readFile($zoneRoot.'metadata'));
 
         sleep(1);
 
@@ -451,17 +451,17 @@ class CacheManagerTest extends TestCase {
         $this->assertFalse($this->sut->isZoneExpired());
 
         $metadataFileContents = $this->filesManager->readFile($zoneRoot.'metadata');
-        $this->assertRegExp('/2\|\d{8,}/', $metadataFileContents);
+        $this->assertRegExp('/3\|\d{8,}/', $metadataFileContents);
 
         sleep(1);
 
         $this->assertFalse($this->sut->isZoneExpired());
         $this->assertSame($metadataFileContents, $this->filesManager->readFile($zoneRoot.'metadata'));
 
-        sleep(1);
+        sleep(2);
 
         $this->assertTrue($this->sut->isZoneExpired());
-        $this->assertSame('2|', $this->filesManager->readFile($zoneRoot.'metadata'));
+        $this->assertSame('3|', $this->filesManager->readFile($zoneRoot.'metadata'));
     }
 
 
@@ -500,7 +500,7 @@ class CacheManagerTest extends TestCase {
         $this->assertFalse($this->sut->isZoneExpired());
         $this->assertFalse($this->sut->isSectionExpired('section'));
 
-        $this->sut->setSectionTimeToLive('section', 2);
+        $this->sut->setSectionTimeToLive('section', 3);
         $this->assertFalse($this->filesManager->isFile($zoneRoot.'metadata'));
         $this->assertTrue($this->filesManager->isFile($sectionRoot.'metadata'));
         $this->assertFalse($this->sut->isZoneExpired());
@@ -515,7 +515,7 @@ class CacheManagerTest extends TestCase {
         $this->assertFalse($this->sut->isSectionExpired('section'));
 
         $metadataFileContents = $this->filesManager->readFile($sectionRoot.'metadata');
-        $this->assertRegExp('/2\|\d{8,}/', $metadataFileContents);
+        $this->assertRegExp('/3\|\d{8,}/', $metadataFileContents);
 
         sleep(1);
 
@@ -526,14 +526,14 @@ class CacheManagerTest extends TestCase {
         $this->assertFalse($this->sut->isZoneExpired());
         $this->assertFalse($this->sut->isSectionExpired('section'));
 
-        sleep(1);
+        sleep(2);
 
         $this->assertSame($metadataFileContents, $this->filesManager->readFile($sectionRoot.'metadata'));
         $this->assertFalse($this->filesManager->isFile($zoneRoot.'metadata'));
         $this->assertTrue($this->filesManager->isFile($sectionRoot.'metadata'));
         $this->assertFalse($this->sut->isZoneExpired());
         $this->assertTrue($this->sut->isSectionExpired('section'));
-        $this->assertSame('2|', $this->filesManager->readFile($sectionRoot.'metadata'));
+        $this->assertSame('3|', $this->filesManager->readFile($sectionRoot.'metadata'));
     }
 
 
@@ -715,12 +715,12 @@ class CacheManagerTest extends TestCase {
 
         $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
 
-        $this->sut->setZoneTimeToLive(3);
-        $this->assertSame('3|', $this->filesManager->readFile($zoneRoot.'metadata'));
+        $this->sut->setZoneTimeToLive(4);
+        $this->assertSame('4|', $this->filesManager->readFile($zoneRoot.'metadata'));
 
         $this->sut->save('someSection', 'someId1', 'someData1');
         $metadataContents = $this->filesManager->readFile($zoneRoot.'metadata');
-        $this->assertRegExp('/3\|\d{8,}/', $metadataContents);
+        $this->assertRegExp('/4\|\d{8,}/', $metadataContents);
 
         $this->sut->save('someSection', 'someId2', 'someData2');
         $this->assertSame($metadataContents, $this->filesManager->readFile($zoneRoot.'metadata'));
@@ -862,48 +862,360 @@ class CacheManagerTest extends TestCase {
 
 
     /**
-     * testClearZone
+     * testClearZone_no_timetolive_defined
      *
      * @return void
      */
-    public function testClearZone(){
+    public function testClearZone_no_timetolive_defined(){
 
-        // Test empty values
-        // TODO
+        $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
 
-        // Test ok values
-        // TODO
+        $this->assertFalse($this->filesManager->isDirectory($zoneRoot));
 
-        // Test wrong values
-        // TODO
+        $this->sut->save('someSection1', 'someId1', 'someData1');
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+        $this->assertTrue($this->filesManager->isDirectory(
+            $zoneRoot.'someSection1'.DIRECTORY_SEPARATOR.($this->filesManager->getDirectoryList($zoneRoot.'someSection1')[0])));
 
-        // Test exceptions
-        // TODO
+        $this->sut->save('someSection2', 'someId2', 'someData2');
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection2')));
+        $this->assertTrue($this->filesManager->isDirectory(
+            $zoneRoot.'someSection2'.DIRECTORY_SEPARATOR.($this->filesManager->getDirectoryList($zoneRoot.'someSection2')[0])));
 
-        $this->markTestIncomplete('This test has not been implemented yet.');
+        $this->sut->clearZone();
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertTrue($this->filesManager->isDirectoryEmpty($zoneRoot.'someSection1'));
+        $this->assertTrue($this->filesManager->isDirectoryEmpty($zoneRoot.'someSection2'));
     }
 
 
     /**
-     * testClearSection
+     * testClearZone_timetolive_defined_only_on_zone
+     *
+     * @return void
+     */
+    public function testClearZone_timetolive_defined_only_on_zone(){
+
+        $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
+
+        $this->sut->setZoneTimeToLive(60);
+
+        $this->assertTrue($this->filesManager->isDirectory($zoneRoot));
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot)));
+
+        $this->sut->save('someSection1', 'someId1', 'someData1');
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+        $this->assertTrue($this->filesManager->isDirectory(
+            $zoneRoot.'someSection1'.DIRECTORY_SEPARATOR.($this->filesManager->getDirectoryList($zoneRoot.'someSection1')[0])));
+
+        $this->sut->save('someSection2', 'someId2', 'someData2');
+        $this->assertSame(3, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection2')));
+        $this->assertTrue($this->filesManager->isDirectory(
+            $zoneRoot.'someSection2'.DIRECTORY_SEPARATOR.($this->filesManager->getDirectoryList($zoneRoot.'someSection2')[0])));
+
+        $this->sut->clearZone();
+        $this->assertSame(3, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertTrue($this->filesManager->isDirectoryEmpty($zoneRoot.'someSection1'));
+        $this->assertTrue($this->filesManager->isDirectoryEmpty($zoneRoot.'someSection2'));
+    }
+
+
+    /**
+     * testClearZone_timetolive_defined_only_on_section
+     *
+     * @return void
+     */
+    public function testClearZone_timetolive_defined_only_on_section(){
+
+        $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
+
+        $this->sut->setSectionTimeToLive('someSection1', 2);
+
+        $this->assertFalse($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'someSection1'.DIRECTORY_SEPARATOR.'metadata'));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+
+        $this->sut->save('someSection1', 'someId1', 'someData1');
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+        $this->assertTrue($this->filesManager->isDirectory(
+            $zoneRoot.'someSection1'.DIRECTORY_SEPARATOR.($this->filesManager->getDirectoryList($zoneRoot.'someSection1')[0])));
+
+        $this->sut->save('someSection2', 'someId2', 'someData2');
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection2')));
+        $this->assertTrue($this->filesManager->isDirectory(
+            $zoneRoot.'someSection2'.DIRECTORY_SEPARATOR.($this->filesManager->getDirectoryList($zoneRoot.'someSection2')[0])));
+
+        $this->sut->clearZone();
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertFalse($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'someSection1'.DIRECTORY_SEPARATOR.'metadata'));
+        $this->assertTrue($this->filesManager->isDirectoryEmpty($zoneRoot.'someSection2'));
+    }
+
+
+    /**
+     * testClearZone_timetolive_defined_on_zone_and_one_section
+     *
+     * @return void
+     */
+    public function testClearZone_timetolive_defined_on_zone_and_one_section(){
+
+        $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
+
+        $this->sut->setZoneTimeToLive(60);
+        $this->sut->setSectionTimeToLive('someSection1', 10);
+
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'someSection1'.DIRECTORY_SEPARATOR.'metadata'));
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+
+        $this->sut->save('someSection1', 'someId1', 'someData1');
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+
+        $this->sut->save('someSection2', 'someId2', 'someData2');
+        $this->assertSame(3, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection2')));
+
+        $this->sut->clearZone();
+        $this->assertSame(3, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'someSection1'.DIRECTORY_SEPARATOR.'metadata'));
+        $this->assertTrue($this->filesManager->isDirectoryEmpty($zoneRoot.'someSection2'));
+    }
+
+
+    /**
+     * testClearZone_timetolive_defined_on_zone_and_two_sections
+     *
+     * @return void
+     */
+    public function testClearZone_timetolive_defined_on_zone_and_two_sections(){
+
+        $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
+
+        $this->sut->setZoneTimeToLive(60);
+        $this->sut->setSectionTimeToLive('someSection1', 10);
+        $this->sut->setSectionTimeToLive('someSection2', 30);
+
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'someSection1'.DIRECTORY_SEPARATOR.'metadata'));
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'someSection2'.DIRECTORY_SEPARATOR.'metadata'));
+        $this->assertSame(3, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection2')));
+
+        $this->sut->save('someSection1', 'someId1', 'someData1');
+        $this->assertSame(3, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection2')));
+
+        $this->sut->save('someSection2', 'someId2', 'someData2');
+        $this->assertSame(3, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot.'someSection2')));
+
+        $this->sut->clearZone();
+        $this->assertSame(3, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'metadata'));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'someSection1'.DIRECTORY_SEPARATOR.'metadata'));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection2')));
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'someSection2'.DIRECTORY_SEPARATOR.'metadata'));
+    }
+
+
+    /**
+     * testClearId
      *
      * @return void
      */
     public function testClearSection(){
 
         // Test empty values
-        // TODO
+        try {
+            $this->sut->clearSection();
+            $this->exceptionMessage = 'id did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Too few arguments to function/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->clearSection('');
+            $this->exceptionMessage = '"" did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/section <> does not exist/', $e->getMessage());
+        }
 
         // Test ok values
-        // TODO
+        $this->sut->save('someSection1', 'someId1', 'someData1');
+        $this->sut->clearSection('someSection1');
+        $this->assertSame(null, $this->sut->get('someSection1', 'someId1'));
 
         // Test wrong values
-        // TODO
+        try {
+            $this->sut->clearSection('123123');
+            $this->exceptionMessage = '123123 did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/section <123123> does not exist/', $e->getMessage());
+        }
+    }
 
-        // Test exceptions
-        // TODO
 
-        $this->markTestIncomplete('This test has not been implemented yet.');
+    /**
+     * testClearSection_no_timetolive_defined
+     *
+     * @return void
+     */
+    public function testClearSection_no_timetolive_defined(){
+
+        $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
+
+        $this->assertFalse($this->filesManager->isDirectory($zoneRoot));
+
+        $this->sut->save('someSection1', 'someId1', 'someData1');
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+
+        $this->sut->save('someSection2', 'someId2', 'someData2');
+        $this->sut->save('someSection2', 'someId3', 'someData3');
+        $this->sut->save('someSection2', 'someId4', 'someData4');
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection2')));
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'someSection2/c29t/ZUlk/Mg==.cache'));
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'someSection2/c29t/ZUlk/Mw==.cache'));
+        $this->assertTrue($this->filesManager->isFile($zoneRoot.'someSection2/c29t/ZUlk/NA==.cache'));
+
+        $this->sut->clearSection('someSection1');
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertTrue($this->filesManager->isDirectoryEmpty($zoneRoot.'someSection1'));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection2')));
+
+        $this->sut->clearSection('someSection2');
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertTrue($this->filesManager->isDirectoryEmpty($zoneRoot.'someSection1'));
+        $this->assertTrue($this->filesManager->isDirectoryEmpty($zoneRoot.'someSection2'));
+    }
+
+
+    /**
+     * testClearSection_timetolive_defined_only_on_zone
+     *
+     * @return void
+     */
+    public function testClearSection_timetolive_defined_only_on_zone(){
+
+        $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
+
+        $this->sut->setZoneTimeToLive(60);
+
+        $this->sut->save('someSection1', 'someId1', 'someData1');
+        $this->sut->save('someSection2', 'someId2', 'someData2');
+
+        $this->sut->clearSection('someSection1');
+        $this->assertSame(3, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertTrue($this->filesManager->isDirectoryEmpty($zoneRoot.'someSection1'));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection2')));
+
+        $this->sut->clearSection('someSection2');
+        $this->assertSame(3, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertTrue($this->filesManager->isDirectoryEmpty($zoneRoot.'someSection1'));
+        $this->assertTrue($this->filesManager->isDirectoryEmpty($zoneRoot.'someSection2'));
+    }
+
+
+    /**
+     * testClearSection_timetolive_defined_only_on_section
+     *
+     * @return void
+     */
+    public function testClearSection_timetolive_defined_only_on_section(){
+
+        $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
+
+        $this->sut->setSectionTimeToLive('someSection1', 60);
+
+        $this->sut->save('someSection1', 'someId1', 'someData1');
+        $this->sut->save('someSection2', 'someId2', 'someData2');
+
+        $this->sut->clearSection('someSection1');
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertFalse($this->filesManager->isDirectoryEmpty($zoneRoot.'someSection1'));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection2')));
+
+        $this->sut->clearSection('someSection2');
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertFalse($this->filesManager->isDirectoryEmpty($zoneRoot.'someSection1'));
+        $this->assertTrue($this->filesManager->isDirectoryEmpty($zoneRoot.'someSection2'));
+    }
+
+
+    /**
+     * testClearSection_timetolive_defined_on_zone_and_one_section
+     *
+     * @return void
+     */
+    public function testClearSection_timetolive_defined_on_zone_and_one_section(){
+
+        $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
+
+        $this->sut->setZoneTimeToLive(60);
+        $this->sut->setSectionTimeToLive('someSection1', 60);
+
+        $this->sut->save('someSection1', 'someId1', 'someData1');
+        $this->sut->save('someSection2', 'someId2', 'someData2');
+
+        $this->sut->clearSection('someSection1');
+        $this->assertSame(3, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertFalse($this->filesManager->isDirectoryEmpty($zoneRoot.'someSection1'));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection2')));
+
+        $this->sut->clearSection('someSection2');
+        $this->assertSame(3, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+        $this->assertTrue($this->filesManager->isDirectoryEmpty($zoneRoot.'someSection2'));
+    }
+
+
+    /**
+     * testClearSection_timetolive_defined_on_zone_and_two_sections
+     *
+     * @return void
+     */
+    public function testClearSection_timetolive_defined_on_zone_and_two_sections(){
+
+        $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
+
+        $this->sut->setZoneTimeToLive(60);
+        $this->sut->setSectionTimeToLive('someSection1', 60);
+        $this->sut->setSectionTimeToLive('someSection2', 60);
+
+        $this->sut->save('someSection1', 'someId1', 'someData1');
+        $this->sut->save('someSection2', 'someId2', 'someData2');
+
+        $this->assertSame(3, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot.'someSection2')));
+
+        $this->sut->clearSection('someSection1');
+        $this->assertSame(3, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot.'someSection2')));
+
+        $this->sut->clearSection('someSection2');
+        $this->assertSame(3, count($this->filesManager->getDirectoryList($zoneRoot)));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection2')));
     }
 
 
@@ -914,19 +1226,54 @@ class CacheManagerTest extends TestCase {
      */
     public function testClearId(){
 
+        $zoneRoot = $this->tempFolder.DIRECTORY_SEPARATOR.'test-zone'.DIRECTORY_SEPARATOR;
+
+        $this->sut->save('someSection1', '1', 'someData1');
+        $this->sut->save('someSection1', '2', 'someData2');
+        $this->sut->save('someSection1', '3', 'someData3');
+
         // Test empty values
-        // TODO
+        try {
+            $this->sut->clearId();
+            $this->exceptionMessage = ' did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Too few arguments to function/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->clearId('', '');
+            $this->exceptionMessage = '"" did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/section must be a non empty string/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->clearId('someSection1', '');
+            $this->exceptionMessage = '"" id did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Id <> does not contain data for the specified section/', $e->getMessage());
+        }
 
         // Test ok values
-        // TODO
+        $this->assertFalse($this->filesManager->isFile($zoneRoot.'someSection1'.DIRECTORY_SEPARATOR.'metadata'));
+        $this->assertSame(3, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+        $this->assertSame('someData1', $this->sut->get('someSection1', '1'));
+
+        $this->sut->clearId('someSection1', '1');
+        $this->assertSame(null, $this->sut->get('someSection1', '1'));
+        $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
+
+        $this->sut->clearId('someSection1', '2');
+        $this->assertSame(null, $this->sut->get('someSection1', '2'));
+        $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
 
         // Test wrong values
-        // TODO
-
-        // Test exceptions
-        // TODO
-
-        $this->markTestIncomplete('This test has not been implemented yet.');
+        try {
+            $this->sut->clearId('someSection1', '123123');
+            $this->exceptionMessage = '123123 id did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Id <123123> does not contain data for the specified section/', $e->getMessage());
+        }
     }
 }
 

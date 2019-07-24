@@ -137,7 +137,28 @@ class CacheManager extends BaseStrictClass{
      */
     public function isZoneExpired(){
 
-        return $this->_isMetadataFileExpired($this->_zoneRoot.DIRECTORY_SEPARATOR.'metadata', true);
+        $result = $this->_isMetadataFileExpired($this->_zoneRoot.DIRECTORY_SEPARATOR.'metadata');
+
+        if($result){
+
+            // Loop all the zone sections and clear all the ones that are expired
+            foreach ($this->_filesManager->getDirectoryList($this->_zoneRoot) as $section) {
+
+                if($this->_filesManager->isDirectory($this->_zoneRoot.DIRECTORY_SEPARATOR.$section)){
+
+                    $sectionMetadata = $this->_zoneRoot.DIRECTORY_SEPARATOR.$section.DIRECTORY_SEPARATOR.'metadata';
+
+                    if(!$this->_filesManager->isFile($sectionMetadata) || $this->_isMetadataFileExpired($sectionMetadata)){
+
+                        $this->clearSection($section);
+                    }
+                }
+            }
+
+            $this->resetMetadataFile($this->_zoneRoot.DIRECTORY_SEPARATOR.'metadata');
+        }
+
+        return $result;
     }
 
 
@@ -157,28 +178,34 @@ class CacheManager extends BaseStrictClass{
             throw new UnexpectedValueException('section <'.$section.'> does not exist');
         }
 
-        // Zone expiration will be checked if this section has no metadata defined
+        // Zone expiration will be checked but section expiration has preference
         if(!$this->_filesManager->isFile($this->_zoneRoot.DIRECTORY_SEPARATOR.$section.DIRECTORY_SEPARATOR.'metadata') &&
            $this->isZoneExpired()){
 
-            return true;
+           return true;
         }
 
-        return $this->_isMetadataFileExpired($this->_zoneRoot.DIRECTORY_SEPARATOR.$section.DIRECTORY_SEPARATOR.'metadata', true);
+        $result = $this->_isMetadataFileExpired($this->_zoneRoot.DIRECTORY_SEPARATOR.$section.DIRECTORY_SEPARATOR.'metadata');
+
+        if($result){
+
+            $this->clearSection($section);
+        }
+
+        return $result;
     }
 
 
     /**
-     * Auxiliary method to check if a metadata file is expired, and delete all its related cache data if true.
+     * Auxiliary method to check if a metadata file is expired
      *
      * @param string $metadataPath Full file system path to the metadata file we want to check
-     * @param boolean $clearRelatedFiles If set to true, when the metadata file is expired, all its related cache files will be deleted
      *
      * @throws UnexpectedValueException
      *
-     * @return boolean True if the metadata file was expired (and the related cache data cleared), false otherwise
+     * @return boolean True if the metadata file is expired, false otherwise
      */
-    private function _isMetadataFileExpired($metadataPath, $clearRelatedFiles){
+    private function _isMetadataFileExpired($metadataPath){
 
         $isMetadataExpired = false;
 
@@ -194,11 +221,6 @@ class CacheManager extends BaseStrictClass{
             $metadataContents = explode($this->_metadataDelimiter, $metadataContents);
 
             $isMetadataExpired = $metadataContents[0] !== '0' && $metadataContents[1] !== '' && (time() >= (float)$metadataContents[1]);
-
-            if($isMetadataExpired && $clearRelatedFiles){
-
-                $this->_clearMetadataRelatedFiles($metadataPath);
-            }
         }
 
         return $isMetadataExpired;
@@ -309,18 +331,67 @@ class CacheManager extends BaseStrictClass{
 
 
     /**
-     * Totally delete all the contents of the actual cache zone (except the metadata file).
+     * Totally delete all the contents of the actual cache zone and reset its metadata file if it exists.
+     *
+     * NOTE: All cached data will be deleted even if the zone is not expired yet!
      *
      * @return boolean True on success
      */
     public function clearZone(){
 
-        return $this->_clearMetadataRelatedFiles($this->_zoneRoot.DIRECTORY_SEPARATOR.'metadata');
+        // We use a folder rename trick to free the zone as fast as possible: We create a temporary folder with the empty
+        // zone structure, and perform a fast rename of the folders so we can then calmly delete the full old zone folder
+
+        $zoneParent = StringUtils::getPath($this->_zoneRoot).DIRECTORY_SEPARATOR;
+
+        $emptyZoneTmpRoot = $zoneParent.$this->_filesManager->findUniqueDirectoryName(
+            $zoneParent, 'tmp'.StringUtils::generateRandom(8, 8)).DIRECTORY_SEPARATOR;
+
+        $this->_filesManager->createDirectory($emptyZoneTmpRoot);
+
+        // Copy zone metadata if exists
+        if($this->_filesManager->isFile($this->_zoneRoot.DIRECTORY_SEPARATOR.'metadata')){
+
+            $this->_filesManager->copyFile($this->_zoneRoot.DIRECTORY_SEPARATOR.'metadata', $emptyZoneTmpRoot.'metadata');
+
+            $this->resetMetadataFile($emptyZoneTmpRoot.'metadata');
+        }
+
+        // Create all empty sections and copy metadata files if exist
+        foreach ($this->_filesManager->getDirectoryList($this->_zoneRoot) as $section) {
+
+            if($this->_filesManager->isDirectory($this->_zoneRoot.DIRECTORY_SEPARATOR.$section)){
+
+                $this->_filesManager->createDirectory($emptyZoneTmpRoot.$section);
+
+                if($this->_filesManager->isFile($this->_zoneRoot.DIRECTORY_SEPARATOR.$section.DIRECTORY_SEPARATOR.'metadata')){
+
+                    $this->_filesManager->copyFile($this->_zoneRoot.DIRECTORY_SEPARATOR.$section.DIRECTORY_SEPARATOR.'metadata',
+                        $emptyZoneTmpRoot.$section.DIRECTORY_SEPARATOR.'metadata');
+
+                    $this->resetMetadataFile($emptyZoneTmpRoot.$section.DIRECTORY_SEPARATOR.'metadata');
+                }
+            }
+        }
+
+        // Perform fast rename of old zone and new tmp empty one
+        $zoneToDeleteTmpRoot = $zoneParent.$this->_filesManager->findUniqueDirectoryName(
+            $zoneParent, 'tmp'.StringUtils::generateRandom(8, 8)).DIRECTORY_SEPARATOR;
+
+        $this->_filesManager->renameDirectory($this->_zoneRoot, $zoneToDeleteTmpRoot);
+        $this->_filesManager->renameDirectory($emptyZoneTmpRoot, $this->_zoneRoot);
+
+        // Delete all the old data
+        $this->_filesManager->deleteDirectory($zoneToDeleteTmpRoot);
+
+        return true;
     }
 
 
     /**
-     * Totally delete all the contents of the specified cache section (except the metadata file)
+     * Totally delete all the contents of the specified cache section and reset its metadata file if it exists.
+     *
+     * NOTE: All cached data will be deleted even if the section is not expired yet!
      *
      * @param string $section The name for a cache section (under the current zone) that will be deleted
      *
@@ -330,12 +401,40 @@ class CacheManager extends BaseStrictClass{
      */
     public function clearSection($section){
 
-        if(!$this->_filesManager->isDirectory($this->_zoneRoot.DIRECTORY_SEPARATOR.$section)){
+        $sectionRoot = $this->_zoneRoot.DIRECTORY_SEPARATOR.$section.DIRECTORY_SEPARATOR;
+
+        if(!$this->_filesManager->isDirectory($sectionRoot)){
 
             throw new UnexpectedValueException('section <'.$section.'> does not exist');
         }
 
-        return $this->_clearMetadataRelatedFiles($this->_zoneRoot.DIRECTORY_SEPARATOR.$section.DIRECTORY_SEPARATOR.'metadata');
+        // We use a folder rename trick to free the section as fast as possible: We create a temporary folder with the empty
+        // section structure, and perform a fast rename of the folders so we can then calmly delete the full old section folder
+
+        $newEmptySectionTmpRoot = $this->_zoneRoot.DIRECTORY_SEPARATOR.$this->_filesManager->findUniqueDirectoryName(
+            $this->_zoneRoot, 'tmp'.StringUtils::generateRandom(8, 8)).DIRECTORY_SEPARATOR;
+
+        $this->_filesManager->createDirectory($newEmptySectionTmpRoot);
+
+        // Copy the metadata file if it exists
+        if($this->_filesManager->isFile($sectionRoot.'metadata')){
+
+            $this->_filesManager->copyFile($sectionRoot.'metadata', $newEmptySectionTmpRoot.'metadata');
+
+            $this->resetMetadataFile($newEmptySectionTmpRoot.'metadata');
+        }
+
+        // Perform fast rename of old section and new tmp empty one
+        $sectionToDeleteTmpRoot = $this->_zoneRoot.DIRECTORY_SEPARATOR.$this->_filesManager->findUniqueDirectoryName(
+            $this->_zoneRoot, 'tmp'.StringUtils::generateRandom(8, 8)).DIRECTORY_SEPARATOR;
+
+        $this->_filesManager->renameDirectory($sectionRoot, $sectionToDeleteTmpRoot);
+        $this->_filesManager->renameDirectory($newEmptySectionTmpRoot, $sectionRoot);
+
+        // Delete all the old data
+        $this->_filesManager->deleteDirectory($sectionToDeleteTmpRoot);
+
+        return true;
     }
 
 
@@ -365,56 +464,18 @@ class CacheManager extends BaseStrictClass{
 
 
     /**
-     * Auxiliary method that will clear all the cached files that are related to the specified metadata file.
-     * The metadata file expiry value will be also cleared.
+     * Auxiliary method to restart the expiration counter on the specified metadata file
      *
-     * @param string $metadataFilePath A full path to a valid metadata cache file
-     *
-     * @return boolean True if the process finished correctly
+     * @param string $metadataFilePath Path to a metadata file. If the file does not exist, nothing will be done
      */
-    private function _clearMetadataRelatedFiles($metadataFilePath){
+    private function resetMetadataFile($metadataFilePath){
 
-        $metadataFileRoot = StringUtils::getPath($metadataFilePath);
-        $metadataContents = explode($this->_metadataDelimiter, file_get_contents($metadataFilePath, true));
+        if($this->_filesManager->isFile($metadataFilePath)){
 
-        // Update the zone metadata file by removing the expiration timestamp
-        $this->_filesManager->saveFile($metadataFilePath, $metadataContents[0].$this->_metadataDelimiter);
+            $metadataContents = explode($this->_metadataDelimiter, file_get_contents($metadataFilePath, true));
 
-        // Delete all the other elements inside the current zone
-        $items = $this->_filesManager->getDirectoryList($metadataFileRoot);
-
-        foreach ($items as $item) {
-
-            $itemPath = $metadataFileRoot.DIRECTORY_SEPARATOR.$item;
-
-            if($item === 'metadata'){
-
-                continue;
-            }
-
-            if($this->_filesManager->isFile($itemPath)){
-
-                $this->_filesManager->deleteFile($itemPath);
-
-            }else{
-
-                $mustBeDeleted = true;
-                $itemMetadataPath = $itemPath.DIRECTORY_SEPARATOR.'metadata';
-
-                if($this->_filesManager->isFile($itemMetadataPath) && !$this->_isMetadataFileExpired($itemMetadataPath, false)){
-
-                    $mustBeDeleted = false;
-                }
-
-                if($mustBeDeleted){
-
-                    // Note that section directories will be left to prevent section not found errors
-                    $this->_filesManager->deleteDirectory($itemPath, false);
-                }
-            }
+            $this->_filesManager->saveFile($metadataFilePath, $metadataContents[0].$this->_metadataDelimiter);
         }
-
-        return true;
     }
 
 
