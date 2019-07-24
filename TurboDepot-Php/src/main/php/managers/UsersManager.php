@@ -82,11 +82,18 @@ class UsersManager extends BaseStrictClass{
      *
      * @see UsersManager::encodeUserAndPassword
      *
-     * @return string The username value from the encoded string
+     * @return string The username value from the encoded string or an empty string if the value could not be read
      */
     public function decodeUserName(string $encodedUserAndPsw){
 
-        return base64_decode(explode(',', ConversionUtils::base64ToString($encodedUserAndPsw))[0]);
+        $base64Decoded = ConversionUtils::base64ToString($encodedUserAndPsw);
+
+        if (substr_count($base64Decoded, ',') !== 1) {
+
+            return '';
+        }
+
+        return base64_decode(explode(',', $base64Decoded)[0]);
     }
 
 
@@ -98,11 +105,18 @@ class UsersManager extends BaseStrictClass{
      *
      * @see UsersManager::encodeUserAndPassword
      *
-     * @return string The password value from the encoded string
+     * @return string The password value from the encoded string or an empty string if the value could not be read
      */
     public function decodePassword(string $encodedUserAndPsw){
 
-        return base64_decode(explode(',', ConversionUtils::base64ToString($encodedUserAndPsw))[1]);
+        $base64Decoded = ConversionUtils::base64ToString($encodedUserAndPsw);
+
+        if (substr_count($base64Decoded, ',') !== 1) {
+
+            return '';
+        }
+
+        return base64_decode(explode(',', $base64Decoded)[1]);
     }
 
 
