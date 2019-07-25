@@ -61,6 +61,24 @@ class GoogleDriveManager {
 
 
     /**
+     * See getter for docs
+     *
+     * @see GoogleDriveManager::enableCache
+     * @var int
+     */
+    private $_listsTimeToLive = -1;
+
+
+    /**
+     * See getter for docs
+     *
+     * @see GoogleDriveManager::enableCache
+     * @var int
+     */
+    private $_filesTimeToLive = -1;
+
+
+    /**
      * This class is an abstraction of the Google drive api. It allows us to interact with a google drive account like we interact
      * with a standard file system.
      *
@@ -118,6 +136,9 @@ class GoogleDriveManager {
         }
 
         $this->_cacheManager = new CacheManager($rootPath, $zoneName);
+
+        $this->_listsTimeToLive = $listsTimeToLive;
+        $this->_filesTimeToLive = $filesTimeToLive;
         $this->_cacheManager->setSectionTimeToLive('getDirectoryList', $listsTimeToLive);
         $this->_cacheManager->setSectionTimeToLive('getFileLocalPath', $filesTimeToLive);
     }
@@ -169,6 +190,32 @@ class GoogleDriveManager {
 
             throw new UnexpectedValueException('Could not perform google drive authentication');
         }
+    }
+
+
+    /**
+     * Gives the number of cache seconds that have been defined for the lis operations
+     *
+     * @see GoogleDriveManager::enableCache
+     *
+     * @return int The number of defined seconds or -1 if cache is not enabled
+     */
+    public function getListsTimeToLive(){
+
+        return $this->_listsTimeToLive;
+    }
+
+
+    /**
+     * Gives the number of cache seconds that have been defined for the file read operations
+     *
+     * @see GoogleDriveManager::enableCache
+     *
+     * @return int The number of defined seconds or -1 if cache is not enabled
+     */
+    public function getFilesTimeToLive(){
+
+        return $this->_filesTimeToLive;
     }
 
 
