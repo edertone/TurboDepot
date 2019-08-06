@@ -254,6 +254,39 @@ export class FilesManager{
     
     
     /**
+     * Count elements on the specified directory based on their type or specific match with regular expressions.
+     * With this method you can count files, directories, both or any items that match more complex regular expressions.
+     *
+     * @see FilesManager.findDirectoryItems
+     *
+     * @param path Absolute or relative path where the counting will be performed
+     *
+     * @param searchItemsType Defines the type for the directory elements to count: 'files' to count only files, 'folders'
+     *        to count only folders, 'both' to count on all the directory contents
+     *
+     * @param depth Defines the maximum number of subfolders where the count will be performed:<br>
+     *        - If set to -1 the count will be performed on the whole folder contents<br>
+     *        - If set to 0 the count will be performed only on the path root elements<br>
+     *        - If set to 2 the count will be performed on the root, first and second depth level of subfolders
+     *
+     * @param searchRegexp A regular expression that files or folders must match to be included
+     *        into the results. See findDirectoryItems() docs for pattern examples<br>
+     *
+     * @param excludeRegexp A regular expression that will exclude all the results that match it from the count
+     *
+     * @return The total number of elements that match the specified criteria inside the specified path
+     */
+    countDirectoryItems(path: string,
+                        searchItemsType = 'both',
+                        depth = -1,
+                        searchRegexp = /.*/,
+                        excludeRegexp = ''){
+
+        return this.findDirectoryItems(path, searchRegexp, 'relative', searchItemsType, depth, excludeRegexp).length;
+    }
+    
+    
+    /**
      * Find all the elements on a directory which name matches the specified regexp pattern
      *
      * @param path Absolute or relative path where the search will be performed
@@ -285,11 +318,11 @@ export class FilesManager{
      * @return A list formatted as defined in returnFormat, with all the elements that meet the search criteria
      */
     findDirectoryItems(path: string,
-                       searchRegexp: string,
+                       searchRegexp: string|RegExp,
                        returnFormat = 'relative',
                        searchItemsType = 'both',
                        depth = -1,
-                       excludeRegexp = ''): string[]{
+                       excludeRegexp: string|RegExp = ''): string[]{
 
         let result: string[] = [];
         path = this._composePath(path);

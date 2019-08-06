@@ -732,6 +732,52 @@ class FilesManagerTest extends TestCase {
 
 
     /**
+     * testCountDirectoryItems
+     *
+     * @return void
+     */
+    public function testCountDirectoryItems(){
+
+        // Test empty values
+        try {
+            $this->sut->countDirectoryItems(null);
+            $this->exceptionMessage = 'null did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path must be a string/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->countDirectoryItems(0);
+            $this->exceptionMessage = '0 did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path must be a string/', $e->getMessage());
+        }
+
+        // Test ok values
+        $this->assertSame(2, $this->sut->countDirectoryItems($this->basePath.'/countDirectoryItems/test-1', 'files', 0));
+        $this->assertSame(3, $this->sut->countDirectoryItems($this->basePath.'/countDirectoryItems/test-1', 'files', 1));
+        $this->assertSame(4, $this->sut->countDirectoryItems($this->basePath.'/countDirectoryItems/test-1', 'files', 2));
+        $this->assertSame(4, $this->sut->countDirectoryItems($this->basePath.'/countDirectoryItems/test-1', 'files'));
+
+        $this->assertSame(2, $this->sut->countDirectoryItems($this->basePath.'/countDirectoryItems/test-1', 'folders', 0));
+        $this->assertSame(3, $this->sut->countDirectoryItems($this->basePath.'/countDirectoryItems/test-1', 'folders', 1));
+        $this->assertSame(3, $this->sut->countDirectoryItems($this->basePath.'/countDirectoryItems/test-1', 'folders', 2));
+        $this->assertSame(3, $this->sut->countDirectoryItems($this->basePath.'/countDirectoryItems/test-1', 'folders'));
+
+        $this->assertSame(4, $this->sut->countDirectoryItems($this->basePath.'/countDirectoryItems/test-1', 'both', 0));
+        $this->assertSame(6, $this->sut->countDirectoryItems($this->basePath.'/countDirectoryItems/test-1', 'both', 1));
+        $this->assertSame(7, $this->sut->countDirectoryItems($this->basePath.'/countDirectoryItems/test-1', 'both', 2));
+        $this->assertSame(7, $this->sut->countDirectoryItems($this->basePath.'/countDirectoryItems/test-1', 'both'));
+
+        // Test wrong values
+        // Not necessary
+
+        // Test exceptions
+        // Not necessary
+    }
+
+
+    /**
      * testFindDirectoryItems
      *
      * @return void
@@ -743,28 +789,28 @@ class FilesManagerTest extends TestCase {
             $this->sut->findDirectoryItems(null);
             $this->exceptionMessage = 'null did not cause exception';
         } catch (Throwable $e) {
-            // We expect an exception to happen
+            $this->assertRegExp('/Too few arguments to function/', $e->getMessage());
         }
 
         try {
             $this->sut->findDirectoryItems(0);
             $this->exceptionMessage = '0 did not cause exception';
         } catch (Throwable $e) {
-            // We expect an exception to happen
+            $this->assertRegExp('/Too few arguments to function/', $e->getMessage());
         }
 
         try {
             $this->sut->findDirectoryItems('');
             $this->exceptionMessage = '"" did not cause exception';
         } catch (Throwable $e) {
-            // We expect an exception to happen
+            $this->assertRegExp('/Too few arguments to function/', $e->getMessage());
         }
 
         try {
             $this->sut->findDirectoryItems('       ');
             $this->exceptionMessage = '"       " did not cause exception';
         } catch (Throwable $e) {
-            // We expect an exception to happen
+            $this->assertRegExp('/Too few arguments to function/', $e->getMessage());
         }
 
         // Test ok values

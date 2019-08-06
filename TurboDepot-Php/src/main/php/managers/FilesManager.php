@@ -11,9 +11,9 @@
 
 namespace org\turbodepot\src\main\php\managers;
 
-use DirectoryIterator;
 use Exception;
 use Throwable;
+use DirectoryIterator;
 use UnexpectedValueException;
 use org\turbocommons\src\main\php\utils\StringUtils;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
@@ -234,6 +234,39 @@ class FilesManager extends BaseStrictClass{
 
 
     /**
+     * Count elements on the specified directory based on their type or specific match with regular expressions.
+     * With this method you can count files, directories, both or any items that match more complex regular expressions.
+     *
+     * @see FilesManager::findDirectoryItems
+     *
+     * @param string $path Absolute or relative path where the counting will be performed
+     *
+     * @param string $searchItemsType Defines the type for the directory elements to count: 'files' to count only files, 'folders'
+     *        to count only folders, 'both' to count on all the directory contents
+     *
+     * @param int $depth Defines the maximum number of subfolders where the count will be performed:<br>
+     *        - If set to -1 the count will be performed on the whole folder contents<br>
+     *        - If set to 0 the count will be performed only on the path root elements<br>
+     *        - If set to 2 the count will be performed on the root, first and second depth level of subfolders
+     *
+     * @param string $searchRegexp A regular expression that files or folders must match to be included
+     *        into the results. See findDirectoryItems() docs for pattern examples<br>
+     *
+     * @param string $excludeRegexp A regular expression that will exclude all the results that match it from the count
+     *
+     * @return number The total number of elements that match the specified criteria inside the specified path
+     */
+    public function countDirectoryItems($path,
+                                        string $searchItemsType = 'both',
+                                        int $depth = -1,
+                                        string $searchRegexp = '/.*/',
+                                        string $excludeRegexp = ''){
+
+        return count($this->findDirectoryItems($path, $searchRegexp, 'relative', $searchItemsType, $depth, $excludeRegexp));
+    }
+
+
+    /**
      * Find all the elements on a directory which name matches the specified regexp pattern
      *
      * @param string $path Absolute or relative path where the search will be performed
@@ -279,12 +312,12 @@ class FilesManager extends BaseStrictClass{
             $itemPath = $path.DIRECTORY_SEPARATOR.$item;
 
             if(($excludeRegexp !== '' && preg_match($excludeRegexp, $itemPath)) ||
-               ($searchItemsType === 'folders' && is_file($itemPath))){
+               ($searchItemsType === 'folders' && $this->isFile($itemPath))){
 
                 continue;
             }
 
-            $isItemADir = is_dir($itemPath);
+            $isItemADir = $this->isDirectory($itemPath);
 
             if(preg_match($searchRegexp, $item) &&
                !($searchItemsType === 'files' && $isItemADir)){

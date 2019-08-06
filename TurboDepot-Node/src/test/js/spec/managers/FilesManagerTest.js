@@ -198,6 +198,41 @@ describe('FilesManager', function() {
     });
     
     
+    it('should have a correctly implemented countDirectoryItems method', function() {
+
+        // Test empty values
+        expect(() => {
+            this.sut.countDirectoryItems(null);
+        }).toThrowError(Error, /Path must be a string/);
+
+        expect(() => {
+            this.sut.countDirectoryItems(0);
+        }).toThrowError(Error, /Path must be a string/);
+        
+        // Test ok values
+        expect(this.sut.countDirectoryItems(this.basePath + '/countDirectoryItems/test-1', 'files', 0)).toBe(2);
+        expect(this.sut.countDirectoryItems(this.basePath + '/countDirectoryItems/test-1', 'files', 1)).toBe(3);
+        expect(this.sut.countDirectoryItems(this.basePath + '/countDirectoryItems/test-1', 'files', 2)).toBe(4);
+        expect(this.sut.countDirectoryItems(this.basePath + '/countDirectoryItems/test-1', 'files')).toBe(4);
+
+        expect(this.sut.countDirectoryItems(this.basePath + '/countDirectoryItems/test-1', 'folders', 0)).toBe(2);
+        expect(this.sut.countDirectoryItems(this.basePath + '/countDirectoryItems/test-1', 'folders', 1)).toBe(3);
+        expect(this.sut.countDirectoryItems(this.basePath + '/countDirectoryItems/test-1', 'folders', 2)).toBe(3);
+        expect(this.sut.countDirectoryItems(this.basePath + '/countDirectoryItems/test-1', 'folders')).toBe(3);
+
+        expect(this.sut.countDirectoryItems(this.basePath + '/countDirectoryItems/test-1', 'both', 0)).toBe(4);
+        expect(this.sut.countDirectoryItems(this.basePath + '/countDirectoryItems/test-1', 'both', 1)).toBe(6);
+        expect(this.sut.countDirectoryItems(this.basePath + '/countDirectoryItems/test-1', 'both', 2)).toBe(7);
+        expect(this.sut.countDirectoryItems(this.basePath + '/countDirectoryItems/test-1', 'both')).toBe(7);
+
+        // Test wrong values
+        // Not necessary
+
+        // Test exceptions
+        // Not necessary    
+    });
+    
+    
     it('should have a correctly implemented findDirectoryItems method', function() {
 
         // TODO - translate from php      
