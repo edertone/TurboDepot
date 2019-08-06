@@ -167,6 +167,15 @@ class StorageFolderManagerTest extends TestCase {
             $this->sut->validateFolderStructure();
             $this->exceptionMessage = 'validateFolderStructure did not cause exception';
         } catch (Throwable $e) {
+            $this->assertRegExp('/The storage folder must have 6 directories/', $e->getMessage());
+        }
+
+        $this->assertTrue($this->filesManager->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'invalid'));
+
+        try {
+            $this->sut->validateFolderStructure();
+            $this->exceptionMessage = 'validateFolderStructure did not cause exception';
+        } catch (Throwable $e) {
             $this->assertRegExp('/The current storage folder does not have a cache folder/', $e->getMessage());
         }
 

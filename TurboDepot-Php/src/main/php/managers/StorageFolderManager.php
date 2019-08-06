@@ -63,6 +63,11 @@ class StorageFolderManager extends BaseStrictClass{
 
         $filesManager = new FilesManager();
 
+        if($filesManager->countDirectoryItems($this->_storagePath, 'both', 0) !== 6){
+
+            throw new UnexpectedValueException('The storage folder must have 6 directories: '.$this->_storagePath);
+        }
+
         if(!$filesManager->isDirectory($this->_storagePath.DIRECTORY_SEPARATOR.'cache')){
 
             throw new UnexpectedValueException('The current storage folder does not have a cache folder: '.$this->_storagePath);
