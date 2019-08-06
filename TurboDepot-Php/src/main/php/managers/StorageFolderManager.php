@@ -14,7 +14,6 @@ namespace org\turbodepot\src\main\php\managers;
 
 use UnexpectedValueException;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
-use org\turbocommons\src\main\php\utils\StringUtils;
 
 
 /**
@@ -43,7 +42,7 @@ class StorageFolderManager extends BaseStrictClass{
      * @param string $storageFolderRoot The full file system path to the root of the folder that we want to use as the storage folder.
      *        all the required structure of folders and files must exist or this class will throw several errors.
      */
-    public function __construct($storageFolderRoot = ''){
+    public function __construct(string $storageFolderRoot = ''){
 
         if(!is_dir($storageFolderRoot.DIRECTORY_SEPARATOR.'custom')){
 
@@ -55,11 +54,46 @@ class StorageFolderManager extends BaseStrictClass{
 
 
     /**
-     * TODO - Validate that the current storage path structure is perfectly correct
+     * Validate that the current storage path structure is perfectly correct.
+     * If any element is missing or incorrect, an exception with the error details will be thrown.
+     *
+     * @throws UnexpectedValueException
      */
-    public function validateStructure(){
+    public function validateFolderStructure(){
 
-        // TODO
+        $filesManager = new FilesManager();
+
+        if(!$filesManager->isDirectory($this->_storagePath.DIRECTORY_SEPARATOR.'cache')){
+
+            throw new UnexpectedValueException('The current storage folder does not have a cache folder: '.$this->_storagePath);
+        }
+
+        if(!$filesManager->isDirectory($this->_storagePath.DIRECTORY_SEPARATOR.'custom')){
+
+            throw new UnexpectedValueException('The current storage folder does not have a custom folder: '.$this->_storagePath);
+        }
+
+        if(!$filesManager->isDirectory($this->_storagePath.DIRECTORY_SEPARATOR.'db')){
+
+            throw new UnexpectedValueException('The current storage folder does not have a db folder: '.$this->_storagePath);
+        }
+
+        if(!$filesManager->isDirectory($this->_storagePath.DIRECTORY_SEPARATOR.'executable')){
+
+            throw new UnexpectedValueException('The current storage folder does not have a executable folder: '.$this->_storagePath);
+        }
+
+        if(!$filesManager->isDirectory($this->_storagePath.DIRECTORY_SEPARATOR.'logs')){
+
+            throw new UnexpectedValueException('The current storage folder does not have a logs folder: '.$this->_storagePath);
+        }
+
+        if(!$filesManager->isDirectory($this->_storagePath.DIRECTORY_SEPARATOR.'tmp')){
+
+            throw new UnexpectedValueException('The current storage folder does not have a tmp folder: '.$this->_storagePath);
+        }
+
+        return true;
     }
 
 

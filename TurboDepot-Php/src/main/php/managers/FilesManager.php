@@ -864,7 +864,7 @@ class FilesManager extends BaseStrictClass{
      *            by the OS or temporarily not accessible. If the operation can't be performed after the given amount of seconds,
      *            an exception will be thrown.
      *
-     * @return boolean The number of files that have been deleted as part of the directory removal process. If directory does not exist
+     * @return int The number of files that have been deleted as part of the directory removal process. If directory does not exist
      *         or it could not be deleted, an exception will be thrown
      */
     public function deleteDirectory(string $path, bool $deleteDirectoryItself = true, $timeout = 15){
