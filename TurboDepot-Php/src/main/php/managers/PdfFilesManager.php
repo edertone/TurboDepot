@@ -81,6 +81,39 @@ class PdfFilesManager {
 
 
     /**
+     * Check if the specified file is a valid PDF file
+     *
+     * @param string $pdfFilePath Full filesystem path to a valid pdf file
+     *
+     * @return boolean True if the file is a valid PDF, false otherwise
+     */
+    public function isValidDocument($pdfFilePath){
+
+        // TODO - create this method
+
+        return true;
+    }
+
+
+    /**
+     * Obtain the full binary contents of the specified pdf file
+     *
+     * @param string $pdfFilePath Full filesystem path to a valid pdf file
+     *
+     * @return string The full binary contents of the specified pdf file
+     */
+    public function getDocumentBinaryData($pdfFilePath){
+
+        if(!$this->isValidDocument($pdfFilePath)){
+
+            throw new UnexpectedValueException('Specified document is not a valid PDF file');
+        }
+
+        return file_get_contents($pdfFilePath, true);
+    }
+
+
+    /**
      * Count the number of pages on a PDF document (the pdfinfo executable must be available and already defined at this class constructor)
      *
      * @param string $pdfFilePath Full filesystem path to a valid pdf file
@@ -101,29 +134,29 @@ class PdfFilesManager {
         }
 
         // Execute the pdfinfo tool that gives us the information we need
-        $output = 1;
-        $pdfInfoResult = 1;
+//         $output = 1;
+//         $pdfInfoResult = 1;
 
-        exec($this->_pdfInfoPath.' "'.$pdfFilePath.'"', $output, $pdfInfoResult);
+//         exec($this->_pdfInfoPath.' "'.$pdfFilePath.'"', $output, $pdfInfoResult);
 
-        // Check any problem on pdfinfo execution
-        if ($pdfInfoResult !== 0) {
+//         // Check any problem on pdfinfo execution
+//         if ($pdfInfoResult !== 0) {
 
-            throw new UnexpectedValueException('countPages pdfinfo failed :'.implode("\n", $output));
-        }
+//             throw new UnexpectedValueException('countPages pdfinfo failed :'.implode("\n", $output));
+//         }
 
-        // Get the number of pages from the pdfinfo command line output, by using a regular expression.
-        $matches = [];
+//         // Get the number of pages from the pdfinfo command line output, by using a regular expression.
+//         $matches = [];
 
-        foreach($output as $op){
+//         foreach($output as $op){
 
-            if(preg_match('/Pages:\s*(\d+)/i', $op, $matches) === 1){
+//             if(preg_match('/Pages:\s*(\d+)/i', $op, $matches) === 1){
 
-                return intval($matches[1]);
-            }
-        }
+//                 return intval($matches[1]);
+//             }
+//         }
 
-        return 0;
+//         return 0;
     }
 
 
