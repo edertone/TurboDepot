@@ -290,7 +290,8 @@ class CacheManager extends BaseStrictClass{
 
         $fullPath = $this->_getFullPathToId($section, $id);
 
-        if($this->isSectionExpired($section)){
+        if(!$this->_filesManager->isDirectory($this->_zoneRoot.DIRECTORY_SEPARATOR.$section) ||
+           $this->isSectionExpired($section)){
 
             return null;
         }

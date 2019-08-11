@@ -779,22 +779,13 @@ class CacheManagerTest extends TestCase {
         $this->assertSame('3', $this->sut->get('s2', '3'));
 
         // Test wrong values
-        try {
-            $this->sut->get('nonexistantsection', 'nonexistantid');
-            $this->exceptionMessage = 'nonexistantsection did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/section <nonexistantsection> does not exist/', $e->getMessage());
-        }
-
+        $this->assertSame(null, $this->sut->get('nonexistantsection', 'nonexistantid'));
         $this->assertSame(null, $this->sut->get('s0', 'nonexistantid'));
-        $this->assertSame(null, $this->sut->get('s1', '4'));
 
-        try {
-            $this->sut->get('s3', '1');
-            $this->exceptionMessage = 's3 did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/section <s3> does not exist/', $e->getMessage());
-        }
+        // It is important to return a null value when the specified section does not exist, cause ti helps
+        // Reducing the number of disk requests when trying to access the cache:
+        $this->assertSame(null, $this->sut->get('s1', '4'));
+        $this->assertSame(null, $this->sut->get('s3', '1'));
 
         // Test exceptions
         try {
