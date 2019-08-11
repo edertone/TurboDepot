@@ -209,6 +209,12 @@ class PdfFilesManager {
             throw new UnexpectedValueException('Ghostscript failed '.$gsQueryResult);
         }
 
+        // Check that
+        if(strlen($imageData) < 500 && strpos($imageData, 'No pages will be processed') !== false){
+
+            throw new UnexpectedValueException('Ghostscript failed '.$imageData);
+        }
+
         return $imageData;
     }
 
