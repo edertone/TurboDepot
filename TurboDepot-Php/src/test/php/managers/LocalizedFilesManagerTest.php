@@ -45,7 +45,7 @@ class LocalizedFilesManagerTest extends TestCase {
     protected function setUp(){
 
         $this->exceptionMessage = '';
-        $this->basePath = __DIR__.'/../resources/managers/localizedFilesManager';
+        $this->basePath = __DIR__.'/../../resources/managers/localizedFilesManager';
 
         $this->filesManager = new FilesManager();
 

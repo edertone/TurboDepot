@@ -110,7 +110,7 @@ class MarkDownBlogManagerTest extends TestCase {
      */
     public function testGetLatestPosts(){
 
-        $this->filesManager->copyDirectory(__DIR__.'/../resources/managers/markdownBlogManager', $this->tempFolder);
+        $this->filesManager->copyDirectory(__DIR__.'/../../resources/managers/markdownBlogManager', $this->tempFolder);
 
         // Test empty values
         // TODO

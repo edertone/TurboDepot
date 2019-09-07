@@ -313,7 +313,7 @@ export class FilesManager{
      *        - If set to 0 the search will be performed only on the path root elements<br>
      *        - If set to 2 the search will be performed on the root, first and second depth level of subfolders
      *
-     * @param excludeRegexp A regular expression that will exclude all the results that match it
+     * @param excludeRegexp A regular expression that will exclude all the results that match it anywhere on the item full path or name
      * 
      * @return A list formatted as defined in returnFormat, with all the elements that meet the search criteria
      */

@@ -62,7 +62,7 @@ class MarkDownBlogManager extends BaseStrictClass{
 
        $this->_fm = new FilesManager();
 
-       require_once __DIR__.DIRECTORY_SEPARATOR.'..'.DIRECTORY_SEPARATOR.'libs'
+       require_once __DIR__.DIRECTORY_SEPARATOR.'..'.DIRECTORY_SEPARATOR.'..'.DIRECTORY_SEPARATOR.'libs'
            .DIRECTORY_SEPARATOR.'parsedown'.DIRECTORY_SEPARATOR.'Parsedown.php';
 
        $this->_parseDown = new \Parsedown();

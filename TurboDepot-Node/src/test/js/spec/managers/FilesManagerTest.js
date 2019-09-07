@@ -16,7 +16,7 @@ describe('FilesManager', function() {
     
     beforeEach(function() {
         
-        this.basePath = path.resolve('src/test/js/resources/managers/filesManager');
+        this.basePath = path.resolve('src/test/resources/managers/filesManager');
 
         this.sut = new FilesManager();
 

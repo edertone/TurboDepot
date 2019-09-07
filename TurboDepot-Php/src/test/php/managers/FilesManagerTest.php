@@ -48,7 +48,7 @@ class FilesManagerTest extends TestCase {
     protected function setUp(){
 
         $this->exceptionMessage = '';
-        $this->basePath = __DIR__.'/../resources/managers/filesManager';
+        $this->basePath = __DIR__.'/../../resources/managers/filesManager';
 
         $this->sut = new FilesManager();
 

@@ -1,7 +1,7 @@
 <?php
 
 
-require_once __DIR__.'/resources/libs/turbocommons-php-2.1.1.phar';
+require_once __DIR__.'/../libs/turbocommons-php-2.1.1.phar';
 require_once __DIR__.'/../../main/php/autoloader.php';
 
 
@@ -12,12 +12,12 @@ spl_autoload_register(function($className){
     $classPath = str_replace('\\', DIRECTORY_SEPARATOR, str_replace('/', DIRECTORY_SEPARATOR, $className));
 
     // Remove unwanted classname path parts
-    $classPath = explode('src'.DIRECTORY_SEPARATOR.'test'.DIRECTORY_SEPARATOR.'php'.DIRECTORY_SEPARATOR, $classPath);
+    $classPath = explode('src'.DIRECTORY_SEPARATOR.'test'.DIRECTORY_SEPARATOR, $classPath);
     $classPath = array_pop($classPath).'.php';
 
-    if(file_exists(__DIR__.DIRECTORY_SEPARATOR.$classPath)){
+    if(file_exists(__DIR__.DIRECTORY_SEPARATOR.'..'.DIRECTORY_SEPARATOR.$classPath)){
 
-        require_once __DIR__.DIRECTORY_SEPARATOR.$classPath;
+        require_once __DIR__.DIRECTORY_SEPARATOR.'..'.DIRECTORY_SEPARATOR.$classPath;
     }
 });
 

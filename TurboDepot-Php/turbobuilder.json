@@ -3,7 +3,7 @@
     "metadata": {
         "name": "turbodepot-php",
         "description": "General purpose multi storage library (ORM, Logs, Users, Files, Objects)",
-        "builderVersion": "2.1.0"
+        "builderVersion": "2.2.0"
     },
     "validate": {
         "runBeforeBuild": true,
@@ -47,7 +47,7 @@
                     "path": "extras/copyright headers/TurboDepot-Php.txt",
                     "affectedPaths": ["src"],
                     "includes": ["php"],
-                    "excludes": ["autoloader.php", "libs", "test/php/resources"]
+                    "excludes": ["autoloader.php", "libs", "test/resources"]
                 }
             ]
         },
@@ -89,7 +89,7 @@
     "test": [
         {
             "type": "phpUnit",
-            "testsRoot": "src/test/php",
+            "testsRoot": "src/test",
             "coverageReport": true,
             "coverageReportOpenAfterTests": true
         }

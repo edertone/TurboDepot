@@ -54,7 +54,7 @@ class DepotManagerTest extends TestCase {
         $this->assertTrue($this->filesManager->isDirectoryEmpty($this->tempFolder));
         $this->assertFalse($this->filesManager->isFile($this->tempFolder));
 
-        $this->setup = json_decode($this->filesManager->readFile(__DIR__.'/../resources/managers/depotManager/empty-turbodepot.json'));
+        $this->setup = json_decode($this->filesManager->readFile(__DIR__.'/../../resources/managers/depotManager/empty-turbodepot.json'));
 
         $this->sut = new DepotManager($this->setup);
     }
@@ -126,9 +126,9 @@ class DepotManagerTest extends TestCase {
 
         // Test ok values
         $this->assertSame('org\turbodepot\src\main\php\managers\DepotManager',
-            get_class(new DepotManager(__DIR__.'/../resources/managers/depotManager/empty-turbodepot.json')));
+            get_class(new DepotManager(__DIR__.'/../../resources/managers/depotManager/empty-turbodepot.json')));
 
-        $setup = json_decode($this->filesManager->readFile(__DIR__.'/../resources/managers/depotManager/empty-turbodepot.json'));
+        $setup = json_decode($this->filesManager->readFile(__DIR__.'/../../resources/managers/depotManager/empty-turbodepot.json'));
 
         $this->assertSame('stdClass', get_class($setup));
 
@@ -269,7 +269,7 @@ class DepotManagerTest extends TestCase {
         $this->setup->depots[0]->localizedFiles->locales = ['en_US', 'es_ES'];
         $this->setup->depots[0]->localizedFiles->locations = [[
             'label' => 'test-json',
-            'path' => __DIR__.'/../resources/managers/localizedFilesManager/locales/test-json/$locale/$bundle.json',
+            'path' => __DIR__.'/../../resources/managers/localizedFilesManager/locales/test-json/$locale/$bundle.json',
             'bundles' => ['Locales']
         ]];
 
@@ -369,7 +369,7 @@ class DepotManagerTest extends TestCase {
         }
 
         // Set a valid api client root and check missing serviceAccountCredentials file
-        $this->setup->depots[0]->googleDrive->apiClientRoot = __DIR__.'/../resources/managers/depotManager/fake-api-root';
+        $this->setup->depots[0]->googleDrive->apiClientRoot = __DIR__.'/../../resources/managers/depotManager/fake-api-root';
         $this->sut = new DepotManager($this->setup);
 
         try {
@@ -380,7 +380,7 @@ class DepotManagerTest extends TestCase {
         }
 
         // Set a valid accountCredentialsPath and check that cache is not enabled
-        $this->setup->depots[0]->googleDrive->accountCredentialsPath = __DIR__.'/../resources/managers/depotManager/fake-service-account-credentials.json';
+        $this->setup->depots[0]->googleDrive->accountCredentialsPath = __DIR__.'/../../resources/managers/depotManager/fake-service-account-credentials.json';
         $this->sut = new DepotManager($this->setup);
 
         try {
