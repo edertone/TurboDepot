@@ -540,7 +540,7 @@ export class FilesManager{
      * @param deleteOnExecutionEnd Defines if the generated temp folder must be deleted after the current application execution finishes.
      *                             Note that when files inside the folder are still used by the app or OS, exceptions or problems may happen,
      *                             and it is not 100% guaranteed that the folder will be always deleted. So it is better to always handle the
-     *                             temporary folder removal in our code
+     *                             temporary folder removal in our code by ourselves
      *
      * @return The full path to the newly created temporary directory, including the directory itself (without a trailing slash).
      *         For example: C:\Users\Me\AppData\Local\Temp\MyDesiredName
@@ -559,19 +559,22 @@ export class FilesManager{
         // Add a shutdown function to try to delete the file when the current script execution ends
         if(deleteOnExecutionEnd){
 
-            this._tempDirectoriesToDelete.push(tempDirectory);
+            FilesManager._tempDirectoriesToDelete.push(tempDirectory);
             
-            if(this._tempDirectoriesToDelete.length < 2){
+            // Note that as _tempDirectoriesToDelete is a static property shared by all the FilesManager instances,
+            // Only one event listener will be attached to the 'exit' event. This way we prevent possible memory leaks by
+            // Letting only the first FilesManager instance to be the responsible of cleaning the temporary folders at application end.
+            if(FilesManager._tempDirectoriesToDelete.length < 2){
               
                 process.once('exit', () => {
-                    
-                    for (let temp of this._tempDirectoriesToDelete) {
+
+                    for (let temp of FilesManager._tempDirectoriesToDelete) {
 
                         if(this.isDirectory(temp)){
                         
                             this.deleteDirectory(temp);
                         }
-                    }                
+                    }
                 });
             }
         }
@@ -581,9 +584,11 @@ export class FilesManager{
     
     
     /**
-     * Stores a list of paths to temporary folders that must be removed on application execution end.
+     * Aux property that globally stores the list of all paths to temporary folders that must be removed when application execution ends.
+     * This is defined static so only one shared property exists for all the FilesManager instances, and therefore we prevent memory leaks
+     * by using also a single process 'exit' event listener
      */
-    private _tempDirectoriesToDelete: string[] = [];
+    private static _tempDirectoriesToDelete: string[] = [];
 
 
     /**
