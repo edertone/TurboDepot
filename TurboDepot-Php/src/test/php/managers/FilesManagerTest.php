@@ -1030,36 +1030,39 @@ class FilesManagerTest extends TestCase {
             $this->sut->findUniqueDirectoryName(null);
             $this->exceptionMessage = 'null did not cause exception';
         } catch (Throwable $e) {
-            // We expect an exception to happen
+            $this->assertRegExp('/path must be a string/', $e->getMessage());
         }
 
         try {
             $this->sut->findUniqueDirectoryName('');
             $this->exceptionMessage = '"" did not cause exception';
         } catch (Throwable $e) {
-            // We expect an exception to happen
+            $this->assertRegExp('/Path does not exist/', $e->getMessage());
         }
 
         try {
             $this->sut->findUniqueDirectoryName(new stdClass());
             $this->exceptionMessage = '"" did not cause exception';
         } catch (Throwable $e) {
-            // We expect an exception to happen
+            $this->assertRegExp('/path must be a string/', $e->getMessage());
         }
 
         try {
             $this->sut->findUniqueDirectoryName('           ');
-            $this->exceptionMessage = '"" did not cause exception';
+            $this->exceptionMessage = '"          " did not cause exception';
         } catch (Throwable $e) {
-            // We expect an exception to happen
+            $this->assertRegExp('/Path does not exist/', $e->getMessage());
         }
+
+        $this->assertSame('1', $this->sut->findUniqueDirectoryName($this->tempFolder, ''));
+        $this->assertSame('1', $this->sut->findUniqueDirectoryName($this->tempFolder, '           '));
 
         // Test ok values
         // Test generated directory names for the created empty folder
-        $this->assertTrue($this->sut->findUniqueDirectoryName($this->tempFolder) == '1');
-        $this->assertTrue($this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder') == 'NewFolder');
-        $this->assertTrue($this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', '-') == 'NewFolder');
-        $this->assertTrue($this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', '-', true) == 'NewFolder');
+        $this->assertSame('1', $this->sut->findUniqueDirectoryName($this->tempFolder));
+        $this->assertSame('NewFolder', $this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder'));
+        $this->assertSame('NewFolder', $this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', '-'));
+        $this->assertSame('NewFolder', $this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', '', '-', true));
 
         // Create some folders
         $this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'1');
@@ -1072,11 +1075,11 @@ class FilesManagerTest extends TestCase {
         $this->assertTrue($this->sut->isFile($this->tempFolder.DIRECTORY_SEPARATOR.'2'));
 
         // Verify generated dir names when folders already exist at destination path
-        $this->assertTrue($this->sut->findUniqueDirectoryName($this->tempFolder) == '3');
-        $this->assertTrue($this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder') == 'NewFolder-1');
-        $this->assertTrue($this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', '', '-', true) == '1-NewFolder');
-        $this->assertTrue($this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', 'copy', '-', false) == 'NewFolder-copy-1');
-        $this->assertTrue($this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', 'copy', '-', true) == 'copy-1-NewFolder');
+        $this->assertSame('3', $this->sut->findUniqueDirectoryName($this->tempFolder));
+        $this->assertSame('NewFolder-1', $this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder'));
+        $this->assertSame('1-NewFolder', $this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', '', '-', true));
+        $this->assertSame('NewFolder-copy-1', $this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', 'copy', '-', false));
+        $this->assertSame('copy-1-NewFolder', $this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', 'copy', '-', true));
 
         // Create some more folders
         $this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'3');
@@ -1087,18 +1090,24 @@ class FilesManagerTest extends TestCase {
         $this->assertTrue($this->sut->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'NewFolder-copy-1'));
 
         // Verify generated names again
-        $this->assertTrue($this->sut->findUniqueDirectoryName($this->tempFolder) == '4');
-        $this->assertTrue($this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder') == 'NewFolder-2');
-        $this->assertTrue($this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', '', '-', true) == '1-NewFolder');
-        $this->assertTrue($this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', 'copy', '-', false) == 'NewFolder-copy-2');
-        $this->assertTrue($this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', 'copy', '-', true) == 'copy-1-NewFolder');
+        $this->assertSame('4', $this->sut->findUniqueDirectoryName($this->tempFolder));
+        $this->assertSame('NewFolder-2', $this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder'));
+        $this->assertSame('1-NewFolder', $this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', '', '-', true));
+        $this->assertSame('NewFolder-copy-2', $this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', 'copy', '-', false));
+        $this->assertSame('copy-1-NewFolder', $this->sut->findUniqueDirectoryName($this->tempFolder, 'NewFolder', 'copy', '-', true));
 
         $sut2 = new FilesManager($this->tempFolder);
 
-        $this->assertTrue($sut2->findUniqueDirectoryName('', 'NewFolder', 'copy', '-', true) == 'copy-1-NewFolder');
+        $this->assertSame('copy-1-NewFolder', $sut2->findUniqueDirectoryName('', 'NewFolder', 'copy', '-', true));
+        $this->assertSame('invalid**chars', $sut2->findUniqueDirectoryName('', 'invalid**chars'));
 
         // Test wrong values
-        // not necessary
+        try {
+            $this->sut->findUniqueDirectoryName('invalid??chars');
+            $this->exceptionMessage = 'invalid??chars did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path does not exist: invalid/', $e->getMessage());
+        }
 
         // Test exceptions
         // not necessary
@@ -1270,7 +1279,7 @@ class FilesManagerTest extends TestCase {
             $this->sut->createDirectory($recursive2);
             $this->exceptionMessage = 'recursive2 did not cause exception';
         } catch (Throwable $e) {
-            // We expect an exception to happen
+            $this->assertRegExp('/No such file or directory/', $e->getMessage());
         }
 
         $this->assertFalse($this->sut->isDirectory($recursive2));
@@ -1284,21 +1293,33 @@ class FilesManagerTest extends TestCase {
         $this->assertTrue($sut2->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'subfolder-tocreate'));
 
         // Test wrong values
-        // not necessary
-
         // Test exceptions
+        try {
+            $this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'wrongchars????');
+            $this->exceptionMessage = 'wrongchars???? did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/No such file or directory/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'wrongchars*');
+            $this->exceptionMessage = 'wrongchars* did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/No such file or directory/', $e->getMessage());
+        }
+
         try {
             $this->sut->createDirectory('\345\ertert');
             $this->exceptionMessage = '\345\ertert did not cause exception';
         } catch (Throwable $e) {
-            // We expect an exception to happen
+            $this->assertRegExp('/No such file or directory/', $e->getMessage());
         }
 
         try {
             $this->sut->createDirectory(['\345\ertert', 1]);
             $this->exceptionMessage = '\345\ertert did not cause exception';
         } catch (Throwable $e) {
-            // We expect an exception to happen
+            $this->assertRegExp('/Path must be a string/', $e->getMessage());
         }
     }
 
@@ -1315,15 +1336,16 @@ class FilesManagerTest extends TestCase {
             $this->sut->createTempDirectory(null);
             $this->exceptionMessage = 'null did not cause exception';
         } catch (Throwable $e) {
-            // We expect an exception to happen
+            $this->assertRegExp('/desiredName must be a string/', $e->getMessage());
         }
 
-        try {
-            $this->sut->createTempDirectory('   ');
-            $this->exceptionMessage = '"    " did not cause exception';
-        } catch (Throwable $e) {
-            // We expect an exception to happen
-        }
+        $emptyTempFolder = $this->sut->createTempDirectory('');
+        $this->assertTrue($this->sut->isDirectoryEmpty($emptyTempFolder));
+        $this->assertTrue(NumericUtils::isNumeric(StringUtils::getPathElement($emptyTempFolder)));
+
+        $emptyTempFolder = $this->sut->createTempDirectory('   ');
+        $this->assertTrue($this->sut->isDirectoryEmpty($emptyTempFolder));
+        $this->assertTrue(NumericUtils::isNumeric(StringUtils::getPathElement($emptyTempFolder)));
 
         try {
             $this->sut->createTempDirectory([]);
@@ -1341,11 +1363,6 @@ class FilesManagerTest extends TestCase {
 
         // Test ok values
 
-        // Create a temp directory without specifying a name
-        $emptyTempFolder = $this->sut->createTempDirectory('');
-        $this->assertTrue($this->sut->isDirectoryEmpty($emptyTempFolder));
-        $this->assertTrue(NumericUtils::isNumeric(StringUtils::getPathElement($emptyTempFolder)));
-
         // Create a temp directory with a name
         $someTempFolder = $this->sut->createTempDirectory('some-temp-folder');
         $this->assertTrue($this->sut->isDirectoryEmpty($someTempFolder));
@@ -1354,11 +1371,22 @@ class FilesManagerTest extends TestCase {
         // Try to create a temp folder with the same name
         $someTempFolder2 = $this->sut->createTempDirectory('some-temp-folder');
         $this->assertTrue($this->sut->isDirectoryEmpty($someTempFolder2));
-        $this->assertFalse(($someTempFolder === $someTempFolder2));
-        $this->assertTrue(strpos($someTempFolder, 'some-temp-folder') !== false);
+        $this->assertNotSame($someTempFolder, $someTempFolder2);
+        $this->assertTrue(strpos($someTempFolder2, 'some-temp-folder') !== false);
+
+        // Try to create a temp folder with a strange name
+        $someTempFolder2 = $this->sut->createTempDirectory('--');
+        $this->assertTrue($this->sut->isDirectoryEmpty($someTempFolder2));
+        $this->assertNotSame($someTempFolder, $someTempFolder2);
+        $this->assertTrue(strpos($someTempFolder2, '--') !== false);
 
         // Test wrong values
-        // not necesary
+        try {
+            $this->sut->createTempDirectory("invalid??chars");
+            $this->exceptionMessage = 'invalid??chars not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/No such file or directory/', $e->getMessage());
+        }
 
         // Test exceptions
         // already tested

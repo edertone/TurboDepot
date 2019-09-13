@@ -1,6 +1,19 @@
 # How to debug the project
 
 
-### TODO
+### 1 To launch a debug sesion
 
-Write here detailed docs about how this project can be debugged
+To debug the tests:
+    
+    Open a cmd
+    npm run test-debug
+
+### 2 Launch chrome
+
+Open the browser, and natigate to:
+
+    chrome://inspect
+
+    Click the "Open dedicated DevTools for Node" link
+
+### 3 Start debuggin

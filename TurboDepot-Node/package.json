@@ -11,7 +11,11 @@
     "url": "https://github.com/edertone/TurboDepot"
   },
   "dependencies": {
-    "turbocommons-ts": "^2.1.1"
+    "jasmine": "^3.4.0",
+    "selenium-webdriver": "^4.0.0-alpha.4",
+    "turbocommons-ts": "^3.0.0",
+    "turbodepot-node": "^5.0.1",
+    "xhr2": "^0.2.0"
   },
   "keywords": [
     "general",

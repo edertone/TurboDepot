@@ -369,16 +369,36 @@ class FilesManager extends BaseStrictClass{
      * @return string A directory name that can be safely created on the specified path, cause no one exists with the same name
      *                (No path is returned by this method, only a directory name. For example: 'folder-1', 'directoryName-5', etc..).
      */
-    public function findUniqueDirectoryName(string $path,
-                                            string $desiredName = '',
-                                            string $text = '',
-                                            string $separator = '-',
+    public function findUniqueDirectoryName($path,
+                                            $desiredName = '',
+                                            $text = '',
+                                            $separator = '-',
                                             bool $isPrefix = false){
+
+        if(!is_string($path)){
+
+            throw new UnexpectedValueException('path must be a string');
+        }
+
+        if(!is_string($desiredName)){
+
+            throw new UnexpectedValueException('desiredName must be a string');
+        }
+
+        if(!is_string($text)){
+
+            throw new UnexpectedValueException('text must be a string');
+        }
+
+        if(!is_string($separator)){
+
+            throw new UnexpectedValueException('separator must be a string');
+        }
 
         $path = $this->_composePath($path, true);
 
         $i = 1;
-        $result = ($desiredName == '' ? $i : $desiredName);
+        $result = StringUtils::isEmpty($desiredName) ? (string)$i : $desiredName;
 
         while(is_dir($path.DIRECTORY_SEPARATOR.$result) ||
               is_file($path.DIRECTORY_SEPARATOR.$result)){
@@ -455,7 +475,7 @@ class FilesManager extends BaseStrictClass{
      *
      * @return boolean True on success or false if the folder already exists.
      */
-    public function createDirectory(string $path, bool $recursive = false){
+    public function createDirectory($path, bool $recursive = false){
 
         $path = $this->_composePath($path);
 
@@ -508,7 +528,7 @@ class FilesManager extends BaseStrictClass{
      * @return string The full path to the newly created temporary directory, including the directory itself (without a trailing slash).
      *                For example: C:\Users\Me\AppData\Local\Temp\MyDesiredName
      */
-    public function createTempDirectory(string $desiredName, $deleteOnExecutionEnd = true) {
+    public function createTempDirectory($desiredName, $deleteOnExecutionEnd = true) {
 
         $tempRoot = StringUtils::formatPath(sys_get_temp_dir(), DIRECTORY_SEPARATOR);
 

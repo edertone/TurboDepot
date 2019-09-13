@@ -144,7 +144,7 @@ class LocalizedFilesManager extends FilesManager{
     /**
      * TODO
      */
-    public function createDirectory(string $path, bool $recursive = false){
+    public function createDirectory($path, bool $recursive = false){
 
         $formattedPath = StringUtils::formatPath($path, DIRECTORY_SEPARATOR);
 

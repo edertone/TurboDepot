@@ -395,10 +395,30 @@ export class FilesManager{
                             separator = '-',
                             isPrefix = false){
 
+        if(!StringUtils.isString(path)){
+
+            throw new Error('path must be a string');
+        }
+
+        if(!StringUtils.isString(desiredName)){
+
+            throw new Error('desiredName must be a string');
+        }
+
+        if(!StringUtils.isString(text)){
+
+            throw new Error('text must be a string');
+        }
+
+        if(!StringUtils.isString(separator)){
+
+            throw new Error('separator must be a string');
+        }
+       
         path = this._composePath(path, true);
 
         let i = 1;
-        let result = (desiredName == '' ? i : desiredName);
+        let result = StringUtils.isEmpty(desiredName) ? String(i) : desiredName;
         
         while(this.isDirectory(path + this.dirSep() + result) ||
               this.isFile(path + this.dirSep() + result)){
