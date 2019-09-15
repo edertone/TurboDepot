@@ -8,6 +8,8 @@
  */
 
 const path = require('path');
+const os = require('os');
+const { StringUtils } = require('turbocommons-ts');
 const { FilesManager } = require(path.resolve('target/turbodepot-node/dist/ts/index'));
 
 
@@ -254,6 +256,12 @@ describe('FilesManager', function() {
     it('should have a correctly implemented createDirectory method', function() {
 
         // TODO - translate from php      
+    });
+    
+    
+    it('should have a correctly implemented getOSTempDirectory method', function() {
+
+        expect(this.sut.getOSTempDirectory()).toBe(StringUtils.formatPath(os.tmpdir(), path.sep));
     });
     
     

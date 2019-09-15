@@ -549,6 +549,16 @@ export class FilesManager{
 
         return true;
     }
+    
+    
+    /**
+     * Obtain the full path to the current operating system temporary folder location.
+     * It will be correctly formated and without any trailing separator character.
+     */
+    getOSTempDirectory(){
+        
+        return StringUtils.formatPath(this.os.tmpdir(), this.dirSep());
+    }
 
 
     /**
@@ -569,7 +579,7 @@ export class FilesManager{
      */
     createTempDirectory(desiredName: string, deleteOnExecutionEnd = true) {
 
-        let tempRoot = StringUtils.formatPath(this.os.tmpdir(), this.dirSep());
+        let tempRoot = this.getOSTempDirectory();
 
         let tempDirectory = tempRoot + this.dirSep() + this.findUniqueDirectoryName(tempRoot, desiredName);
 

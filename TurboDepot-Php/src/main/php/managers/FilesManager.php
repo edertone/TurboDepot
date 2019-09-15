@@ -515,6 +515,16 @@ class FilesManager extends BaseStrictClass{
 
 
     /**
+     * Obtain the full path to the current operating system temporary folder location.
+     * It will be correctly formated and without any trailing separator character.
+     */
+    public function getOSTempDirectory(){
+
+        return StringUtils::formatPath(sys_get_temp_dir(), DIRECTORY_SEPARATOR);
+    }
+
+
+    /**
      * Create a TEMPORARY directory on the operating system tmp files location, and get us the full path to access it.
      * OS should take care of its removal but it is not assured, so it is recommended to make sure all the tmp data is deleted after
      * using it (This is specially important if the tmp folder contains sensitive data).
@@ -532,7 +542,7 @@ class FilesManager extends BaseStrictClass{
      */
     public function createTempDirectory($desiredName, $deleteOnExecutionEnd = true) {
 
-        $tempRoot = StringUtils::formatPath(sys_get_temp_dir(), DIRECTORY_SEPARATOR);
+        $tempRoot = $this->getOSTempDirectory();
 
         $tempDirectory = $tempRoot.DIRECTORY_SEPARATOR.$this->findUniqueDirectoryName($tempRoot, $desiredName);
 

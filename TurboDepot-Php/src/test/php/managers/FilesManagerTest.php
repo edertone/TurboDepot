@@ -1325,6 +1325,17 @@ class FilesManagerTest extends TestCase {
 
 
     /**
+     * testGetOSTempDirectory
+     *
+     * @return void
+     */
+    public function testGetOSTempDirectory(){
+
+        $this->assertSame(StringUtils::formatPath(sys_get_temp_dir(), DIRECTORY_SEPARATOR), $this->sut->getOSTempDirectory());
+    }
+
+
+    /**
      * testCreateTempDirectory
      *
      * @return void
