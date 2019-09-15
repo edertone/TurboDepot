@@ -24,11 +24,24 @@ export class TerminalManager {
     
     
     /**
+     * see class constructor for docs
+     */
+    private _linkSystemWorkDir = true;
+
+    
+    /**
      * If this value is set, all the executed terminal commands will be appended to it.
      * For example, if we defined baseCommand = 'copy' and we call exec('-a c:/tmp'), the effectively executed command
      * will be 'copy -a c:/tmp'
      */
     baseCommand = '';
+    
+    
+    /**
+     * The list of workdir values that have been defined since the class was constructed.
+     * We will be able to navigate this back at any time
+     */
+    private workDirHistory:string[] = [];
     
     
     /**
@@ -38,36 +51,128 @@ export class TerminalManager {
 
     
     /**
+     * Stores the NodeJs path instance
+     */
+    private path: any;
+
+    
+    /**
      * Stores the NodeJs execSync instance
      */
     private execSync: any;
     
     
     /**
-     * Class that helps with the process of interacting with command line applications and executions through the OS terminal
+     * Class that helps with the process of interacting with command line applications and executions through the OS terminal.
+     * 
+     * @param workDir Defines the directory where the class points which will be the base path for all the executed commands. If not specified,
+     *        The current system work directory will be used. Note that if we specify a work dir that is different than the main application one and
+     *        linkSystemWorkDir is true, both work directories will be automatically set to the same value.
+     *        
+     * @param linkSystemWorkDir If set to true, any change that is performed on this class workDir will be reflected to the active application work dir.
+     *        If set to false, this class will handle a totally independent workdir and the main application will have its own one that won't change when this
+     *        class one is modified.
      * 
      * @return A TerminalManager instance
      */
-    constructor() {
+    constructor(workDir: string = '', linkSystemWorkDir = true) {
 
-        this.execSync = require('child_process').execSync;
+        if(!StringUtils.isString(workDir)){
+            
+            throw new Error('workDir must be a string');
+        }
         
-        this.filesManager = new FilesManager();
+        this.path = require('path');
+        this.execSync = require('child_process').execSync;
+        this._linkSystemWorkDir = linkSystemWorkDir;
+        
+        workDir = workDir === '' ? this.path.resolve('./') : this.path.resolve(workDir);
+        
+        this.filesManager = new FilesManager(workDir);
+        
+        if(this._linkSystemWorkDir) {
+            
+            process.chdir(workDir);
+        }
+        
+        this.workDirHistory = [workDir];
     }
     
     
     /**
-     * Move the current terminal working directory to the specified path
+     * Move the current terminal working directory to the specified path.
+     * If linkSystemWorkDir flag has been enabled, the main application work dir will also be pointed to the same path.
      * 
-     * @param path A full file system route to the location where the subsequent terminal commands must be executed
+     * @param path A full file system route to the location where the subsequent terminal commands will be executed
      * 
      * @return The new working directory full path
      */
-    switchWorkDirTo(path: string) {
+    setWorkDir(path: string) {
     
-        process.chdir(path);
+        if(!this.filesManager.isDirectory(path)){
+            
+            throw new Error('Invalid path: ' + path);
+        }
+        
+        path = this.path.resolve(path);
+        
+        if(this._linkSystemWorkDir) {
+            
+            process.chdir(path);
+        }
+        
+        // TODO - filesmanager must have a setRootPath method
+        this.filesManager = new FilesManager(path);
+        
+        this.workDirHistory.push(path);
         
         return path;
+    }
+    
+    
+    /**
+     * Get the directory that is currently being used by this class as the base path for commands execution
+     */
+    getWorkDir(){
+        
+        return this.workDirHistory[this.workDirHistory.length - 1];
+    }
+    
+    
+    /**
+     * Move the current work dir one step backward to the one that was previously defined.
+     */
+    setPreviousWorkDir(){
+        
+        if(this.workDirHistory.length <= 1){
+            
+            throw new Error('Requesting previous work dir but none available');
+        }
+        
+        if(this._linkSystemWorkDir) {
+        
+            process.chdir(this.workDirHistory[this.workDirHistory.length - 1]);
+        }
+        
+        this.workDirHistory.pop();
+        
+        return this.getWorkDir();
+    }
+    
+    
+    /**
+     * Move the current work dir to the first one that was defined when this class was created
+     */
+    setInitialWorkDir(){
+        
+        this.workDirHistory = [this.workDirHistory[0]];
+        
+        if(this._linkSystemWorkDir) {
+
+            process.chdir(this.workDirHistory[0]);
+        }
+        
+        return this.workDirHistory[0];
     }
     
     
@@ -77,20 +182,26 @@ export class TerminalManager {
      * 
      * When the current application exits, the folder will be automatically deleted (if possible).
      * 
-     * @param desiredName A name we want for the new directory to be created. If name is not available, a unique one
-     *        (based on the provided desired name) will be generated automatically.
-     * @param switchWorkDirToIt If set to true, when the new temporary folder is created, it will be defined as the
-     *        current terminal working directory.
+     * @param desiredName A name we want for the new directory to be created. If name exists on the system temporary folder, a unique one
+     *        (based on the desired one) will be generated automatically. We can also leave this value empty to let the method
+     *        calculate it.
+     * @param setWorkDirToIt If set to true, when the new temporary folder is created it will be defined as the
+     *        current active terminal working directory.
      * 
      * @return The full path to the newly created temporary directory
      */
-    createTempDirectory(desiredName: string, switchWorkDirToIt = true) {
+    createTempDirectory(desiredName: string, setWorkDirToIt = true) {
     
         let tmp = this.filesManager.createTempDirectory(desiredName);
         
-        if(switchWorkDirToIt){
+        if(typeof (setWorkDirToIt) !== 'boolean'){
             
-            this.switchWorkDirTo(tmp);
+            throw new Error('setWorkDirToIt must be a boolean value');
+        }
+        
+        if(setWorkDirToIt){
+            
+            this.setWorkDir(tmp);
         }
         
         return tmp;
@@ -109,13 +220,18 @@ export class TerminalManager {
      */
     exec(command: string, liveOutput = false) {
     
+        if(!StringUtils.isString(command)){
+        
+            throw new Error('command must be a string');
+        }
+        
         let output = '';
         let failed = false;        
-        let finalCommand = command;
+        let finalCommand = StringUtils.isEmpty(this.baseCommand) ? command : this.baseCommand + ' ' + command;
         
-        if(!StringUtils.isEmpty(this.baseCommand)){
+        if(StringUtils.isEmpty(finalCommand)){
             
-            finalCommand += ' ' + this.baseCommand;
+            throw new Error('no command to execute');
         }
         
         // Aux method that tries to capture the command error
@@ -131,14 +247,14 @@ export class TerminalManager {
                 return e.stdout.toString();
             }
                 
-            return 'Unknown error executing ' + command + '\n' + e.toString();
+            return 'Unknown error executing ' + finalCommand + '\n' + e.toString();
         };
         
         if(liveOutput){
             
             try{
                 
-                output = this.execSync(command, {stdio:[0,1,2]});
+                output = this.execSync(finalCommand, {stdio:[0,1,2]});
                 
             }catch(e){
 
