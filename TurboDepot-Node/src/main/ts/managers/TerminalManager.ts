@@ -71,7 +71,7 @@ export class TerminalManager {
      *        
      * @param linkSystemWorkDir If set to true, any change that is performed on this class workDir will be reflected to the active application work dir.
      *        If set to false, this class will handle a totally independent workdir and the main application will have its own one that won't change when this
-     *        class one is modified.
+     *        class one is modified. It is true by default
      * 
      * @return A TerminalManager instance
      */
@@ -182,17 +182,17 @@ export class TerminalManager {
      * 
      * When the current application exits, the folder will be automatically deleted (if possible).
      * 
-     * @param desiredName A name we want for the new directory to be created. If name exists on the system temporary folder, a unique one
-     *        (based on the desired one) will be generated automatically. We can also leave this value empty to let the method
-     *        calculate it.
+     * @param desiredName see FilesManager.createTempDirectory() method
      * @param setWorkDirToIt If set to true, when the new temporary folder is created it will be defined as the
-     *        current active terminal working directory.
+     *        current active terminal working directory. It is true by default
+     *        
+     * @param deleteOnExecutionEnd see FilesManager.createTempDirectory() method
      * 
      * @return The full path to the newly created temporary directory
      */
-    createTempDirectory(desiredName: string, setWorkDirToIt = true) {
+    createTempDirectory(desiredName: string, setWorkDirToIt = true, deleteOnExecutionEnd = true) {
     
-        let tmp = this.filesManager.createTempDirectory(desiredName);
+        let tmp = this.filesManager.createTempDirectory(desiredName, deleteOnExecutionEnd);
         
         if(typeof (setWorkDirToIt) !== 'boolean'){
             

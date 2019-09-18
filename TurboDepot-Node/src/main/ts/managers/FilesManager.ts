@@ -569,10 +569,11 @@ export class FilesManager{
      * @param desiredName A name we want for the new directory to be created. If name exists on the system temporary folder, a unique one
      *                    (based on the desired one) will be generated automatically. We can also leave this value empty to let the method
      *                    calculate it.
-     * @param deleteOnExecutionEnd Defines if the generated temp folder must be deleted after the current application execution finishes.
-     *                             Note that when files inside the folder are still used by the app or OS, exceptions or problems may happen,
-     *                             and it is not 100% guaranteed that the folder will be always deleted. So it is better to always handle the
-     *                             temporary folder removal in our code by ourselves
+     * @param deleteOnExecutionEnd True by default. Defines if the generated temp folder must be deleted after the current application execution finishes.
+     *                             Note that when files inside the folder are locked used by the app or OS, exceptions or problems may happen
+     *                             and it is not 100% guaranteed that the folder will be always deleted. So it is a good idea to leave this flag
+     *                             to true and also handle the temporary folder removal in our code by ourselves. There won't be any problem if we
+     *                             delete the folder before a delete is attempted on execution end.
      *
      * @return The full path to the newly created temporary directory, including the directory itself (without a trailing slash).
      *         For example: C:\Users\Me\AppData\Local\Temp\MyDesiredName
