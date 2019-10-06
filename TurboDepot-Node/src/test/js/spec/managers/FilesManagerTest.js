@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 'use strict';
 
 
@@ -380,7 +378,54 @@ describe('FilesManager', function() {
     
     it('should have a correctly implemented renameDirectory method', function() {
 
-        // TODO - translate from php      
+        // Test empty values
+        expect(() => {
+            this.sut.renameDirectory(null, null);
+        }).toThrowError(Error, /Path must be a string/);
+
+        expect(() => {
+            this.sut.renameDirectory({}, {});
+        }).toThrowError(Error, /Path must be a string/);
+
+        expect(() => {
+            this.sut.renameDirectory(0, 0);
+        }).toThrowError(Error, /Path must be a string/);
+
+        expect(() => {
+            this.sut.renameDirectory('', '');
+        }).toThrowError(Error, /Path does not exist: /);
+        
+        expect(() => {
+            this.sut.renameDirectory('          ', '          ');
+        }).toThrowError(Error, /Path does not exist: /);
+
+        // Test ok values
+        let dir = this.tempFolder + this.sut.dirSep() + 'dir1';
+        expect(this.sut.createDirectory(dir)).toBe(true);
+        expect(this.sut.renameDirectory(dir, dir + '_renamed')).toBe(true);
+        expect(this.sut.isDirectory(dir)).toBe(false);
+        expect(this.sut.isDirectory(dir + '_renamed')).toBe(true);
+
+        // Test wrong values
+        // Test exceptions
+        expect(() => {
+            this.sut.renameDirectory('nonexistant-path', dir);
+        }).toThrowError(Error, /Path does not exist: nonexistant-path/);
+
+        dir = this.tempFolder + this.sut.dirSep() + 'dir2';
+        expect(this.sut.createDirectory(dir)).toBe(true);
+
+        expect(() => {
+            this.sut.renameDirectory(dir, dir);
+        }).toThrowError(Error, /Invalid destination:.*dir2/);
+
+        expect(() => {
+            this.sut.renameDirectory(dir, 'nonexistant-path');
+        }).toThrowError(Error, /Source and dest must be on the same path/);
+
+        expect(() => {
+            this.sut.renameDirectory(dir, dir + '_renamed' + this.sut.dirSep() + 'subrename');
+        }).toThrowError(Error, /Source and dest must be on the same path/);
     });
     
     
@@ -446,6 +491,101 @@ describe('FilesManager', function() {
         expect(() => {
             this.sut.saveFile(this.tempFolder + '/dir');
         }).toThrowError(Error, /Could not write to file/);
+    });
+    
+    
+    it('should have a correctly implemented createTempFile method', function() {
+
+        // TODO - translate from php      
+    });
+    
+    
+    it('should have a correctly implemented mergeFiles method', function() {
+
+        // TODO - translate from php      
+    });
+    
+    
+    it('should have a correctly implemented getFileSize method', function() {
+
+        // TODO - translate from php      
+    });
+    
+    
+    it('should have a correctly implemented getFileModificationTime method', function() {
+
+        // TODO - translate from php      
+    });
+    
+    
+    it('should have a correctly implemented readFile method', function() {
+
+        // TODO - translate from php      
+    });
+    
+    
+    it('should have a correctly implemented readFileBuffered method', function() {
+
+        // TODO - translate from php      
+    });
+    
+    
+    it('should have a correctly implemented copyFile method', function() {
+
+        // TODO - translate from php      
+    });
+    
+    
+    it('should have a correctly implemented renameFile method', function() {
+
+        // Test empty values
+        expect(() => {
+            this.sut.renameFile(null, null);
+        }).toThrowError(Error, /Path must be a string/);
+
+        expect(() => {
+            this.sut.renameFile({}, {});
+        }).toThrowError(Error, /Path must be a string/);
+
+        expect(() => {
+            this.sut.renameFile(0, 0);
+        }).toThrowError(Error, /Path must be a string/);
+
+        expect(() => {
+            this.sut.renameFile('', '');
+        }).toThrowError(Error, /File does not exist: /);
+
+        expect(() => {
+            this.sut.renameFile('          ', '          ');
+        }).toThrowError(Error, /File does not exist: /);
+
+        // Test ok values
+        let file = this.tempFolder + this.sut.dirSep() + 'file1';
+        expect(this.sut.saveFile(file, 'data')).toBe(true);
+        expect(this.sut.renameFile(file, file + '_renamed')).toBe(true);
+        expect(this.sut.isFile(file)).toBe(false);
+        expect(this.sut.isFile(file + '_renamed')).toBe(true);
+
+        // Test wrong values
+        // Test exceptions
+        expect(() => {
+            this.sut.renameFile('nonexistant-path', file);
+        }).toThrowError(Error, /File does not exist: nonexistant-path/);
+
+        file = this.tempFolder + this.sut.dirSep() + 'dir2';
+        expect(this.sut.saveFile(file, 'data')).toBe(true);
+
+        expect(() => {
+            this.sut.renameFile(file, file);
+        }).toThrowError(Error, /Invalid destination:.*dir2/);
+
+        expect(() => {
+            this.sut.renameFile(file, 'nonexistant-path');
+        }).toThrowError(Error, /Source and dest must be on the same path/);
+
+        expect(() => {
+            this.sut.renameFile(file, file + '_renamed' + this.sut.dirSep() + 'subrename');
+        }).toThrowError(Error, /Source and dest must be on the same path/);
     });
 });
 

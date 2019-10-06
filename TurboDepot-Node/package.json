@@ -14,7 +14,7 @@
     "turbocommons-ts": "^3.0.1"
   },
   "devDependencies": {
-    "jasmine": "^3.4.0",
+    "jasmine": "^3.5.0",
     "selenium-webdriver": "^4.0.0-alpha.4",
     "turbodepot-node": "^6.0.0",
     "xhr2": "^0.2.0"

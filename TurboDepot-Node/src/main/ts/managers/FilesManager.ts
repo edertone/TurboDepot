@@ -893,17 +893,27 @@ export class FilesManager{
      */
     renameDirectory(sourcePath:string, destPath:string, timeout = 15){
 
-        sourcePath = this._composePath(sourcePath);
-        destPath = this._composePath(destPath);
-
-        if(!this.isDirectory(sourcePath)){
-
-            throw new Error('Source directory does not exist: ' + sourcePath);
-        }
+        return this._renameFSResource(this._composePath(sourcePath, true), this._composePath(destPath), timeout);
+    }
+    
+    
+    /**
+     * Aux method that is used by renameFile and renameDirectory to rename a file or folder after their specific checks have been performed
+     * 
+     * @param sourcePath Source path for the resource to rename
+     * @param destPath Dest path for the resource to rename
+     * @param timeout Amount of seconds to wait if not possible
+     */
+    private _renameFSResource(sourcePath:string, destPath:string, timeout: number){
         
         if(this.isDirectory(destPath) || this.isFile(destPath)){
 
             throw new Error('Invalid destination: ' + destPath);
+        }
+
+        if(this.path.resolve(StringUtils.getPath(sourcePath)) !== this.path.resolve(StringUtils.getPath(destPath))){
+
+            throw new Error('Source and dest must be on the same path');
         }
         
         let lastError = '';
@@ -911,7 +921,7 @@ export class FilesManager{
         let startTime = Math.floor(Date.now() / 1000);
         
         do {
-                
+            
             try {
                 
                 this.fs.renameSync(sourcePath, destPath);
@@ -927,7 +937,7 @@ export class FilesManager{
             
         } while (passedTime < timeout);
         
-        throw new Error(`Error renaming directory (${passedTime} seconds timeout):\n${sourcePath}\n${lastError}`);
+        throw new Error(`Error renaming (${passedTime} seconds timeout):\n${sourcePath}\n${lastError}`);
     }
 
 
@@ -1178,41 +1188,7 @@ export class FilesManager{
      */
     renameFile(sourceFilePath: string, destFilePath: string, timeout = 15){
 
-        sourceFilePath = this._composePath(sourceFilePath);
-        destFilePath = this._composePath(destFilePath);
-
-        if(!this.isFile(sourceFilePath)){
-
-            throw new Error('Source file does not exist: ' + sourceFilePath);
-        }
-        
-        if(this.isDirectory(destFilePath) || this.isFile(destFilePath)){
-
-            throw new Error('Invalid destination: ' + destFilePath);
-        }
-        
-        let lastError = '';
-        let passedTime = 0;
-        let startTime = Math.floor(Date.now() / 1000);
-
-        do {
-            
-            try {
-            
-                this.fs.renameSync(sourceFilePath, destFilePath);
-                
-                return true;
-                
-            } catch (e) {
-    
-                lastError = e.toString();
-            }
-        
-            passedTime = Math.floor(Date.now() / 1000) - startTime;
-            
-        } while (passedTime < timeout);
-        
-        throw new Error(`Error renaming file (${passedTime} seconds timeout):\n${sourceFilePath}\n${lastError}`);
+        return this._renameFSResource(this._composePath(sourceFilePath, false, true), this._composePath(destFilePath), timeout);
     }
 
 
@@ -1338,7 +1314,7 @@ export class FilesManager{
 
         if (!StringUtils.isString(relativePath)){
 
-            throw new Error('Path must be a string: ');
+            throw new Error('Path must be a string');
         }
         
         let composedPath = '';

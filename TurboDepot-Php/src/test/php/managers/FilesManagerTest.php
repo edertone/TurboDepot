@@ -1799,18 +1799,80 @@ class FilesManagerTest extends TestCase {
     public function testRenameDirectory(){
 
         // Test empty values
-        // TODO
+        try {
+            $this->sut->renameDirectory(null, null);
+            $this->exceptionMessage = 'null did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path must be a string/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->renameDirectory(new stdClass(), new stdClass());
+            $this->exceptionMessage = 'new stdClass() did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path must be a string/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->renameDirectory(0, 0);
+            $this->exceptionMessage = '0 did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path must be a string/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->renameDirectory('', '');
+            $this->exceptionMessage = '"" did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path does not exist: /', $e->getMessage());
+        }
+
+        try {
+            $this->sut->renameDirectory('          ', '          ');
+            $this->exceptionMessage = '"          " did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path does not exist: /', $e->getMessage());
+        }
 
         // Test ok values
-        // TODO
+        $dir = $this->tempFolder.DIRECTORY_SEPARATOR.'dir1';
+        $this->assertTrue($this->sut->createDirectory($dir));
+        $this->assertTrue($this->sut->renameDirectory($dir, $dir.'_renamed'));
+        $this->assertFalse($this->sut->isDirectory($dir));
+        $this->assertTrue($this->sut->isDirectory($dir.'_renamed'));
 
         // Test wrong values
-        // TODO
-
         // Test exceptions
-        // TODO
+        try {
+            $this->sut->renameDirectory('nonexistant-path', $dir);
+            $this->exceptionMessage = 'nonexistant-path did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path does not exist: nonexistant-path/', $e->getMessage());
+        }
 
-        $this->markTestIncomplete('This test has not been implemented yet.');
+        $dir = $this->tempFolder.DIRECTORY_SEPARATOR.'dir2';
+        $this->assertTrue($this->sut->createDirectory($dir));
+
+        try {
+            $this->sut->renameDirectory($dir, $dir);
+            $this->exceptionMessage = '$dir, $dir did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Invalid destination:.*dir2/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->renameDirectory($dir, 'nonexistant-path');
+            $this->exceptionMessage = '$dir, nonexistant-path did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Source and dest must be on the same path/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->renameDirectory($dir, $dir.'_renamed'.DIRECTORY_SEPARATOR.'subrename');
+            $this->exceptionMessage = '$dir, $dir_renamed did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Source and dest must be on the same path/', $e->getMessage());
+        }
     }
 
 
@@ -2111,6 +2173,206 @@ class FilesManagerTest extends TestCase {
             $this->exceptionMessage = 'non existant folder did not cause exception';
         } catch (Throwable $e) {
             // We expect an exception to happen
+        }
+    }
+
+
+    /**
+     * testGetFileSize
+     *
+     * @return void
+     */
+    public function testGetFileSize(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * testGetFileModificationTime
+     *
+     * @return void
+     */
+    public function testGetFileModificationTime(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * testReadFile
+     *
+     * @return void
+     */
+    public function testReadFile(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * testReadFileBuffered
+     *
+     * @return void
+     */
+    public function testReadFileBuffered(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * testReadFileBuffered
+     *
+     * @return void
+     */
+    public function testCopyFile(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * testRenameFile
+     *
+     * @return void
+     */
+    public function testRenameFile(){
+
+        // Test empty values
+        try {
+            $this->sut->renameFile(null, null);
+            $this->exceptionMessage = 'null did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path must be a string/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->renameFile(new stdClass(), new stdClass());
+            $this->exceptionMessage = 'new stdClass() did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path must be a string/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->renameFile(0, 0);
+            $this->exceptionMessage = '0 did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Path must be a string/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->renameFile('', '');
+            $this->exceptionMessage = '"" did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/File does not exist: /', $e->getMessage());
+        }
+
+        try {
+            $this->sut->renameFile('          ', '          ');
+            $this->exceptionMessage = '"          " did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/File does not exist: /', $e->getMessage());
+        }
+
+        // Test ok values
+        $file = $this->tempFolder.DIRECTORY_SEPARATOR.'file1';
+        $this->assertTrue($this->sut->saveFile($file, 'data'));
+        $this->assertTrue($this->sut->renameFile($file, $file.'_renamed'));
+        $this->assertFalse($this->sut->isFile($file));
+        $this->assertTrue($this->sut->isFile($file.'_renamed'));
+
+        // Test wrong values
+        // Test exceptions
+        try {
+            $this->sut->renameFile('nonexistant-path', $file);
+            $this->exceptionMessage = 'nonexistant-path did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/File does not exist: nonexistant-path/', $e->getMessage());
+        }
+
+        $file = $this->tempFolder.DIRECTORY_SEPARATOR.'dir2';
+        $this->assertTrue($this->sut->saveFile($file, 'data'));
+
+        try {
+            $this->sut->renameFile($file, $file);
+            $this->exceptionMessage = '$dir, $dir did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Invalid destination:.*dir2/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->renameFile($file, 'nonexistant-path');
+            $this->exceptionMessage = '$dir, nonexistant-path did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Source and dest must be on the same path/', $e->getMessage());
+        }
+
+        try {
+            $this->sut->renameFile($file, $file.'_renamed'.DIRECTORY_SEPARATOR.'subrename');
+            $this->exceptionMessage = '$dir, $dir_renamed did not cause exception';
+        } catch (Throwable $e) {
+            $this->assertRegExp('/Source and dest must be on the same path/', $e->getMessage());
         }
     }
 

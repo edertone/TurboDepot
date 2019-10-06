@@ -859,19 +859,29 @@ class FilesManager extends BaseStrictClass{
      *
      * @return boolean True on success
      */
-    public function renameDirectory(string $sourcePath, string $destPath, int $timeout = 15){
+    public function renameDirectory($sourcePath, $destPath, int $timeout = 15){
 
-        $sourcePath = $this->_composePath($sourcePath);
-        $destPath = $this->_composePath($destPath);
+        return $this->_renameFSResource($this->_composePath($sourcePath, true), $this->_composePath($destPath), $timeout);
+    }
 
-        if(!$this->isDirectory($sourcePath)){
 
-            throw new UnexpectedValueException('Source directory does not exist: '.$sourcePath);
-        }
+    /**
+     * Aux method that is used by renameFile and renameDirectory to rename a file or folder after their specific checks have been performed
+     *
+     * @param string $sourcePath Source path for the resource to rename
+     * @param string $destPath Dest path for the resource to rename
+     * @param int $timeout Amount of seconds to wait if not possible
+     */
+    private function _renameFSResource($sourcePath, $destPath, $timeout){
 
         if($this->isDirectory($destPath) || $this->isFile($destPath)){
 
             throw new UnexpectedValueException('Invalid destination: '.$destPath);
+        }
+
+        if(realpath(StringUtils::getPath($sourcePath)) !== realpath(StringUtils::getPath($destPath))){
+
+            throw new UnexpectedValueException('Source and dest must be on the same path');
         }
 
         $passedTime = 0;
@@ -888,7 +898,7 @@ class FilesManager extends BaseStrictClass{
 
         } while ($passedTime < $timeout);
 
-        throw new UnexpectedValueException("Error renaming directory ($passedTime seconds timeout):\n$sourcePath\n".error_get_last()['message']);
+        throw new UnexpectedValueException("Error renaming ($passedTime seconds timeout):\n$sourcePath\n".error_get_last()['message']);
     }
 
 
@@ -1208,36 +1218,9 @@ class FilesManager extends BaseStrictClass{
      *
      * @return boolean True on success
      */
-    public function renameFile(string $sourceFilePath, string $destFilePath, int $timeout = 15){
+    public function renameFile($sourceFilePath, $destFilePath, int $timeout = 15){
 
-        $sourceFilePath = $this->_composePath($sourceFilePath);
-        $destFilePath = $this->_composePath($destFilePath);
-
-        if(!$this->isFile($sourceFilePath)){
-
-            throw new UnexpectedValueException('Source file does not exist: '.$sourceFilePath);
-        }
-
-        if($this->isDirectory($destFilePath) || $this->isFile($destFilePath)){
-
-            throw new UnexpectedValueException('Invalid destination: '.$destFilePath);
-        }
-
-        $passedTime = 0;
-        $startTime = time();
-
-        do {
-
-            if(rename($sourceFilePath, $destFilePath) === true){
-
-                return true;
-            }
-
-            $passedTime = time() - $startTime;
-
-        } while ($passedTime < $timeout);
-
-        throw new UnexpectedValueException("Error renaming file ($passedTime seconds timeout):\n$sourceFilePath\n".error_get_last()['message']);
+        return $this->_renameFSResource($this->_composePath($sourceFilePath, false, true), $this->_composePath($destFilePath), $timeout);
     }
 
 
@@ -1356,7 +1339,7 @@ class FilesManager extends BaseStrictClass{
 
         if (!is_string($relativePath)){
 
-            throw new UnexpectedValueException('Path must be a string: ');
+            throw new UnexpectedValueException('Path must be a string');
         }
 
         $composedPath = '';
