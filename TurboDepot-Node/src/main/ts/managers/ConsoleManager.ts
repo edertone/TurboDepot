@@ -20,6 +20,30 @@ declare let process: any;
 export class ConsoleManager {
     
     
+    /** 
+     * Defines the color to be used on the title styled console texts
+     */
+    colorTitle = '\x1b[36m%s\x1b[0m';
+    
+    
+    /** 
+     * Defines the color to be used on the success styled console texts
+     */
+    colorSuccess = '\x1b[32m%s\x1b[0m';
+    
+    
+    /** 
+     * Defines the color to be used on the warning styled console texts
+     */
+    colorWarning = '\x1b[33m%s\x1b[0m';
+    
+    
+    /** 
+     * Defines the color to be used on the error styled console texts
+     */
+    colorError = '\x1b[31m%s\x1b[0m';
+    
+    
     /**
      * An improved console class that implements useful methods for the console output
      * 
@@ -31,11 +55,20 @@ export class ConsoleManager {
     
     
     /**
-     * Show a standard message to the user
+     * Show a standard message to the user with the default console raw text style
      */
-    log(message:string) {
+    text(message:string) {
         
         console.log(message);
+    }
+    
+    
+    /**
+     * Show a title message to the user
+     */
+    title(message:string) {
+        
+        console.log(this.colorTitle, message);
     }
     
     
@@ -45,7 +78,7 @@ export class ConsoleManager {
      */
     success(message: string, quit = false) {
         
-        console.log('\x1b[32m%s\x1b[0m', message);
+        console.log(this.colorSuccess, message);
         
         if(quit){
             
@@ -60,7 +93,7 @@ export class ConsoleManager {
      */
     warning(message:string, quit = false) {
         
-        console.log('\x1b[33m%s\x1b[0m', message);
+        console.log(this.colorWarning, message);
         
         if(quit){
             
@@ -80,7 +113,7 @@ export class ConsoleManager {
 
             for(let i = 0; i < messages.length; i++){
                 
-                console.log('\x1b[33m%s\x1b[0m', messages[i]);
+                console.log(this.colorWarning, messages[i]);
             }
             
             if(quit){
@@ -93,11 +126,15 @@ export class ConsoleManager {
     
     /**
      * Show an error to the user
-     * If quit parameter is true, the application will also die with error code 1 (which means exit with error)
+     *
+     * @param message The text to show as an error
+     * @param quit True by default, the application will die when the error message is shown with error code 1 (which means exit with error)
+     * 
+     * @return void
      */
-    error(message:string, quit = false) {
+    error(message:string, quit = true) {
         
-        console.log('\x1b[31m%s\x1b[0m', message);
+        console.log(this.colorError, message);
         
         if(quit){
             
@@ -107,17 +144,20 @@ export class ConsoleManager {
     
     
     /**
-     * Show a multiple list of errors to the user
-     * If quit parameter is true, the application will also exit with error code 1 after all errors are output (which
-     * means exit with error)
+     * Show a multiple list of errors to the user, one after the other on a new line.
+     * 
+     * @param messages The list of texts to show as an error
+     * @param quit True by default, the application will die when the error message is shown with error code 1 (which means exit with error)
+     * 
+     * @return void
      */
-    errors(messages:string[], quit = false) {
+    errors(messages:string[], quit = true) {
         
         if(messages.length > 0){
 
             for(let i = 0; i < messages.length; i++){
                 
-                console.log('\x1b[31m%s\x1b[0m', messages[i]);
+                console.log(this.colorError, messages[i]);
             }
             
             if(quit){
