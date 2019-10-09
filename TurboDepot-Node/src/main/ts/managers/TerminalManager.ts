@@ -212,7 +212,7 @@ export class TerminalManager {
      * Execute an arbitrary terminal cmd command on the currently active work directory and return all relevant data
      * 
      * @param command Some cmd operation to execute on the current working directory
-     * @param liveOutput Set it to true to show the execution stdout in real time on the main console 
+     * @param liveOutput (false by default) Set it to true to show the execution stdout in real time on the main console 
      * 
      * @return An object with two properties:
      *         - failed: False if the command finished successfully, true if any error happened
