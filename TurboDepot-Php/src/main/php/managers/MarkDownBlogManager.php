@@ -74,15 +74,16 @@ class MarkDownBlogManager extends BaseStrictClass{
      *
      * @param string $date The date for the blog post we are looking for, in a 'yyyy-mm-dd' format
      * @param string $language A two digits string representing the language for the blog post we are requesting
-     * @param string $keywords THe blog post keywords as they are defined on it's filesystem folder name.
-     * @param number $minimumSimilarity Specifies the minimum percentage of keywords similarity that we accept for an existing
+     * @param string $keywords THe blog post keywords as they are defined on it's filesystem folder name. It may not be necessary to provide
+     *        here the exact post folder keywords string depending on the $minimumSimilarity parameter value
+     * @param number $minKeywordsSimilarity Specifies the minimum percentage of keywords similarity that we accept for an existing
      *        same date blog post to be returned by this method. a value of 100 means we will only accept the exact same keywords
-     *        for an existing post, while a value of 0 means no restrictions. In any case, the blog post that is
+     *        and in the same order for an existing post, while a value of 0 means no restrictions. In any case, the blog post that is
      *        closer to the requested keywords will be obtained. If no post meets the minimum similarity, none will be retrieved.
      *
      * @return MarkDownBlogPostObject A post instance with the requested post data or null if post was not found
      */
-    public function getPost(string $date, string $language, string $keywords, int $minimumSimilarity = 20){
+    public function getPost(string $date, string $language, string $keywords, int $minKeywordsSimilarity = 20){
 
         $dateParts = explode('-', $date);
         $postFolder = $language.'-'.$keywords;
@@ -97,7 +98,7 @@ class MarkDownBlogManager extends BaseStrictClass{
 
                 $dirs = $this->_fm->getDirectoryList($this->_rootPath.DIRECTORY_SEPARATOR.$postRoot, 'mDateDesc');
 
-                $minSimilarity = $minimumSimilarity;
+                $minSimilarity = $minKeywordsSimilarity;
                 $similarDirName = '';
 
                 foreach ($dirs as $dir) {
