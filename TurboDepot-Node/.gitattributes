@@ -1,0 +1,20 @@
+# This repository is configured to force all line endings to LF on the following file extensions, so they are saved
+# to the repository with LF character. If a file is added to the repository with CRL, it will
+# be automatically converted to LF by git once commited.
+
+# Any git configuration people may have on their computers will be overriden with this one:
+
+*.txt text
+*.html text
+*.css text
+*.js text
+*.java text
+*.php text
+*.ts text
+*.md text
+*.todo text
+*.json text
+*.xml text
+
+src/main/libs/* binary
+src/test/libs/* binary
