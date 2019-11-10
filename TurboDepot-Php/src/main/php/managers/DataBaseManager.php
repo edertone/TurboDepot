@@ -102,14 +102,14 @@ class DataBaseManager extends BaseStrictClass {
         // If we are currently connected, an exception will happen
         if($this->isConnected()){
 
-            throw new UnexpectedValueException('DataBaseManager->connectMysql : There\'s an active database connection. Disconnect before connecting.');
+            throw new UnexpectedValueException('There\'s an active database connection. Disconnect before connecting');
         }
 
         $id = mysqli_connect($host, $userName, $password, $dataBaseName);
 
         if(mysqli_connect_errno()){
 
-            throw new UnexpectedValueException('Could not connect to MYSQL'.mysqli_connect_error());
+            throw new UnexpectedValueException('Could not connect to MYSQL '.mysqli_connect_error());
         }
 
         // Force MYSQL and PHP to speak each other in unicode  UTF8 format.
@@ -123,6 +123,22 @@ class DataBaseManager extends BaseStrictClass {
         $this->_selectedDatabase = StringUtils::isEmpty((string)$dataBaseName) ? '' : $dataBaseName;
 
         return true;
+    }
+
+
+    /**
+     * Initialize a mariadb database connection with the specified parameters
+     *
+     * @param string $host Path to the mariadb server (possible values: an ip, a hostname, 'localhost', etc ...)
+     * @param string $userName The database user we will use for the connection
+     * @param string $password The database user password
+     * @param string $dataBaseName The name for the database to which we want to connect. leave it empty if we are connecting only to the mariadb host.
+     *
+     * @return boolean True on success or false if connection was not possible
+     */
+    public function connectMariaDb($host, $userName, $password, $dataBaseName = null){
+
+        return $this->connectMysql($host, $userName, $password, $dataBaseName);
     }
 
 
@@ -161,6 +177,22 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
+     * Detect if the specified database exists on the current connection
+     *
+     * @param string $dataBaseName the name of the database
+     *
+     * @return boolean True if the specified database exists, false otherwise
+     */
+    public function dataBaseExists($dataBaseName) {
+
+        if($this->_engine === self::MYSQL){
+
+            return (mysqli_num_rows(mysqli_query($this->_mysqlConnectionId, "SHOW DATABASES LIKE '".$dataBaseName."'")) === 1);
+        }
+    }
+
+
+    /**
      * Creates a new empty database with the specified name
      *
      * @param string $dataBaseName the name of the database to create
@@ -169,7 +201,7 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function dataBaseCreate($dataBaseName){
 
-        if($this->_engine == self::MYSQL){
+        if($this->_engine === self::MYSQL){
 
             return $this->query('CREATE DATABASE '.$dataBaseName);
         }
@@ -188,18 +220,18 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function dataBaseSelect($dataBaseName){
 
-        if(!is_string($dataBaseName)|| $dataBaseName == ''){
+        if(!is_string($dataBaseName)|| $dataBaseName === ''){
 
-            throw new UnexpectedValueException('DataBaseManager->dataBaseSelect : DataBase name must be a non empty string');
+            throw new UnexpectedValueException('DataBase name must be a non empty string');
         }
 
         // An active engine connection must be available to select a database
         if(!$this->isConnected()){
 
-            throw new UnexpectedValueException('DataBaseManager->dataBaseSelect : Not connected to a database host.');
+            throw new UnexpectedValueException('Not connected to a database host');
         }
 
-        if($this->_engine == self::MYSQL){
+        if($this->_engine === self::MYSQL){
 
             if(mysqli_select_db($this->_mysqlConnectionId, $dataBaseName)){
 
@@ -224,28 +256,12 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function dataBaseDelete($dataBaseName){
 
-        if($this->_engine == self::MYSQL){
+        if($this->_engine === self::MYSQL){
 
             return $this->query('DROP DATABASE '.$dataBaseName);
         }
 
         return false;
-    }
-
-
-    /**
-     * Detect if the specified database exists on the current connection
-     *
-     * @param string $dataBaseName the name of the database
-     *
-     * @return boolean True if the specified database exists, false otherwise
-     */
-    public function dataBaseExists($dataBaseName) {
-
-        if($this->_engine == self::MYSQL){
-
-            return (mysqli_num_rows(mysqli_query($this->_mysqlConnectionId, "SHOW DATABASES LIKE '".$dataBaseName."'")) == 1);
-        }
     }
 
 
@@ -262,21 +278,21 @@ class DataBaseManager extends BaseStrictClass {
      * @return boolean|array <br>
      * - An associative array with the query data for queries that generate values (like SELECT).<br>
      * - True for successful queries that do not generate vaules (lime CREATE, DROP, ...).<br>
-     * - False for any query that generates an error.
+     * - False for any query that generates an error (error message will be available with getLastError()).
      */
     public function query($query){
 
         // An active engine connection must be available
         if(!$this->isConnected()){
 
-            throw new UnexpectedValueException('DataBaseManager->query : Not connected to a database host.');
+            throw new UnexpectedValueException('Not connected to a database host');
         }
 
         $result = false;
 
         $queryStart = microtime(true);
 
-        if($this->_engine == self::MYSQL){
+        if($this->_engine === self::MYSQL){
 
             $mysqlResult = mysqli_query($this->_mysqlConnectionId, $query);
 
@@ -321,7 +337,7 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function getLastInsertId(){
 
-        if($this->_engine == self::MYSQL){
+        if($this->_engine === self::MYSQL){
 
             return mysqli_insert_id($this->_mysqlConnectionId);
         }
@@ -369,10 +385,10 @@ class DataBaseManager extends BaseStrictClass {
         // An active engine connection must be available
         if(!$this->isConnected()){
 
-            throw new UnexpectedValueException('DataBaseManager->getSelectedDataBase : Not connected to a database host.');
+            throw new UnexpectedValueException('Not connected to a database host');
         }
 
-        if($this->_engine == self::MYSQL){
+        if($this->_engine === self::MYSQL){
 
             $mysqlResult = mysqli_query($this->_mysqlConnectionId, 'SELECT DATABASE() as d');
 
@@ -404,7 +420,7 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function getTableColumnValues($tableName, $columnName){
 
-        if($this->_engine == self::MYSQL){
+        if($this->_engine === self::MYSQL){
 
             $mysqlResult = $this->query('SELECT DISTINCT '.$columnName.' FROM '.$tableName);
 
@@ -436,7 +452,7 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function getTableColumnNames($tableName){
 
-        if($this->_engine == self::MYSQL){
+        if($this->_engine === self::MYSQL){
 
             $mysqlResult = $this->query('SHOW COLUMNS FROM '.$tableName);
 
@@ -469,7 +485,7 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function getTableColumnMaxValue($tableName, $columnName){
 
-        if($this->_engine == self::MYSQL){
+        if($this->_engine === self::MYSQL){
 
             $mysqlResult = $this->query('SELECT CAST('.$columnName.' AS SIGNED) AS '.$columnName.' FROM '.$tableName.' ORDER BY '.$columnName.' DESC LIMIT 1');
 
@@ -492,7 +508,7 @@ class DataBaseManager extends BaseStrictClass {
      *
      * @return int The total number of table rows or false if an error happened
      */
-    public function getTableRowCount($tableName){
+    public function countTableRows($tableName){
 
         $mysqlResult = $this->query('select count(1) as c FROM '.$tableName);
 
@@ -506,55 +522,99 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
-     * Detect if the specified table exists on database
+     * Check if the specified table exists on database
      *
-     * @param string $tablename the name of the table
+     * @param string $tableName the name of the table
      *
      * @return boolean True if the specified table exists, false otherwise
      */
-    public function tableExists($tablename) {
+    public function tableExists($tableName) {
 
-        if(!is_string($tablename) || $tablename == ''){
+        if(!is_string($tableName) || $tableName === ''){
 
-            throw new UnexpectedValueException('DataBaseManager->tableExists : Table name name must be a non empty string');
+            throw new UnexpectedValueException('Table name name must be a non empty string');
         }
 
         // A selected database must be available
-        if($this->getSelectedDataBase() == ''){
+        if($this->getSelectedDataBase() === ''){
 
-            throw new UnexpectedValueException('DataBaseManager->tableExists :  Not connected to a database host or database not selected.');
+            throw new UnexpectedValueException('Not connected to a database host or database not selected');
         }
 
-        if($this->_engine == self::MYSQL){
+        if($this->_engine === self::MYSQL){
 
-            return (mysqli_num_rows(mysqli_query($this->_mysqlConnectionId, "SHOW TABLES LIKE '".$tablename."'")) == 1);
+            return (mysqli_num_rows(mysqli_query($this->_mysqlConnectionId, "SHOW TABLES LIKE '".$tableName."'")) === 1);
         }
+    }
+
+
+    /**
+     * Creates a new empty table with the specified name and columns
+     *
+     * @param string $tableName The name for the new table to create
+     * @param array $columns An array containing all the columns to create and their type. Each array element must be a string with the
+     *        column name and the sql data type to use. For example: 'column1 bigint', 'column2 varchar(255)', etc..
+     *
+     * @throws UnexpectedValueException If the table cannot be created
+     *
+     * @return boolean True if the table can be correctly created
+     */
+    public function tableCreate($tableName, array $columns){
+
+        if($this->query('CREATE TABLE '.$tableName.' ('.implode(',', $columns).')') === false){
+
+            throw new UnexpectedValueException('Could not create table '.$tableName.' '.$this->_lastError);
+        }
+
+        return true;
+    }
+
+
+    /**
+     * Add a new column to the specified table on the active database
+     *
+     * @param string $tableName The name for the table where we want to add a new column
+     * @param string $columnName The name for the new column we want to add
+     * @param string $type The SQL type for the data that will be stored at the new column (for example varchar(255))
+     *
+     * @return boolean True if the table was correctly added, false if not (error will be available via $this->getLastError())
+     */
+    public function tableAddColumn($tableName, $columnName, $type){
+
+        if(!$this->tableExists($tableName)){
+
+            $this->_lastError = 'Table '.$tableName.' does not exist';
+
+            return false;
+        }
+
+        return $this->query('ALTER TABLE '.$tableName.' ADD '.$columnName.' '.$type);
     }
 
 
     /**
      * Delete the specified database table
      *
-     * @param string $tablename the name of the table to delete
+     * @param string $tableName the name of the table to delete
      *
      * @return boolean True if the specified was successfuly deleted, false otherwise
      */
-    public function tableDelete($tablename) {
+    public function tableDelete($tableName) {
 
-        if(!is_string($tablename) || $tablename == ''){
+        if(!is_string($tableName) || $tableName === ''){
 
-            throw new UnexpectedValueException('DataBaseManager->tableDelete : Table name name must be a non empty string');
+            throw new UnexpectedValueException('Table name name must be a non empty string');
         }
 
         // An active engine connection must be available and a database selected
-        if($this->getSelectedDataBase() == ''){
+        if($this->getSelectedDataBase() === ''){
 
-            throw new UnexpectedValueException('DataBaseManager->tableDelete : Not connected to a database host or database not selected.');
+            throw new UnexpectedValueException('Not connected to a database host or database not selected');
         }
 
-        if($this->_engine == self::MYSQL){
+        if($this->_engine === self::MYSQL){
 
-            return $this->query('DROP TABLE '.$tablename);
+            return $this->query('DROP TABLE '.$tableName);
         }
 
         return false;
@@ -568,7 +628,7 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function transactionBegin(){
 
-        if($this->_engine == self::MYSQL){
+        if($this->_engine === self::MYSQL){
 
             return $this->query('START TRANSACTION');
         }
@@ -584,7 +644,7 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function transactionRollback(){
 
-        if($this->_engine == self::MYSQL){
+        if($this->_engine === self::MYSQL){
 
             return $this->query('ROLLBACK');
         }
@@ -600,7 +660,7 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function transactionCommit(){
 
-        if($this->_engine == self::MYSQL){
+        if($this->_engine === self::MYSQL){
 
             return $this->query('COMMIT');
         }
@@ -617,7 +677,7 @@ class DataBaseManager extends BaseStrictClass {
     public function disconnect() {
 
         // Check if we are currently connected to a mysql engine
-        if($this->_engine == self::MYSQL && mysqli_close($this->_mysqlConnectionId)){
+        if($this->_engine === self::MYSQL && mysqli_close($this->_mysqlConnectionId)){
 
             $this->_engine = '';
             $this->_mysqlConnectionId = null;
@@ -628,7 +688,7 @@ class DataBaseManager extends BaseStrictClass {
             $this->_selectedDatabase = '';
         }
 
-        return $this->_mysqlConnectionId == null;
+        return $this->_mysqlConnectionId === null;
     }
 
 
@@ -644,7 +704,7 @@ class DataBaseManager extends BaseStrictClass {
     private function _addQueryToHistory($query, $queryStart, $queryResult){
 
         // Some queries are not useful
-        if($query == 'START TRANSACTION' || $query == 'ROLLBACK' || $query == 'COMMIT'){
+        if($query === 'START TRANSACTION' || $query === 'ROLLBACK' || $query === 'COMMIT'){
 
             return;
         }
