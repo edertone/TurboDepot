@@ -198,12 +198,12 @@ class MarkDownBlogManager extends BaseStrictClass{
             }
         }
 
-        if($dayIndex < count($days) - 1){
+        if($days !== null && $dayIndex < count($days) - 1){
 
             return $this->_getLatestPostsRecursive($language, $yearIndex, $monthIndex, $dayIndex + 1, $years, $months, $days, $count, $result);
         }
 
-        if($monthIndex < count($months) - 1){
+        if($months !== null && $monthIndex < count($months) - 1){
 
             return $this->_getLatestPostsRecursive($language, $yearIndex, $monthIndex + 1, 0, $years, $months, null, $count, $result);
         }
