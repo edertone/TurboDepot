@@ -16,6 +16,7 @@ use stdClass;
 use PHPUnit\Framework\TestCase;
 use org\turbodepot\src\main\php\managers\FilesManager;
 use org\turbodepot\src\main\php\managers\DepotManager;
+use org\turbotesting\src\main\php\utils\AssertUtils;
 
 
 /**
@@ -96,33 +97,10 @@ class DepotManagerTest extends TestCase {
     public function testConstruct(){
 
         // Test empty values
-        try {
-            $this->sut = new DepotManager(null, '');
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/expects a valid path to users setup or an stdclass/', $e->getMessage());
-        }
-
-        try {
-            $this->sut = new DepotManager('', '');
-            $this->exceptionMessage = '"" did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/expects a valid path to users setup or an stdclass/', $e->getMessage());
-        }
-
-        try {
-            $this->sut = new DepotManager('              ', '');
-            $this->exceptionMessage = '"             " did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/expects a valid path to users setup or an stdclass/', $e->getMessage());
-        }
-
-        try {
-            $this->sut = new DepotManager(new stdClass(), '');
-            $this->exceptionMessage = 'stdclass did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/expects a valid path to users setup or an stdclass/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut = new DepotManager(null, ''); }, '/expects a valid path to users setup or an stdclass/');
+        AssertUtils::throwsException(function(){ $this->sut = new DepotManager('', ''); }, '/expects a valid path to users setup or an stdclass/');
+        AssertUtils::throwsException(function(){ $this->sut = new DepotManager('              ', ''); }, '/expects a valid path to users setup or an stdclass/');
+        AssertUtils::throwsException(function(){ $this->sut = new DepotManager(new stdClass(), ''); }, '/expects a valid path to users setup or an stdclass/');
 
         // Test ok values
         $this->assertSame('org\turbodepot\src\main\php\managers\DepotManager',
