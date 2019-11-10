@@ -581,14 +581,35 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function tableAddColumn($tableName, $columnName, $type){
 
-        if(!$this->tableExists($tableName)){
-
-            $this->_lastError = 'Table '.$tableName.' does not exist';
-
-            return false;
-        }
+        $this->_validateTable($tableName);
 
         return $this->query('ALTER TABLE '.$tableName.' ADD '.$columnName.' '.$type);
+    }
+
+
+    /**
+     * Add all the values for a single row to the specified database table
+     *
+     * @param string $tableName The name for the table we want to update
+     * @param array $rowValues An associative array with all the data for a single table row, where each array key is the column name and
+     *              each array value the column value
+     *
+     * @return boolean|array
+     */
+    public function tableAddRow($tableName, array $rowValues){
+
+        $this->_validateTable($tableName);
+
+        $cols = array_keys($rowValues);
+
+        $values = [];
+
+        foreach ($rowValues as $value) {
+
+            $values[] = $value === null ? 'NULL' : "'".$value."'";
+        }
+
+        return $this->query('INSERT INTO '.$tableName.' ('.implode(',', $cols).') VALUES ('.implode(',', $values).')');
     }
 
 
@@ -601,16 +622,7 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function tableDelete($tableName) {
 
-        if(!is_string($tableName) || $tableName === ''){
-
-            throw new UnexpectedValueException('Table name name must be a non empty string');
-        }
-
-        // An active engine connection must be available and a database selected
-        if($this->getSelectedDataBase() === ''){
-
-            throw new UnexpectedValueException('Not connected to a database host or database not selected');
-        }
+        $this->_validateTable($tableName);
 
         if($this->_engine === self::MYSQL){
 
@@ -618,6 +630,33 @@ class DataBaseManager extends BaseStrictClass {
         }
 
         return false;
+    }
+
+
+    /**
+     * Validate that the specified table is correct and exists on db
+     *
+     * @param string $tableName The name for a table to validate
+     *
+     * @throws UnexpectedValueException In case any problem is found with the specified table
+     */
+    private function _validateTable($tableName){
+
+        // An active engine connection must be available and a database selected
+        if($this->getSelectedDataBase() === ''){
+
+            throw new UnexpectedValueException('Not connected to a database host or database not selected');
+        }
+
+        if(!is_string($tableName) || $tableName === ''){
+
+            throw new UnexpectedValueException('Table name name must be a non empty string');
+        }
+
+        if(!$this->tableExists($tableName)){
+
+            throw new UnexpectedValueException('Table '.$tableName.' does not exist');
+        }
     }
 
 
