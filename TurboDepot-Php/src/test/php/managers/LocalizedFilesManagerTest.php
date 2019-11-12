@@ -209,7 +209,7 @@ class LocalizedFilesManagerTest extends TestCase {
      *
      * @return void
      */
-    public function setPrimaryLocales(){
+    public function testSetPrimaryLocales(){
 
         // Test empty values
         // TODO
@@ -232,7 +232,7 @@ class LocalizedFilesManagerTest extends TestCase {
      *
      * @return void
      */
-    public function setPrimaryLanguage(){
+    public function testSetPrimaryLanguage(){
 
         // Test empty values
         // TODO
@@ -255,7 +255,7 @@ class LocalizedFilesManagerTest extends TestCase {
      *
      * @return void
      */
-    public function setPrimaryLanguages(){
+    public function testSetPrimaryLanguages(){
 
         // Test empty values
         // TODO

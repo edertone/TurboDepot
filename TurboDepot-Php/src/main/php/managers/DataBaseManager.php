@@ -65,9 +65,7 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
-     * Contains the last error that happened on the database (if any).
-     * Note: Any error that is raised by a db operation or query that is performed outside this class will not
-     * appear here.
+     * @see DataBaseManager::getLastError
      */
     private $_lastError = '';
 
@@ -98,6 +96,11 @@ class DataBaseManager extends BaseStrictClass {
      * @return boolean True on success or false if connection was not possible
      */
     public function connectMysql($host, $userName, $password, $dataBaseName = null){
+
+        if(StringUtils::isEmpty($host) || StringUtils::isEmpty($userName)){
+
+            throw new UnexpectedValueException('host and userName must be non empty strings');
+        }
 
         // If we are currently connected, an exception will happen
         if($this->isConnected()){
@@ -197,16 +200,17 @@ class DataBaseManager extends BaseStrictClass {
      *
      * @param string $dataBaseName the name of the database to create
      *
-     * @return boolean True if the database could be created, false otherwise
+     * @return boolean True if database could be created
      */
     public function dataBaseCreate($dataBaseName){
 
-        if($this->_engine === self::MYSQL){
+        if($this->_engine === self::MYSQL &&
+           $this->query('CREATE DATABASE '.$dataBaseName) !== false){
 
-            return $this->query('CREATE DATABASE '.$dataBaseName);
+            return true;
         }
 
-        return false;
+        throw new UnexpectedValueException('Could not create DB: '.$this->_lastError);
     }
 
 
@@ -216,7 +220,7 @@ class DataBaseManager extends BaseStrictClass {
      *
      * @param string $dataBaseName The name for the database that we want to set as active.
      *
-     * @return boolean True if it was possible to select the specified database, false if not.
+     * @return boolean True if database could be selected
      */
     public function dataBaseSelect($dataBaseName){
 
@@ -225,7 +229,6 @@ class DataBaseManager extends BaseStrictClass {
             throw new UnexpectedValueException('DataBase name must be a non empty string');
         }
 
-        // An active engine connection must be available to select a database
         if(!$this->isConnected()){
 
             throw new UnexpectedValueException('Not connected to a database host');
@@ -239,7 +242,7 @@ class DataBaseManager extends BaseStrictClass {
 
             }else{
 
-                return false;
+                throw new UnexpectedValueException('Could not select database '.$dataBaseName);
             }
         }
 
@@ -252,16 +255,16 @@ class DataBaseManager extends BaseStrictClass {
      *
      * @param string $dataBaseName the name of the database
      *
-     * @return boolean True if the database was successfully deleted, false if deletion failed.
+     * @return boolean True if the database was successfully deleted
      */
     public function dataBaseDelete($dataBaseName){
 
-        if($this->_engine === self::MYSQL){
+        if($this->_engine === self::MYSQL && $this->query('DROP DATABASE '.$dataBaseName) === false){
 
-            return $this->query('DROP DATABASE '.$dataBaseName);
+            throw new UnexpectedValueException('Could not delete database '.$dataBaseName.': '.$this->_lastError);
         }
 
-        return false;
+        return true;
     }
 
 
@@ -345,9 +348,7 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
-     * Contains the last error that happened on the database (if any).
-     *
-     * Note: Only database errors that are caused by operations made with this class are tracked here.
+     * Contains the last error that happened to the database (if any) as a result of operating with this class.
      *
      * @return string The last error that happened (if any)
      */
@@ -378,7 +379,7 @@ class DataBaseManager extends BaseStrictClass {
     /**
      * Get the name for the database that is currently selected
      *
-     * @return boolean|string The name for the currently selected database, '' if no database is selected, false if an error happened.
+     * @return string The name for the currently selected database or '' if no database is selected
      */
     public function getSelectedDataBase(){
 
@@ -392,17 +393,15 @@ class DataBaseManager extends BaseStrictClass {
 
             $mysqlResult = mysqli_query($this->_mysqlConnectionId, 'SELECT DATABASE() as d');
 
-            if(!$mysqlResult){
+            if($mysqlResult !== false){
 
-                return false;
+                $line = mysqli_fetch_assoc($mysqlResult);
+
+                return (string)$line['d'];
             }
-
-            $line = mysqli_fetch_assoc($mysqlResult);
-
-            return (string)$line['d'];
         }
 
-        return false;
+        throw new UnexpectedValueException('Could not get selected database');
     }
 
 
@@ -414,9 +413,7 @@ class DataBaseManager extends BaseStrictClass {
      * @param string $tableName Table that contains the requested column
      * @param string $columnName Name for the table column we want to list
      *
-     * @return boolean|array <br>
-     * - A list with all the values that can be found on the specified table and column. Note that list is unique, repeated values are removed.<br>
-     * - False if an error happened
+     * @return array A list with all the values that can be found on the specified table and column. Note that list is unique, repeated values are removed
      */
     public function getTableColumnValues($tableName, $columnName){
 
@@ -424,22 +421,20 @@ class DataBaseManager extends BaseStrictClass {
 
             $mysqlResult = $this->query('SELECT DISTINCT '.$columnName.' FROM '.$tableName);
 
-            if(!$mysqlResult){
+            if($mysqlResult !== false){
 
-                return false;
+                $result = [];
+
+                foreach ($mysqlResult as $value) {
+
+                    $result[] = $value[$columnName];
+                }
+
+                return $result;
             }
-
-            $result = [];
-
-            foreach ($mysqlResult as $value) {
-
-                $result[] = $value[$columnName];
-            }
-
-            return $result;
         }
 
-        return false;
+        throw new UnexpectedValueException('Could not list table column values: '.$this->getLastError());
     }
 
 
@@ -448,7 +443,7 @@ class DataBaseManager extends BaseStrictClass {
      *
      * @param string $tableName the table name
      *
-     * @return boolean|array The list of all column names on the requested table, or false if an error happens
+     * @return array The list of all column names on the requested table
      */
     public function getTableColumnNames($tableName){
 
@@ -456,22 +451,20 @@ class DataBaseManager extends BaseStrictClass {
 
             $mysqlResult = $this->query('SHOW COLUMNS FROM '.$tableName);
 
-            if(!$mysqlResult){
+            if($mysqlResult !== false){
 
-                return false;
+                $result = [];
+
+                foreach ($mysqlResult as $row) {
+
+                    $result[] = $row['Field'];
+                }
+
+                return $result;
             }
-
-            $result = [];
-
-            foreach ($mysqlResult as $row) {
-
-                $result[] = $row['Field'];
-            }
-
-            return $result;
         }
 
-        return false;
+        throw new UnexpectedValueException('Could not get column names: '.$this->getLastError());
     }
 
 
@@ -485,19 +478,13 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function getTableColumnMaxValue($tableName, $columnName){
 
-        if($this->_engine === self::MYSQL){
+        if($this->_engine === self::MYSQL &&
+           ($result = $this->query('SELECT CAST('.$columnName.' AS SIGNED) AS '.$columnName.' FROM '.$tableName.' ORDER BY '.$columnName.' DESC LIMIT 1')) !== false){
 
-            $mysqlResult = $this->query('SELECT CAST('.$columnName.' AS SIGNED) AS '.$columnName.' FROM '.$tableName.' ORDER BY '.$columnName.' DESC LIMIT 1');
-
-            if(!$mysqlResult){
-
-                return false;
-            }
-
-            return $mysqlResult[0][$columnName];
+            return $result[0][$columnName];
         }
 
-        return false;
+        throw new UnexpectedValueException('Could not get column max value: '.$this->getLastError());
     }
 
 
@@ -506,18 +493,16 @@ class DataBaseManager extends BaseStrictClass {
      *
      * @param string $tableName The name for the table we want to count
      *
-     * @return int The total number of table rows or false if an error happened
+     * @return int The total number of table rows
      */
     public function countTableRows($tableName){
 
-        $mysqlResult = $this->query('select count(1) as c FROM '.$tableName);
+        if(($result = $this->query('select count(1) as c FROM '.$tableName)) !== false){
 
-        if(!$mysqlResult){
-
-            return false;
+            return (int)$result[0]['c'];
         }
 
-        return (int)$mysqlResult[0]['c'];
+        throw new UnexpectedValueException('Could not count table rows: '.$this->getLastError());
     }
 
 
@@ -561,12 +546,12 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function tableCreate($tableName, array $columns){
 
-        if($this->query('CREATE TABLE '.$tableName.' ('.implode(',', $columns).')') === false){
+        if($this->query('CREATE TABLE '.$tableName.' ('.implode(',', $columns).')') !== false){
 
-            throw new UnexpectedValueException('Could not create table '.$tableName.' '.$this->_lastError);
+            return true;
         }
 
-        return true;
+        throw new UnexpectedValueException('Could not create table '.$tableName.' '.$this->_lastError);
     }
 
 
@@ -577,13 +562,18 @@ class DataBaseManager extends BaseStrictClass {
      * @param string $columnName The name for the new column we want to add
      * @param string $type The SQL type for the data that will be stored at the new column (for example varchar(255))
      *
-     * @return boolean True if the table was correctly added, false if not (error will be available via $this->getLastError())
+     * @throws UnexpectedValueException If the column cannot be added
+     *
+     * @return boolean True if the table was correctly added
      */
     public function tableAddColumn($tableName, $columnName, $type){
 
-        $this->_validateTable($tableName);
+        if($this->query('ALTER TABLE '.$tableName.' ADD '.$columnName.' '.$type) !== false){
 
-        return $this->query('ALTER TABLE '.$tableName.' ADD '.$columnName.' '.$type);
+            return true;
+        }
+
+        throw new UnexpectedValueException('Could not add column '.$columnName.' to table '.$tableName.': '.$this->_lastError);
     }
 
 
@@ -594,11 +584,9 @@ class DataBaseManager extends BaseStrictClass {
      * @param array $rowValues An associative array with all the data for a single table row, where each array key is the column name and
      *              each array value the column value
      *
-     * @return boolean|array
+     * @return boolean True if the row was correctly added
      */
     public function tableAddRow($tableName, array $rowValues){
-
-        $this->_validateTable($tableName);
 
         $cols = array_keys($rowValues);
 
@@ -609,7 +597,43 @@ class DataBaseManager extends BaseStrictClass {
             $values[] = $value === null ? 'NULL' : "'".$value."'";
         }
 
-        return $this->query('INSERT INTO '.$tableName.' ('.implode(',', $cols).') VALUES ('.implode(',', $values).')');
+        if($this->query('INSERT INTO '.$tableName.' ('.implode(',', $cols).') VALUES ('.implode(',', $values).')') !== false){
+
+            return true;
+        }
+
+        throw new UnexpectedValueException('Could not add row to table '.$tableName.': '.$this->_lastError);
+    }
+
+
+    /**
+     * Update all the values for an existing single row on the specified database table
+     *
+     * @param string $tableName The name for the table we want to update
+     * @param string $primaryKeyName The name for the column that contains the table primary key
+     * @param mixed $primaryKeyValue The value that must be found on the primary key for the row to be updated
+     * @param array $rowValues An associative array with all the data for a single table row, where each array key is the column name and
+     *              each array value the column value
+     *
+     * @throws UnexpectedValueException In case the update could not be performed
+     *
+     * @return boolean True if the row is correctly updated
+     */
+    public function tableUpdateRow($tableName, $primaryKeyName, $primaryKeyValue, array $rowValues){
+
+        $values = [];
+
+        foreach ($rowValues as $colName => $value) {
+
+            $values[] = $colName.' = '.($value === null ? 'NULL' : "'".$value."'");
+        }
+
+        if($this->query('UPDATE '.$tableName.' SET '.implode(',', $values).' WHERE '.$primaryKeyName."='".$primaryKeyValue."'") !== false){
+
+            return true;
+        }
+
+        throw new UnexpectedValueException('Could not update row on table '.$tableName.': '.$this->_lastError);
     }
 
 
@@ -624,12 +648,13 @@ class DataBaseManager extends BaseStrictClass {
 
         $this->_validateTable($tableName);
 
-        if($this->_engine === self::MYSQL){
+        if($this->_engine === self::MYSQL &&
+           $this->query('DROP TABLE '.$tableName) !== false){
 
-            return $this->query('DROP TABLE '.$tableName);
+            return true;
         }
 
-        return false;
+        throw new UnexpectedValueException('Could not delete table '.$tableName.': '.$this->_lastError);
     }
 
 
@@ -663,55 +688,66 @@ class DataBaseManager extends BaseStrictClass {
     /**
      * Start a database transaction.
      *
-     * @return boolean True if the transaction started correctly, false otherwise
+     * @throws UnexpectedValueException In case transaction could not start
+     *
+     * @return boolean True if the transaction started correctly
      */
     public function transactionBegin(){
 
-        if($this->_engine === self::MYSQL){
+        if($this->_engine === self::MYSQL &&
+           $this->query('START TRANSACTION') !== false){
 
-            return $this->query('START TRANSACTION');
+            return true;
         }
 
-        return false;
+        throw new UnexpectedValueException('Could not start transaction');
     }
 
 
     /**
      * Rollback a database transaction
      *
-     * @return boolean True if the transaction rolled correctly, false otherwise
+     * @throws UnexpectedValueException In case transaction could not be rolled back
+     *
+     * @return boolean True if the transaction rolled correctly
      */
     public function transactionRollback(){
 
-        if($this->_engine === self::MYSQL){
+        if($this->_engine === self::MYSQL &&
+           $this->query('ROLLBACK') !== false){
 
-            return $this->query('ROLLBACK');
+            return true;
         }
 
-        return false;
+        throw new UnexpectedValueException('Could not rollback transaction');
     }
 
 
     /**
      * Commit a database transaction
      *
-     * @return boolean True if the transaction commited correctly, false otherwise
+     * @throws UnexpectedValueException In case transaction could not be commited
+     *
+     * @return boolean True if the transaction commited correctly
      */
     public function transactionCommit(){
 
-        if($this->_engine === self::MYSQL){
+        if($this->_engine === self::MYSQL &&
+           $this->query('COMMIT') !== false){
 
-            return $this->query('COMMIT');
+            return true;
         }
 
-        return false;
+        throw new UnexpectedValueException('Could not commit transaction');
     }
 
 
     /**
      * Close the current database conection
      *
-     * @return boolean True if the disconnect was successful, false otherwise.
+     * @throws UnexpectedValueException In case connection could not be closed
+     *
+     * @return boolean True if the disconnect was successful
      */
     public function disconnect() {
 
@@ -725,9 +761,11 @@ class DataBaseManager extends BaseStrictClass {
             $this->_accumulatedQueryTime = 0;
             $this->_lastQuerySucceeded = false;
             $this->_selectedDatabase = '';
+
+            return true;
         }
 
-        return $this->_mysqlConnectionId === null;
+        throw new UnexpectedValueException('Could not close connection');
     }
 
 
