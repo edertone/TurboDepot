@@ -15,7 +15,7 @@ use org\turbocommons\src\main\php\model\BaseStrictClass;
 
 
 /**
- * TODO
+ * Base class for all the objects that are manipulated by the DataBaseObjectsManager class.
  */
 abstract class DataBaseObject extends BaseStrictClass{
 
@@ -29,19 +29,13 @@ abstract class DataBaseObject extends BaseStrictClass{
     /**
      * Universal identifier value for this object in case it is enabled
      */
-    public $uuid = null;
-
-
-    /**
-     * Id for the entity that is parent to this one, or null if entity is not child of any other one
-     */
-    public $parentId = '';
+    public $uuid = '';
 
 
     /**
      * Numeric value that can be used as a custom sorting method for this class created objects
      */
-    public $sortIndex = 0;
+    public $sortIndex = null;
 
 
     /**

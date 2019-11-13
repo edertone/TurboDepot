@@ -70,7 +70,9 @@ class DataBaseManager extends BaseStrictClass {
     private $_lastError = '';
 
 
-    /** Stores the database engine to which this class is currently being connected */
+    /**
+     * Stores the database engine to which this class is currently being connected
+     */
     private $_engine = '';
 
 
@@ -81,8 +83,16 @@ class DataBaseManager extends BaseStrictClass {
     private $_selectedDatabase = '';
 
 
-    /** Variable that stores the mysql database connection id so it can be used for all the operations */
+    /**
+     * Stores the mysql database connection id so it can be used for all the operations
+     */
     private $_mysqlConnectionId = null;
+
+
+    /**
+     * @see DataBaseManager::isAnyTransactionActive
+     */
+    private $_isAnyTransactionActive = false;
 
 
     /**
@@ -278,14 +288,13 @@ class DataBaseManager extends BaseStrictClass {
      * @see DataBaseManager::getLastError
      * @see DataBaseManager::getQueryHistory
      *
-     * @return boolean|array <br>
-     * - An associative array with the query data for queries that generate values (like SELECT).<br>
-     * - True for successful queries that do not generate vaules (lime CREATE, DROP, ...).<br>
-     * - False for any query that generates an error (error message will be available with getLastError()).
+     * @return boolean|int|array <br>
+     * - False if the query generates any error (error message will be available with getLastError())<br>
+     * - An associative array with the query result data for queries that generate values (like SELECT, SHOW, DESCRIBE or EXPLAIN).<br>
+     * - An integer containing the affected rows for successful queries that do not generate vaules (like CREATE, DROP, UPDATE, INSERT...).<br>
      */
     public function query($query){
 
-        // An active engine connection must be available
         if(!$this->isConnected()){
 
             throw new UnexpectedValueException('Not connected to a database host');
@@ -309,7 +318,7 @@ class DataBaseManager extends BaseStrictClass {
 
                 if($mysqlResult === true){
 
-                    $result = true;
+                    $result = mysqli_affected_rows($this->_mysqlConnectionId);
 
                 }else{
 
@@ -628,7 +637,7 @@ class DataBaseManager extends BaseStrictClass {
             $values[] = $colName.' = '.($value === null ? 'NULL' : "'".$value."'");
         }
 
-        if($this->query('UPDATE '.$tableName.' SET '.implode(',', $values).' WHERE '.$primaryKeyName."='".$primaryKeyValue."'") !== false){
+        if($this->query('UPDATE '.$tableName.' SET '.implode(',', $values).' WHERE '.$primaryKeyName."='".$primaryKeyValue."'") === 1){
 
             return true;
         }
@@ -694,13 +703,27 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function transactionBegin(){
 
-        if($this->_engine === self::MYSQL &&
-           $this->query('START TRANSACTION') !== false){
+        if($this->_engine === self::MYSQL && $this->query('START TRANSACTION') !== false){
+
+            $this->_isAnyTransactionActive = true;
 
             return true;
         }
 
+        $this->_isAnyTransactionActive = false;
+
         throw new UnexpectedValueException('Could not start transaction');
+    }
+
+
+    /**
+     * Tells if there's any transaction in progress
+     *
+     * @return boolean
+     */
+    public function isAnyTransactionActive(){
+
+        return $this->_isAnyTransactionActive;
     }
 
 
@@ -713,8 +736,9 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function transactionRollback(){
 
-        if($this->_engine === self::MYSQL &&
-           $this->query('ROLLBACK') !== false){
+        if($this->_engine === self::MYSQL && $this->query('ROLLBACK') !== false){
+
+            $this->_isAnyTransactionActive = false;
 
             return true;
         }
@@ -732,8 +756,9 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function transactionCommit(){
 
-        if($this->_engine === self::MYSQL &&
-           $this->query('COMMIT') !== false){
+        if($this->_engine === self::MYSQL && $this->query('COMMIT') !== false){
+
+            $this->_isAnyTransactionActive = false;
 
             return true;
         }
