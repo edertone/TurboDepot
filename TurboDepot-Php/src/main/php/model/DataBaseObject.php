@@ -29,7 +29,7 @@ abstract class DataBaseObject extends BaseStrictClass{
     /**
      * Universal identifier value for this object in case it is enabled
      */
-    public $uuid = '';
+    public $uuid = null;
 
 
     /**
