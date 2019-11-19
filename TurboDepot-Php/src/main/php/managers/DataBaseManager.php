@@ -658,14 +658,7 @@ class DataBaseManager extends BaseStrictClass {
 
         foreach ($rowValues as $value) {
 
-            if($value === null){
-
-                $values[] = 'NULL';
-
-            }else{
-
-                $values[] = is_string($value) ? "'".$value."'" : $value;
-            }
+            $values[] = $this->_prepareRawValeForSqlQuery($value);
         }
 
         if($this->query('INSERT INTO '.$tableName.' ('.implode(',', $cols).') VALUES ('.implode(',', $values).')') !== false){
@@ -714,7 +707,7 @@ class DataBaseManager extends BaseStrictClass {
 
         foreach ($rowValues as $colName => $value) {
 
-            $values[] = $colName.' = '.($value === null ? 'NULL' : "'".$value."'");
+            $values[] = $colName.' = '.$this->_prepareRawValeForSqlQuery($value);
         }
 
         if(($queryResult = $this->query('UPDATE '.$tableName.' SET '.implode(',', $values).' WHERE '.$primaryKeyName."='".$primaryKeyValue."'")) === 1){
@@ -920,6 +913,30 @@ class DataBaseManager extends BaseStrictClass {
 
         // Reaching here means this is the first time the query is executed, so we will store it
         $this->_queryHistory[] = $queryHistory;
+    }
+
+
+    /**
+     * Given a raw php value, this method will generate a string that is ready to be used on a SQL query to represent that value.
+     * For example, a true boolean value will output 'TRUE', a null value 'NULL', a string value will be sngle qouted, etc..
+     *
+     * @param mixed $value
+     *
+     * @return string The php value ready to be used on a SQL query
+     */
+    private function _prepareRawValeForSqlQuery($value){
+
+        if($value === null){
+
+            return 'NULL';
+        }
+
+        if(is_bool($value)){
+
+            return $value === true ? "TRUE" : "FALSE";
+        }
+
+        return is_string($value) ? "'".$value."'" : $value;
     }
 }
 
