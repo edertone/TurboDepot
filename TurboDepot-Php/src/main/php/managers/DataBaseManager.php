@@ -389,15 +389,20 @@ class DataBaseManager extends BaseStrictClass {
 
             if(is_integer($value)){
 
-                if(abs($value) < 32767){
+                // We calculate the biggest possible value with the provided number of digits (9999....) to check which mysql type will fit
+                $maxIntValue = pow(10, strlen((string)abs($value))) - 1;
+
+                if($maxIntValue < 32767){
 
                     return 'smallint';
                 }
-                if(abs($value) < 8388607){
+
+                if($maxIntValue < 8388607){
 
                     return 'mediumint';
                 }
-                if(abs($value) < 2147483647){
+
+                if($maxIntValue < 2147483647){
 
                     return 'int';
                 }
@@ -417,7 +422,7 @@ class DataBaseManager extends BaseStrictClass {
             }
         }
 
-        throw new UnexpectedValueException('Invalid data type provided: '.print_r($value, true));
+        throw new UnexpectedValueException('Could not detect SQL type from value: '.gettype($value));
     }
 
 

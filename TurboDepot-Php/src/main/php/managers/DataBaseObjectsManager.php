@@ -13,6 +13,8 @@
 namespace org\turbodepot\src\main\php\managers;
 
 use Throwable;
+use ReflectionClass;
+use ReflectionObject;
 use UnexpectedValueException;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
 use org\turbodepot\src\main\php\model\DataBaseObject;
@@ -24,6 +26,36 @@ use org\turbocommons\src\main\php\utils\StringUtils;
  * DataBaseObjectsManager class
  */
 class DataBaseObjectsManager extends BaseStrictClass{
+
+
+    /**
+     * Boolean type that can be used to set on object properties
+     */
+    const TYPE_BOOL = 'TYPE_BOOL';
+
+
+    /**
+     * Signed integer type with a max value of 2147483647 that can be used to set on object properties
+     */
+    const TYPE_INT = 'TYPE_INT';
+
+
+    /**
+     * Signed float type that can be used to set on object properties
+     */
+    const TYPE_DOUBLE = 'TYPE_DOUBLE';
+
+
+    /**
+     * Text type that can be used to set on object properties
+     */
+    const TYPE_STRING = 'TYPE_STRING';
+
+
+    /**
+     * Array type that can be used to set on object properties
+     */
+    const TYPE_ARRAY = 'TYPE_ARRAY';
 
 
     /**
@@ -42,23 +74,19 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * If set to true (default), the table and all the columns to store the object will be automatically created from the object properties.
      * If set to false, an exception will happen and we will need to manually alter the database by ourselves.
      *
-     * TODO - implement this
-     *
      * @var boolean
      */
     public $isTableCreatedWhenMissing = true;
 
 
     /**
-     * This flag specifies what to do when saving an object which table exists on database but has different column names, number or data types.
+     * This flag specifies what to do when saving an object which table exists on database but has different column names, column number or column data types.
      *
      * If set to true, any difference that is found between the structure of the saved object and the related table or tables will be applied, effectively altering the tables.
      * If set to false (default), an exception will happen and we will need to manually alter the database by ourselves.
      *
-     * WARNING: Enabling this flag will keep the database tables up to date to the objects structure changes, but may lead to data loss in production
+     * WARNING: Enabling this flag will keep the database tables up to date to the objects structure, but may lead to data loss in production
      * environments, so use carefully
-     *
-     * TODO - implement this
      *
      * @var boolean
      */
@@ -68,14 +96,22 @@ class DataBaseObjectsManager extends BaseStrictClass{
     /**
      * This flag specifies what to do when saving an object that contains a property with a value that is bigger than how it is defined at the database table.
      *
-     * If set to true (default), any column that has smaller type size defined will be increased to fit the new value.
-     * If set to false, an exception will happen and we will need to manually alter the database by ourselves.
+     * If set to true, any column that has smaller type size defined will be increased to fit the new value.
+     * If set to false (default), an exception will happen and we will need to manually alter the database by ourselves.
      *
-     * TODO - implement this
+     * WARNING: Enabling this flag will keep the database tables up to date to the objects structure, but may lead to data loss in production
+     * environments, so use carefully
      *
      * @var boolean
      */
-    public $isColumnResizedWhenValueisBigger = true;
+    public $isColumnResizedWhenValueisBigger = false;
+
+
+    /**
+     * Specifies if objects will be moved to trash when deleted instead of being permanently destroyed
+     * @var string
+     */
+    public $isTrashEnabled = false;
 
 
     /**
@@ -154,7 +190,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
         $this->_validateDataBaseObject($object);
 
         $tableName = $this->getTableNameFromObject($object);
-        $objectValues = $this->geTableDataFromObject($object);
+        $objectValues = $this->getTableDataFromObject($object);
 
         $this->_dataBaseManager->transactionBegin();
 
@@ -162,7 +198,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             if(!$this->_dataBaseManager->tableExists($tableName)){
 
-                $this->_createObjectTable($tableName, $objectValues);
+                $this->_createObjectTable($object, $tableName, $objectValues);
 
             }else{
 
@@ -205,42 +241,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * TODO
-     */
-    public function getByDbId($class, $dbid) {
-
-        // TODO - Obtain one or more Database objects given its id or ids
-    }
-
-
-    /**
-     * TODO
-     */
-    public function getByDbIds($class, array $dbids) {
-
-        // TODO - Obtain one or more Database objects given its id or ids
-    }
-
-
-    /**
-     * TODO
-     */
-    public function getByFilter() {
-
-        // TODO - Obtain one or more Database objects given a complex filter
-    }
-
-
-    /**
-     * @see DataBaseManager::disconnect
-     */
-    public function disconnect() {
-
-        return $this->_dataBaseManager->disconnect();
-    }
-
-
-    /**
      * Obtain the name for the table that would be used store the provided object when saved to database.
      *
      * It is calculated by converting its classname to lower_snake_case, which is the most compatible way to store table names
@@ -270,7 +270,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      *
      * @return number
      */
-    public function geTableDataFromObject(DataBaseObject $object){
+    public function getTableDataFromObject(DataBaseObject $object){
 
         $tableData = [];
 
@@ -293,49 +293,124 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
+     * Obtain the SQL type which can be used to store the requested object property with the smallest precision possible.
+     *
+     * @param DataBaseObject $object An object instance that we want to inspect
+     * @param string $property The name for the object property for which we want to obtain the required SQL type
+     *
+     * @return string The name of the SQL type and precision that can be used to store the object property to database, like SMALLINT, VARCHAR(20), etc..
+     */
+    public function getSQLTypeFromObjectProperty(DataBaseObject $object, $property){
+
+        return $this->_getSQLTypeFromObjectTableColumn($object, $this->getTableDataFromObject($object),
+            StringUtils::formatCase($property, StringUtils::FORMAT_LOWER_SNAKE_CASE));
+    }
+
+
+    /**
+     * Obtain the SQL type which can be used to store the requested object tabledata column with the smallest precision possible.
+     *
+     * @param DataBaseObject $object The object instance from which the tabledata has been obtained
+     * @param array $tableData Array with all the object data with snake case column names
+     * @param string $columnName The name for the column that we want to inspect (lower snake case expected)
+     *
+     * @throws UnexpectedValueException
+     *
+     * @return string The name of the SQL type and precision that can be used to store the object column to database, like SMALLINT, VARCHAR(20), etc..
+     */
+    private function _getSQLTypeFromObjectTableColumn(DataBaseObject $object, array $tableData, $columnName){
+
+        if(!array_key_exists($columnName, $tableData)){
+
+            throw new UnexpectedValueException('Undefined '.$columnName);
+        }
+
+        // Check if the requested property is one of the base properties which types are already known
+        if($columnName === 'db_id'){
+
+            return $this->_baseObjectColumns['db_id'].' NOT NULL AUTO_INCREMENT';
+        }
+
+        if(in_array($columnName, ['uuid', 'sort_index', 'deleted'])){
+
+            return $this->_baseObjectColumns[$columnName];
+        }
+
+        if(in_array($columnName, ['creation_date', 'modification_date'])){
+
+            return $this->_baseObjectColumns[$columnName].' NOT NULL';
+        }
+
+        $valueToCheck = $tableData[$columnName];
+
+        // Try to find a strongly defined type for the requested column on the provided object instance.
+        // This will have preference over the type that is automatically detected from the table value.
+        $objectDefinedTypes = (new ReflectionObject($object))->getProperty('_types');
+        $objectDefinedTypes->setAccessible(true);
+        $typesSetup = $objectDefinedTypes->getValue($object);
+
+        foreach ($typesSetup as $property => $propertyTypeDefs) {
+
+            if(StringUtils::formatCase($property, StringUtils::FORMAT_LOWER_SNAKE_CASE) === $columnName){
+
+                $type = $propertyTypeDefs[0];
+                $typeLen = isset($propertyTypeDefs[1]) ? $propertyTypeDefs[1] : 1;
+                // TODO - not null true o false?
+
+                if($type === self::TYPE_BOOL){
+
+                    $valueToCheck = true;
+                }
+
+                if($type === self::TYPE_INT){
+
+                    $valueToCheck = pow(10, $typeLen) - 1;
+                }
+
+                if($type === self::TYPE_DOUBLE){
+
+                    $valueToCheck = 1.0;
+                }
+
+                if($type === self::TYPE_STRING){
+
+                    $valueToCheck = str_repeat(' ', $typeLen);
+                }
+
+                break;
+            }
+        }
+
+        // No type specifically defined, so we will detect the best possible type from the property value
+        try {
+
+            return $this->_dataBaseManager->getSQLTypeFromValue($valueToCheck);
+
+        } catch (Throwable $e) {
+
+            throw new UnexpectedValueException($columnName.' invalid: '.$e->getMessage());
+        }
+    }
+
+
+    /**
      * Aux method to create the table that represents the provided object on database
      *
      * @param string $tableName The name for the DataBaseObject table
      * @param array $tableData Array with all the object data with snake case column names
      */
-    private function _createObjectTable($tableName, $tableData){
+    private function _createObjectTable(DataBaseObject $object, $tableName, $tableData){
 
         $tableColumns = [];
 
-        foreach ($tableData as $columnName => $value) {
+        foreach (array_keys($tableData) as $columnName) {
 
-            switch ($columnName) {
-
-                case 'db_id':
-                    $tableColumns[] = $columnName.' '.$this->_baseObjectColumns['db_id'].' NOT NULL AUTO_INCREMENT';
-                    break;
-
-                case 'uuid':
-                    $tableColumns[] = $columnName.' '.$this->_baseObjectColumns['uuid'];
-                    break;
-
-                case 'sort_index':
-                    $tableColumns[] = $columnName.' '.$this->_baseObjectColumns['sort_index'];
-                    break;
-
-                case 'creation_date':
-                case 'modification_date':
-                    $tableColumns[] = $columnName.' '.$this->_baseObjectColumns['creation_date'].' NOT NULL';
-                    break;
-
-                case 'deleted':
-                    $tableColumns[] = $columnName.' '.$this->_baseObjectColumns['deleted'];
-                    break;
-
-                default:
-                    $tableColumns[] = $columnName.' '.$this->_dataBaseManager->getSQLTypeFromValue($value);
-                    break;
-            }
+            $tableColumns[] = $columnName.' '.$this->_getSQLTypeFromObjectTableColumn($object, $tableData, $columnName);
         }
 
         $tableColumns[] = 'PRIMARY KEY (db_id)';
-
-        // TODO - we must create an index to improve sorting for the sortIndex column
+        $tableColumns[] = 'UNIQUE KEY (uuid)';
+        $tableColumns[] = 'INDEX (sort_index)';
 
         $this->_dataBaseManager->tableCreate($tableName, $tableColumns);
     }
@@ -433,7 +508,8 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     private function _validateDataBaseObject(DataBaseObject $object){
 
-        $className = StringUtils::getPathElement(get_class($object));
+        $class = get_class($object);
+        $className = StringUtils::getPathElement($class);
         $dateRegex = '/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9]/';
 
         if($object->dbId !== null && (!is_integer($object->dbId) || $object->dbId < 1)){
@@ -471,21 +547,69 @@ class DataBaseObjectsManager extends BaseStrictClass{
             throw new UnexpectedValueException('Creation date must be null if dbid is null');
         }
 
-        // TODO - properties that start with __ are forbidden, cause they are reserved for setup properties
+        // Properties that start with _ are forbidden, cause they are reserved for setup private properties
+        foreach(array_keys(get_class_vars($class)) as $classProperty){
 
-        // Database objects must not have any method defined, cause they are only data containers
-        // TODO - this only gives public methods it seems. Any way to list all public, private and protected??
-        if(($classMethods = get_class_methods(get_class($object))) > 0){
+            if(substr($classProperty, 0, 1) === '_'){
+
+                throw new UnexpectedValueException('Properties starting with _ are forbidden, but found: '.$classProperty);
+            }
+        }
+
+        // Database objects must not have any unexpected method defined, cause they are only data containers
+        if(($classMethods = (new ReflectionClass(get_class($object)))->getMethods()) > 0){
 
             foreach($classMethods as $classMethod){
 
                 // setup() and BaseStrictClass methods are the only ones that are allowed
-                if(!in_array($classMethod, ['setup', '__set', '__get'])){
+                if(!in_array($classMethod->name, ['__construct', '__set', '__get'])){
 
-                    throw new UnexpectedValueException('Only setup method is allowed for DataBaseObjects: '. $classMethods[0]);
+                    throw new UnexpectedValueException('Only __construct method is allowed for DataBaseObjects but found: '.$classMethod->name);
                 }
             }
         }
+
+        // Strong typed properties must match the values that are possible for them based on the property type
+        // TODO
+
+        // _types array must not have properties defined that do not exist on the object
+        // TODO
+    }
+
+
+    /**
+     * TODO
+     */
+    public function getByDbId($class, $dbid) {
+
+        // TODO - Obtain one or more Database objects given its id or ids
+    }
+
+
+    /**
+     * TODO
+     */
+    public function getByDbIds($class, array $dbids) {
+
+        // TODO - Obtain one or more Database objects given its id or ids
+    }
+
+
+    /**
+     * TODO
+     */
+    public function getByFilter() {
+
+        // TODO - Obtain one or more Database objects given a complex filter
+    }
+
+
+    /**
+     * @see DataBaseManager::disconnect
+     */
+    public function disconnect() {
+
+        return $this->_dataBaseManager->disconnect();
     }
 }
 

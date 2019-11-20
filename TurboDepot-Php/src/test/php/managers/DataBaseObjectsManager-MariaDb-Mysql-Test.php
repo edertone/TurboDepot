@@ -18,7 +18,10 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 use org\turbodepot\src\main\php\managers\DataBaseManager;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\Customer;
 use org\turbotesting\src\main\php\utils\AssertUtils;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\WrongObjectWithMethods;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongMethods;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerTyped;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongPropThatStartsWithUnderscore;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNullNonTypedProperty;
 
 
 /**
@@ -186,6 +189,29 @@ class DataBaseObjectsManagerTest extends TestCase {
 
 
     /**
+     * testIsTrashEnabled
+     *
+     * @return void
+     */
+    public function testIsTrashEnabled(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
      * testConstruct
      *
      * @return void
@@ -308,7 +334,18 @@ class DataBaseObjectsManagerTest extends TestCase {
         // Test ok values - update instances
 
         $object = new Customer();
+        $object->age = 14123412341;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column age data type is: smallint.6. but should be bigint/');
+
+        $object = new Customer();
+        $object->age = 14123412341345345345345345345;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column age data type is: smallint.6. but should be double/');
+
+        $object = new Customer();
         $object->name = 'customer';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column name data type is: varchar.1. but should be varchar.8./');
+
+        $this->sut->isColumnResizedWhenValueisBigger = true;
         $this->assertSame(4, $this->sut->save($object));
         $this->assertSame(4, $object->dbId);
         $this->assertSame('customer', $object->name);
@@ -402,19 +439,167 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         $object = new Customer();
         $object->name = 12345;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column name data type is: varchar.100. but should be smallint/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column name data type is: varchar.100. but should be mediumint/');
 
         $object = new Customer();
         $object->age = 'string instead of int';
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column age data type is: smallint.6. but should be varchar.21./');
 
-        // Try to save a database object that contains declared methods
-        AssertUtils::throwsException(function() { $this->sut->save(new WrongObjectWithMethods()); }, '/Only setup method is allowed for DataBaseObjects: methodThatCantBeHere/');
+        // Try to save database objects that contains invalid methods or properties
+        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongMethods()); }, '/Only __construct method is allowed for DataBaseObjects but found: methodThatCantBeHere/');
+        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongPropThatStartsWithUnderscore()); }, '/Properties starting with _ are forbidden, but found: _name/');
+        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNullNonTypedProperty()); }, '/age invalid: Could not detect SQL type from value: NULL/');
 
         // Add an unexpected column to the customer table and make sure saving fails
         $this->assertTrue($this->db->tableAddColumn($objectTableName, 'unexpected', 'bigint'));
-        $object = new Customer();
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer columns .db_id,uuid,sort_index,creation_date,modification_date,deleted,name,commercial_name,age,unexpected. are different from its related object/');
+        AssertUtils::throwsException(function() { $this->sut->save(new Customer()); }, '/tdp_customer columns .db_id,uuid,sort_index,creation_date,modification_date,deleted,name,commercial_name,age,unexpected. are different from its related object/');
+
+        // All exceptions must have not created any database object
+        $this->assertSame(4, $this->db->tableCountRows($objectTableName));
+   }
+
+
+   /**
+    * testSave_Strong_typed_Object
+    *
+    * @return void
+    */
+   public function testSave_simple_object_performs_no_more_than_2_db_queries(){
+
+       $this->assertFalse($this->sut->getDataBaseManager()->isAnyTransactionActive());
+       $this->assertSame(0, count($this->sut->getDataBaseManager()->getQueryHistory()));
+
+       $object = new Customer();
+       $object->name = 'customer';
+       $this->assertSame(1, $this->sut->save($object));
+
+       $this->assertFalse($this->sut->getDataBaseManager()->isAnyTransactionActive());
+       $this->assertSame(2, count($this->sut->getDataBaseManager()->getQueryHistory()));
+
+       $object = new Customer();
+       $object->name = 'c2';
+       $this->assertSame(2, $this->sut->save($object));
+       $this->assertSame(4, count($this->sut->getDataBaseManager()->getQueryHistory()));
+   }
+
+
+   /**
+    * testSave_Strong_typed_Object
+    *
+    * @return void
+    */
+   public function testSave_Strong_typed_Object(){
+
+       // Test empty values
+       // TODO
+
+       // Test ok values
+       $object = new CustomerTyped();
+       $object->name = 'customer';
+       $this->assertSame(1, $this->sut->save($object));
+       // TODO
+
+       // Test wrong values
+       // TODO
+
+       // Test exceptions
+       // TODO
+
+       $this->markTestIncomplete('This test has not been implemented yet.');
+   }
+
+
+   /**
+    * testGetTableNameFromObject
+    *
+    * @return void
+    */
+   public function testGetTableNameFromObject(){
+
+       // Test empty values
+       // TODO
+
+       // Test ok values
+       // TODO
+
+       // Test wrong values
+       // TODO
+
+       // Test exceptions
+       // TODO
+
+       $this->markTestIncomplete('This test has not been implemented yet.');
+   }
+
+
+   /**
+    * testGetTableDataFromObject
+    *
+    * @return void
+    */
+   public function testGetTableDataFromObject(){
+
+       // Test empty values
+       // TODO
+
+       // Test ok values
+       // TODO
+
+       // Test wrong values
+       // TODO
+
+       // Test exceptions
+       // TODO
+
+       $this->markTestIncomplete('This test has not been implemented yet.');
+   }
+
+
+   /**
+    * testGetSQLTypeFromObjectProperty
+    *
+    * @return void
+    */
+   public function testGetSQLTypeFromObjectProperty(){
+
+       // Test empty values
+       AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(null, null); }, '/Argument 1.*must be an instance of.*DataBaseObject, null given/');
+       AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(new Customer(), null); }, '/value is not a string/');
+       AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(new Customer(), ''); }, '/Undefined/');
+
+       // Test ok values
+       $object = new Customer();
+       $this->assertSame('varchar(1)', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
+       $this->assertSame('varchar(1)', $this->sut->getSQLTypeFromObjectProperty($object, 'commercialName'));
+       $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
+
+       $object->name = 'customer name';
+       $object->commercialName = 'commercial name';
+       $object->age = 12456;
+       $this->assertSame('varchar(13)', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
+       $this->assertSame('varchar(15)', $this->sut->getSQLTypeFromObjectProperty($object, 'commercialName'));
+       $this->assertSame('mediumint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
+       $object->age = 1234;
+       $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
+       $object->age = 1122212121;
+       $this->assertSame('bigint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
+
+       $object = new CustomerTyped();
+       $this->assertSame('varchar(20)', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
+       $this->assertSame('varchar(25)', $this->sut->getSQLTypeFromObjectProperty($object, 'commercialName'));
+       $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
+       $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'oneDigitInt'));
+       $this->assertSame('mediumint', $this->sut->getSQLTypeFromObjectProperty($object, 'sixDigitInt'));
+       $this->assertSame('bigint', $this->sut->getSQLTypeFromObjectProperty($object, 'twelveDigitInt'));
+       $this->assertSame('double', $this->sut->getSQLTypeFromObjectProperty($object, 'doubleValue'));
+       $this->assertSame('boolean', $this->sut->getSQLTypeFromObjectProperty($object, 'setup'));
+       // TODO - more tests
+
+       // Test wrong values
+       // Test exceptions
+       AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, 'nonexistantproperty'); }, '/Undefined nonexistantproperty/');
+       AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, ''); }, '/Undefined/');
+       AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty(new stdClass(), ''); }, '/Argument 1 passed to .*getSQLTypeFromObjectProperty.*must be an instance of.*DataBaseObject.*stdClass given/');
    }
 }
 
