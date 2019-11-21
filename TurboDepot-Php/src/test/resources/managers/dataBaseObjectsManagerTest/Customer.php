@@ -13,6 +13,8 @@ class Customer extends DataBaseObject{
     public $commercialName = '';
 
     public $age = 0;
+
+    public $debt = 0.0;
 }
 
 ?>

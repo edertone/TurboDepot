@@ -312,10 +312,10 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(1, $this->db->tableCountRows($objectTableName));
         $this->assertSame(['db_id' => 'bigint(20)', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20)',
             'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(1)',
-            'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName));
+            'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         // test that columns are in the correct order
-        $this->assertSame(['db_id', 'uuid', 'sort_index', 'creation_date', 'modification_date', 'deleted', 'name', 'commercial_name', 'age'],
+        $this->assertSame(['db_id', 'uuid', 'sort_index', 'creation_date', 'modification_date', 'deleted', 'name', 'commercial_name', 'age', 'debt'],
             $this->db->tableGetColumnNames($objectTableName));
 
         $object = new Customer();
@@ -329,21 +329,21 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(3, $this->db->tableCountRows($objectTableName));
         $this->assertSame(['db_id' => 'bigint(20)', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20)',
             'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(1)',
-            'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName));
+            'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         // Test ok values - update instances
 
         $object = new Customer();
         $object->age = 14123412341;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column age data type is: smallint.6. but should be bigint/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column age data type expected: smallint.6. but received: bigint/');
 
         $object = new Customer();
         $object->age = 14123412341345345345345345345;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column age data type is: smallint.6. but should be double/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column age data type expected: smallint.6. but received: double/');
 
         $object = new Customer();
         $object->name = 'customer';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column name data type is: varchar.1. but should be varchar.8./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column name data type expected: varchar.1. but received: varchar.8./');
 
         $this->sut->isColumnResizedWhenValueisBigger = true;
         $this->assertSame(4, $this->sut->save($object));
@@ -352,7 +352,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
         $this->assertSame(['db_id' => 'bigint(20)', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20)',
             'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(8)',
-            'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName));
+            'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $object->name = 'customer updated';
         $this->assertSame(4, $object->dbId);
@@ -361,7 +361,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
         $this->assertSame(['db_id' => 'bigint(20)', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20)',
             'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(16)',
-            'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName));
+            'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $object->name = 'customer updated with a much longer text that should resize the name column to a bigger varchar size';
         $this->assertSame(4, $object->dbId);
@@ -370,10 +370,15 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
         $this->assertSame(['db_id' => 'bigint(20)', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20)',
             'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(100)',
-            'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName));
+            'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
+
+        $object->debt = 10;
+        $this->assertSame(4, $object->dbId);
+        $this->assertSame(4, $this->sut->save($object));
+        $this->assertSame(4, $this->db->tableCountRows($objectTableName));
 
         // test that columns are in the correct order
-        $this->assertSame(['db_id', 'uuid', 'sort_index', 'creation_date', 'modification_date', 'deleted', 'name', 'commercial_name', 'age'],
+        $this->assertSame(['db_id', 'uuid', 'sort_index', 'creation_date', 'modification_date', 'deleted', 'name', 'commercial_name', 'age', 'debt'],
             $this->db->tableGetColumnNames($objectTableName));
 
         // Test wrong values
@@ -439,11 +444,21 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         $object = new Customer();
         $object->name = 12345;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column name data type is: varchar.100. but should be mediumint/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column name data type expected: varchar.100. but received: mediumint/');
 
         $object = new Customer();
         $object->age = 'string instead of int';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column age data type is: smallint.6. but should be varchar.21./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column age data type expected: smallint.6. but received: varchar.21./');
+
+        $object = new Customer();
+        $object->age = 1.12;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column age data type expected: smallint.6. but received: double/');
+
+        $object = new Customer();
+        $object->debt = 'notadouble';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column debt data type expected: double but received: varchar.10./');
+
+        AssertUtils::throwsException(function() { $this->sut->save(new DataBaseManager()); }, '/Argument 1 passed to.*save.. must be an instance of.*DataBaseObject, instance of.*DataBaseManager given/');
 
         // Try to save database objects that contains invalid methods or properties
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongMethods()); }, '/Only __construct method is allowed for DataBaseObjects but found: methodThatCantBeHere/');
@@ -452,7 +467,7 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         // Add an unexpected column to the customer table and make sure saving fails
         $this->assertTrue($this->db->tableAddColumn($objectTableName, 'unexpected', 'bigint'));
-        AssertUtils::throwsException(function() { $this->sut->save(new Customer()); }, '/tdp_customer columns .db_id,uuid,sort_index,creation_date,modification_date,deleted,name,commercial_name,age,unexpected. are different from its related object/');
+        AssertUtils::throwsException(function() { $this->sut->save(new Customer()); }, '/tdp_customer columns .db_id,uuid,sort_index,creation_date,modification_date,deleted,name,commercial_name,age,debt,unexpected. are different from its related object/');
 
         // All exceptions must have not created any database object
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
@@ -494,13 +509,28 @@ class DataBaseObjectsManagerTest extends TestCase {
        // TODO
 
        // Test ok values
-       $object = new CustomerTyped();
-       $object->name = 'customer';
-       $this->assertSame(1, $this->sut->save($object));
+//        $object = new CustomerTyped();
+//        $object->name = 'customer';
+//        $this->assertSame(1, $this->sut->save($object));
        // TODO
 
        // Test wrong values
-       // TODO
+       $object = new CustomerTyped();
+       $object->setup = 'notabool';
+       AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property setup .notabool. does not match required type: TYPE_BOOL/');
+
+       $object = new CustomerTyped();
+       $object->name = 123123;
+       AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property name .123123. does not match required type: TYPE_STRING/');
+
+       $object = new CustomerTyped();
+       $object->age = 'stringinsteadofint';
+       AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property age .stringinsteadofint. does not match required type: TYPE_INT/');
+
+       $object = new CustomerTyped();
+       $object->age = 10.2;
+       AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property age .10.2. does not match required type: TYPE_INT/');
+       // TODO - more properties with incorrect types
 
        // Test exceptions
        // TODO
@@ -593,9 +623,15 @@ class DataBaseObjectsManagerTest extends TestCase {
        $this->assertSame('bigint', $this->sut->getSQLTypeFromObjectProperty($object, 'twelveDigitInt'));
        $this->assertSame('double', $this->sut->getSQLTypeFromObjectProperty($object, 'doubleValue'));
        $this->assertSame('boolean', $this->sut->getSQLTypeFromObjectProperty($object, 'setup'));
-       // TODO - more tests
+       // TODO - test for properties that are arrays
 
        // Test wrong values
+       $object = new CustomerTyped();
+       $object->name = 1231231;
+       $object->age = 'stringinsteadofint';
+       $this->assertSame('varchar(20)', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
+       $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
+
        // Test exceptions
        AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, 'nonexistantproperty'); }, '/Undefined nonexistantproperty/');
        AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, ''); }, '/Undefined/');
