@@ -156,12 +156,12 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
-     * Initialize a postgresql database connection with the specified parameters
+     * Initialize an SQLite database connection with the specified parameters
      * TODO
      *
      * @return boolean True on success or false if connection was not possible
      */
-    public function connectPostgreSql($todo){
+    public function connectSQLite($todo){
 
         // TODO
     }
@@ -368,6 +368,42 @@ class DataBaseManager extends BaseStrictClass {
         $this->_lastQuerySucceeded = ($result !== false);
 
         return $result;
+    }
+
+
+    /**
+     * Check if the provided SQL type string corresponds to a numeric data type like int, small int, big int, double...
+     *
+     * @param string $sqlType A valid SQL type definition like int, bigint, varchar(20), double NOT NULL, varchar(250) NOT NULL etc...
+     *
+     * @return boolean True if the provided SQL type represents a numeric type
+     */
+    public function isSQLNumericType(string $sqlType){
+
+        $sqlTypeName = explode(' ', explode('(', trim($sqlType))[0])[0];
+
+        if($this->_engine === self::MYSQL){
+
+            return in_array($sqlTypeName, ['smallint', 'mediumint', 'int', 'bigint', 'double']);
+        }
+    }
+
+
+    /**
+     * Check if the provided SQL type string corresponds to a numeric double (or float) type
+     *
+     * @param string $sqlType A valid SQL type definition like int, bigint, varchar(20), double NOT NULL, varchar(250) NOT NULL etc...
+     *
+     * @return boolean True if the provided SQL type represents a numeric double type
+     */
+    public function isSQLDoubleType(string $sqlType){
+
+        $sqlTypeName = explode(' ', explode('(', trim($sqlType))[0])[0];
+
+        if($this->_engine === self::MYSQL){
+
+            return $sqlTypeName === 'double';
+        }
     }
 
 
