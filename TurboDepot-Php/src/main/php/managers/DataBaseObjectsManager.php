@@ -29,33 +29,33 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Boolean type that can be used to set on object properties
+     * Boolean type that can be used to constrain object properties
      */
-    const TYPE_BOOL = 'TYPE_BOOL';
+    const BOOL = 'BOOL';
 
 
     /**
-     * Signed integer type with a max value of 2147483647 that can be used to set on object properties
+     * Signed integer type with a max value of 2147483647 that can be used to constrain object properties
      */
-    const TYPE_INT = 'TYPE_INT';
+    const INT = 'INT';
 
 
     /**
-     * Signed float type that can be used to set on object properties
+     * Signed float type that can be used to constrain object properties
      */
-    const TYPE_DOUBLE = 'TYPE_DOUBLE';
+    const DOUBLE = 'DOUBLE';
 
 
     /**
-     * Text type that can be used to set on object properties
+     * Text type that can be used to constrain object properties
      */
-    const TYPE_STRING = 'TYPE_STRING';
+    const STRING = 'STRING';
 
 
     /**
-     * Array type that can be used to set on object properties
+     * Array type that can be used to constrain object properties
      */
-    const TYPE_ARRAY = 'TYPE_ARRAY';
+    const ARRAY = 'ARRAY';
 
 
     /**
@@ -63,9 +63,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * added to all the tables that are used by this class. It will be automatically added when tables are created, and expected when
      * tables are read.
      *
+     * By default, this class uses the tddo_ prefix, which is an abbreviature of TurboDepotDatabaseObjectsmanager_
+     *
      * @var string
      */
-    public $tablesPrefix = 'tdp_';
+    public $tablesPrefix = 'tddo_';
 
 
     /**
@@ -345,22 +347,22 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $type = $this->_getTypeFromObjectTableColumn($object, $tableData, $columnName);
 
-        if($type[0] === self::TYPE_BOOL){
+        if($type[0] === self::BOOL){
 
             $valueToCheck = true;
         }
 
-        if($type[0] === self::TYPE_INT){
+        if($type[0] === self::INT){
 
             $valueToCheck = pow(10, $type[1]) - 1;
         }
 
-        if($type[0] === self::TYPE_DOUBLE){
+        if($type[0] === self::DOUBLE){
 
             $valueToCheck = 1.0;
         }
 
-        if($type[0] === self::TYPE_STRING){
+        if($type[0] === self::STRING){
 
             $valueToCheck = str_repeat(' ', $type[1]);
         }
@@ -384,7 +386,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * @param string $property The name of a property for which we want to obtain the type
      *
      * @return array An array with 2 possible values.<br>
-     *         First will be the type (DataBaseObjectsManager::TYPE_BOOL, ::TYPE_INT, ::TYPE_DOUBLE, ::TYPE_STRING)<br>
+     *         First will be the type (DataBaseObjectsManager::BOOL, ::INT, ::DOUBLE, ::STRING)<br>
      *         Second one will be the type size (digits)
      */
     private function _getTypeFromObjectProperty(DataBaseObject $object, string $property){
@@ -402,18 +404,24 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * @param string $columnName The name of the column for which we want to obtain the type
      *
      * @return array An array with 2 possible values.<br>
-     *         First will be the type (DataBaseObjectsManager::TYPE_BOOL, ::TYPE_INT, ::TYPE_DOUBLE, ::TYPE_STRING)<br>
+     *         First will be the type (DataBaseObjectsManager::BOOL, ::INT, ::DOUBLE, ::STRING)<br>
      *         Second one will be the type size (digits)
      */
-    private function _getTypeFromObjectTableColumn(DataBaseObject $object, array $tableData, $columnName){
+    private function _getTypeFromObjectTableColumn(DataBaseObject $object, array $tableData, string $columnName){
 
         // Try to find a strongly defined type for the requested column on the provided object instance.
         // This will have preference over the type that is automatically detected from the table value.
+        $objectProperties = array_keys(get_object_vars($object));
         $objectDefinedTypes = (new ReflectionObject($object))->getProperty('_types');
         $objectDefinedTypes->setAccessible(true);
         $typesSetup = $objectDefinedTypes->getValue($object);
 
         foreach ($typesSetup as $typeProperty => $propertyTypeDefs) {
+
+            if(!in_array($typeProperty, $objectProperties)){
+
+                throw new UnexpectedValueException('Cannot define type for '.$typeProperty.' cause it does not exist on class');
+            }
 
             if(StringUtils::formatCase($typeProperty, StringUtils::FORMAT_LOWER_SNAKE_CASE) === $columnName){
 
@@ -431,29 +439,29 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * @param mixed $value Any value for which we want to obtain the type
      *
      * @return array An array with 2 possible values.<br>
-     *         First will be the type (DataBaseObjectsManager::TYPE_BOOL, ::TYPE_INT, ::TYPE_DOUBLE, ::TYPE_STRING)<br>
+     *         First will be the type (DataBaseObjectsManager::BOOL, ::INT, ::DOUBLE, ::STRING)<br>
      *         Second one will be the type size (digits)
      */
     private function _getTypeFromValue($value){
 
         if(is_bool($value)){
 
-            return [self::TYPE_BOOL, 1];
+            return [self::BOOL, 1];
         }
 
         if(is_int($value)){
 
-            return [self::TYPE_INT, strlen((string)abs($value))];
+            return [self::INT, strlen((string)abs($value))];
         }
 
         if(is_double($value)){
 
-            return [self::TYPE_DOUBLE,strlen((string)abs($value))];
+            return [self::DOUBLE,strlen((string)abs($value))];
         }
 
         if(is_string($value)){
 
-            return [self::TYPE_STRING, strlen($value)];
+            return [self::STRING, strlen($value)];
         }
     }
 
@@ -464,7 +472,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * @param string $tableName The name for the DataBaseObject table
      * @param array $tableData Array with all the object data with snake case column names
      */
-    private function _createObjectTable(DataBaseObject $object, $tableName, $tableData){
+    private function _createObjectTable(DataBaseObject $object, string $tableName, array $tableData){
 
         $tableColumns = [];
 
@@ -473,11 +481,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             $tableColumns[] = $columnName.' '.$this->_getSQLTypeFromObjectTableColumn($object, $tableData, $columnName);
         }
 
-        $tableColumns[] = 'PRIMARY KEY (db_id)';
-        $tableColumns[] = 'UNIQUE KEY (uuid)';
-        $tableColumns[] = 'INDEX (sort_index)';
-
-        $this->_db->tableCreate($tableName, $tableColumns);
+        $this->_db->tableCreate($tableName, $tableColumns, ['db_id'], [['uuid']], [['sort_index']]);
     }
 
 
@@ -628,9 +632,9 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             // The only exception is that a property of type double can store a value of type int
             if($propertyType !== $valueType &&
-               !($propertyType === self::TYPE_DOUBLE && $valueType === self::TYPE_INT)){
+               !($propertyType === self::DOUBLE && $valueType === self::INT)){
 
-                throw new UnexpectedValueException('Property '.$classProperty.' ('.$object->{$classProperty}.') does not match required type: '.$this->_getTypeFromObjectProperty($object, $classProperty)[0]);
+                   throw new UnexpectedValueException('Property '.$classProperty.' ('.$object->{$classProperty}.') does not match required type: '.$propertyType);
             }
         }
 
@@ -646,9 +650,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 }
             }
         }
-
-        // _types array must not have properties defined that do not exist on the object
-        // TODO
     }
 
 

@@ -22,6 +22,7 @@ use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\Object
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerTyped;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongPropThatStartsWithUnderscore;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNullNonTypedProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNonExistantTypedProperty;
 
 
 /**
@@ -303,7 +304,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         AssertUtils::throwsException(function(){ $this->sut->save(new stdClass()); }, '/must be an instance of .*DataBaseObject/');
 
         // Test ok values - new instances
-        AssertUtils::throwsException(function() use ($objectTableName) { $this->db->tableCountRows($objectTableName); }, '/Could not count table rows: Table .*tdp_customer.* doesn\'t exist/');
+        AssertUtils::throwsException(function() use ($objectTableName) { $this->db->tableCountRows($objectTableName); }, '/Could not count table rows: Table .*tddo_customer.* doesn\'t exist/');
         $this->assertRegExp('/Table .*customer\' doesn\'t exist/', $this->db->getLastError());
 
         $object = new Customer();
@@ -335,15 +336,15 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         $object = new Customer();
         $object->age = 14123412341;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column age data type expected: smallint.6. but received: bigint/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tddo_customer column age data type expected: smallint.6. but received: bigint/');
 
         $object = new Customer();
         $object->age = 14123412341345345345345345345;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column age data type expected: smallint.6. but received: double/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tddo_customer column age data type expected: smallint.6. but received: double/');
 
         $object = new Customer();
         $object->name = 'customer';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column name data type expected: varchar.1. but received: varchar.8./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tddo_customer column name data type expected: varchar.1. but received: varchar.8./');
 
         $this->sut->isColumnResizedWhenValueisBigger = true;
         $this->assertSame(4, $this->sut->save($object));
@@ -392,7 +393,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         // Put a non existant id number
         $object = new Customer();
         $object->dbId = 5000000;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not update row on table tdp_customer: query affected 0 rows/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not update row on table tddo_customer: query affected 0 rows/');
 
         $object = new Customer();
         $object->dbId = 'string';
@@ -444,19 +445,19 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         $object = new Customer();
         $object->name = 12345;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column name data type expected: varchar.100. but received: mediumint/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tddo_customer column name data type expected: varchar.100. but received: mediumint/');
 
         $object = new Customer();
         $object->age = 'string instead of int';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column age data type expected: smallint.6. but received: varchar.21./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tddo_customer column age data type expected: smallint.6. but received: varchar.21./');
 
         $object = new Customer();
         $object->age = 1.12;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column age data type expected: smallint.6. but received: double/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tddo_customer column age data type expected: smallint.6. but received: double/');
 
         $object = new Customer();
         $object->debt = 'notadouble';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tdp_customer column debt data type expected: double but received: varchar.10./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tddo_customer column debt data type expected: double but received: varchar.10./');
 
         AssertUtils::throwsException(function() { $this->sut->save(new DataBaseManager()); }, '/Argument 1 passed to.*save.. must be an instance of.*DataBaseObject, instance of.*DataBaseManager given/');
 
@@ -464,10 +465,11 @@ class DataBaseObjectsManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongMethods()); }, '/Only __construct method is allowed for DataBaseObjects but found: methodThatCantBeHere/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongPropThatStartsWithUnderscore()); }, '/Properties starting with _ are forbidden, but found: _name/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNullNonTypedProperty()); }, '/age invalid: Could not detect SQL type from value: NULL/');
+        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNonExistantTypedProperty()); }, '/Cannot define type for nonexistant cause it does not exist on class/');
 
         // Add an unexpected column to the customer table and make sure saving fails
         $this->assertTrue($this->db->tableAddColumn($objectTableName, 'unexpected', 'bigint'));
-        AssertUtils::throwsException(function() { $this->sut->save(new Customer()); }, '/tdp_customer columns .db_id,uuid,sort_index,creation_date,modification_date,deleted,name,commercial_name,age,debt,unexpected. are different from its related object/');
+        AssertUtils::throwsException(function() { $this->sut->save(new Customer()); }, '/tddo_customer columns .db_id,uuid,sort_index,creation_date,modification_date,deleted,name,commercial_name,age,debt,unexpected. are different from its related object/');
 
         // All exceptions must have not created any database object
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
@@ -517,19 +519,19 @@ class DataBaseObjectsManagerTest extends TestCase {
        // Test wrong values
        $object = new CustomerTyped();
        $object->setup = 'notabool';
-       AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property setup .notabool. does not match required type: TYPE_BOOL/');
+       AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property setup .notabool. does not match required type: BOOL/');
 
        $object = new CustomerTyped();
        $object->name = 123123;
-       AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property name .123123. does not match required type: TYPE_STRING/');
+       AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property name .123123. does not match required type: STRING/');
 
        $object = new CustomerTyped();
        $object->age = 'stringinsteadofint';
-       AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property age .stringinsteadofint. does not match required type: TYPE_INT/');
+       AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property age .stringinsteadofint. does not match required type: INT/');
 
        $object = new CustomerTyped();
        $object->age = 10.2;
-       AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property age .10.2. does not match required type: TYPE_INT/');
+       AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property age .10.2. does not match required type: INT/');
        // TODO - more properties with incorrect types
 
        // Test exceptions
