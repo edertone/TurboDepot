@@ -16,15 +16,18 @@ class CustomerTyped extends DataBaseObject{
 
     public function __construct(){
 
-        $this->_types['name'] = [DataBaseObjectsManager::TYPE_STRING, 20];
-        $this->_types['commercialName'] = [DataBaseObjectsManager::TYPE_STRING, 25];
-        $this->_types['age'] = [DataBaseObjectsManager::TYPE_INT, 2];
-        $this->_types['oneDigitInt'] = [DataBaseObjectsManager::TYPE_INT, 1];
-        $this->_types['sixDigitInt'] = [DataBaseObjectsManager::TYPE_INT, 6];
-        $this->_types['twelveDigitInt'] = [DataBaseObjectsManager::TYPE_INT, 12];
-        $this->_types['doubleValue'] = [DataBaseObjectsManager::TYPE_DOUBLE];
-        $this->_types['setup'] = [DataBaseObjectsManager::TYPE_BOOL];
-        // TODO - define an array type
+        $this->_types['name'] = [DataBaseObjectsManager::STRING, 20];
+        $this->_types['commercialName'] = [DataBaseObjectsManager::STRING, 25];
+        $this->_types['age'] = [DataBaseObjectsManager::INT, 2];
+        $this->_types['oneDigitInt'] = [DataBaseObjectsManager::INT, 1];
+        $this->_types['sixDigitInt'] = [DataBaseObjectsManager::INT, 6];
+        $this->_types['twelveDigitInt'] = [DataBaseObjectsManager::INT, 12];
+        $this->_types['doubleValue'] = [DataBaseObjectsManager::DOUBLE];
+        $this->_types['setup'] = [DataBaseObjectsManager::BOOL];
+        $this->_types['emails'] = [DataBaseObjectsManager::ARRAY, DataBaseObjectsManager::STRING, 75];
+        $this->_types['boolArray'] = [DataBaseObjectsManager::ARRAY, DataBaseObjectsManager::BOOL];
+        $this->_types['intArray'] = [DataBaseObjectsManager::ARRAY, DataBaseObjectsManager::INT, 3];
+        $this->_types['doubleArray'] = [DataBaseObjectsManager::ARRAY, DataBaseObjectsManager::DOUBLE];
     }
 
 
@@ -43,6 +46,14 @@ class CustomerTyped extends DataBaseObject{
     public $doubleValue = 0;
 
     public $setup = false;
+
+    public $emails = [];
+
+    public $boolArray = [];
+
+    public $intArray = [];
+
+    public $doubleArray = [];
 }
 
 ?>

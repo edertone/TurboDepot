@@ -546,12 +546,12 @@ class DataBaseManager extends BaseStrictClass {
 
             if(count($primaryKey) > 0){
 
-                $columns[] = 'PRIMARY KEY '.$tableName.'_'.implode('_', $primaryKey).'_pk ('.implode(',', $primaryKey).')';
+                $columns[] = 'PRIMARY KEY ('.implode(',', $primaryKey).')';
             }
 
             foreach ($uniqueIndices as $uniqueIndice) {
 
-                $columns[] = 'UNIQUE KEY '.$tableName.'_'.implode('_', $uniqueIndice).' ('.implode(',', $uniqueIndice).')';
+                $columns[] = 'UNIQUE KEY '.$tableName.'_'.implode('_', $uniqueIndice).'_uk ('.implode(',', $uniqueIndice).')';
             }
 
             foreach ($indices as $indice) {

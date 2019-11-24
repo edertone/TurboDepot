@@ -23,7 +23,7 @@ abstract class DataBaseObject extends BaseStrictClass{
     /**
      * Associative array that defines the data types to use with the object properties. Each array key must be the object property to set
      * and the value an array with the following elements:<br>
-     * 1. The property data type: DataBaseObjectsManager::TYPE_BOOL, ::TYPE_INT, ::TYPE_DOUBLE, ::TYPE_STRING or ::TYPE_ARRAY<br>
+     * 1. The property data type: DataBaseObjectsManager::BOOL, ::INT, ::DOUBLE, ::STRING or ::ARRAY<br>
      * 2. The property data size (for int and string values the maximum number of digits that can be stored)
      * 3. True if the property can have null values, false otherwise
      *

@@ -508,13 +508,14 @@ class DataBaseObjectsManagerTest extends TestCase {
    public function testSave_Strong_typed_Object(){
 
        // Test empty values
-       // TODO
+       // Not necessary
 
        // Test ok values
-//        $object = new CustomerTyped();
-//        $object->name = 'customer';
-//        $this->assertSame(1, $this->sut->save($object));
-       // TODO
+       $object = new CustomerTyped();
+       $object->name = 'customer';
+       $this->assertSame(1, $this->sut->save($object));
+       // TODO - Verify that all the tables related to array properties are created and are valid
+       // TODO - more tests
 
        // Test wrong values
        $object = new CustomerTyped();
@@ -536,8 +537,6 @@ class DataBaseObjectsManagerTest extends TestCase {
 
        // Test exceptions
        // TODO
-
-       $this->markTestIncomplete('This test has not been implemented yet.');
    }
 
 
@@ -596,7 +595,7 @@ class DataBaseObjectsManagerTest extends TestCase {
 
        // Test empty values
        AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(null, null); }, '/Argument 1.*must be an instance of.*DataBaseObject, null given/');
-       AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(new Customer(), null); }, '/value is not a string/');
+       AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(new Customer(), null); }, '/Undefined/');
        AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(new Customer(), ''); }, '/Undefined/');
 
        // Test ok values
@@ -625,7 +624,10 @@ class DataBaseObjectsManagerTest extends TestCase {
        $this->assertSame('bigint', $this->sut->getSQLTypeFromObjectProperty($object, 'twelveDigitInt'));
        $this->assertSame('double', $this->sut->getSQLTypeFromObjectProperty($object, 'doubleValue'));
        $this->assertSame('boolean', $this->sut->getSQLTypeFromObjectProperty($object, 'setup'));
-       // TODO - test for properties that are arrays
+       $this->assertSame('varchar(75)', $this->sut->getSQLTypeFromObjectProperty($object, 'emails'));
+       $this->assertSame('boolean', $this->sut->getSQLTypeFromObjectProperty($object, 'boolArray'));
+       $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'intArray'));
+       $this->assertSame('double', $this->sut->getSQLTypeFromObjectProperty($object, 'doubleArray'));
 
        // Test wrong values
        $object = new CustomerTyped();
@@ -635,8 +637,8 @@ class DataBaseObjectsManagerTest extends TestCase {
        $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
 
        // Test exceptions
-       AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, 'nonexistantproperty'); }, '/Undefined nonexistantproperty/');
-       AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, ''); }, '/Undefined/');
+       AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, 'nonexistantproperty'); }, '/Undefined property: nonexistantproperty/');
+       AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, ''); }, '/Undefined property:/');
        AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty(new stdClass(), ''); }, '/Argument 1 passed to .*getSQLTypeFromObjectProperty.*must be an instance of.*DataBaseObject.*stdClass given/');
    }
 }

@@ -183,7 +183,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
     /**
      * Saves an object to database by updating it if already exists (when dbId is not null) or by creating a new one (when dbId is null)
      *
-     * @param DataBaseObject $object An instance to save (when dbId is null) or update (when it has a dbId that exists on db)
+     * @param DataBaseObject $object An instance to save or update
      *
      * @return int The dbId value for the object that's been saved
      */
@@ -192,7 +192,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
         $this->_validateDataBaseObject($object);
 
         $tableName = $this->getTableNameFromObject($object);
-        $tableData = $this->getTableDataFromObject($object);
 
         $this->_db->transactionBegin();
 
@@ -200,11 +199,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             if(!$this->_db->tableExists($tableName)){
 
-                $this->_createObjectTable($object, $tableName, $tableData);
+                $tableData = $this->_createObjectTable($object, $tableName);
 
             }else{
 
-                $this->_updateTableToFitObject($tableName, $tableData);
+                $tableData = $this->_updateTableToFitObject($object, $tableName);
             }
 
             // Store or update the object into the database
@@ -268,18 +267,22 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * It is calculated by converting all the object properties to lower_snake_case, which is the most compatible way to store table column names
      * on different Operating systems (this is cause it does not contain upper case letters which would be problematic in Windows OS for example).
      *
+     * Note that properties that contain array values are excluded from this table, cause they will be stored on their own sepparate table
+     *
      * @param DataBaseObject $object An instance to calculate its respective table columns and data
      *
-     * @return number
+     * @return array The generated table as an associative array
      */
     public function getTableDataFromObject(DataBaseObject $object){
 
         $tableData = [];
 
-        foreach (get_object_vars($object) as $key => $value) {
+        foreach (get_object_vars($object) as $property => $value) {
 
-            // Convert all column names to snake case
-            $tableData[StringUtils::formatCase($key, StringUtils::FORMAT_LOWER_SNAKE_CASE)] = $value;
+            if(!is_array($object->{$property})){
+
+                $tableData[StringUtils::formatCase($property, StringUtils::FORMAT_LOWER_SNAKE_CASE)] = $value;
+            }
         }
 
         // Move the base common properties to the begining of the array, so they get correctly sorted at the db table
@@ -295,39 +298,23 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Obtain the SQL type which can be used to store the requested object property with the smallest precision possible.
+     * Obtain the SQL type which can be used to store the requested object property with the smallest possible precision.
      *
      * @param DataBaseObject $object An object instance that we want to inspect
      * @param string $property The name for the object property for which we want to obtain the required SQL type
      *
-     * @return string The name of the SQL type and precision that can be used to store the object property to database, like SMALLINT, VARCHAR(20), etc..
+     * @return string The name of the SQL type and precision that can be used to store the object property to database, like SMALLINT, VARCHAR(20), DOUBLE NOT NULL, etc..
      */
     public function getSQLTypeFromObjectProperty(DataBaseObject $object, $property){
 
-        return $this->_getSQLTypeFromObjectTableColumn($object, $this->getTableDataFromObject($object),
-            StringUtils::formatCase($property, StringUtils::FORMAT_LOWER_SNAKE_CASE));
-    }
+        if(!array_key_exists($property, get_object_vars($object))){
 
-
-    /**
-     * Obtain the SQL type which can be used to store the requested object tabledata column with the smallest precision possible.
-     *
-     * @param DataBaseObject $object The object instance from which the tabledata has been obtained
-     * @param array $tableData Array with all the object data with snake case column names
-     * @param string $columnName The name for the column that we want to inspect (lower snake case expected)
-     *
-     * @throws UnexpectedValueException
-     *
-     * @return string The name of the SQL type and precision that can be used to store the object column to database, like SMALLINT, VARCHAR(20), etc..
-     */
-    private function _getSQLTypeFromObjectTableColumn(DataBaseObject $object, array $tableData, $columnName){
-
-        if(!array_key_exists($columnName, $tableData)){
-
-            throw new UnexpectedValueException('Undefined '.$columnName);
+            throw new UnexpectedValueException('Undefined property: '.$property);
         }
 
         // Check if the requested property is one of the base properties which types are already known
+        $columnName = StringUtils::formatCase($property, StringUtils::FORMAT_LOWER_SNAKE_CASE);
+
         if($columnName === 'db_id'){
 
             return $this->_baseObjectColumns['db_id'].' NOT NULL AUTO_INCREMENT';
@@ -343,9 +330,14 @@ class DataBaseObjectsManager extends BaseStrictClass{
             return $this->_baseObjectColumns[$columnName].' NOT NULL';
         }
 
-        $valueToCheck = $tableData[$columnName];
+        $valueToCheck = $object->{$property};
 
-        $type = $this->_getTypeFromObjectTableColumn($object, $tableData, $columnName);
+        $type = $this->_getTypeFromObjectProperty($object, $property);
+
+        if($type[0] === self::ARRAY){
+
+            array_shift($type);
+        }
 
         if($type[0] === self::BOOL){
 
@@ -374,40 +366,23 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         } catch (Throwable $e) {
 
-            throw new UnexpectedValueException($columnName.' invalid: '.$e->getMessage());
+            throw new UnexpectedValueException($property.' invalid: '.$e->getMessage());
         }
     }
 
 
     /**
-     * Given the name for an object property, this method will give its type
+     * Given the name for an object property, this method will give its class type
      *
      * @param DataBaseObject $object A valid database object instance
      * @param string $property The name of a property for which we want to obtain the type
      *
-     * @return array An array with 2 possible values.<br>
-     *         First will be the type (DataBaseObjectsManager::BOOL, ::INT, ::DOUBLE, ::STRING)<br>
-     *         Second one will be the type size (digits)
+     * @return array An array with 2 or 3 possible values:<br>
+     *         First will be the type (DataBaseObjectsManager::BOOL, ::INT, ::DOUBLE, ::STRING, ::ARRAY)<br>
+     *         Second one will be the type size (digits) when the type is a simple one, or the type for each array element if the type is an array
+     *         Third one will be the type size if we are declaring an array
      */
     private function _getTypeFromObjectProperty(DataBaseObject $object, string $property){
-
-        return $this->_getTypeFromObjectTableColumn($object, $this->getTableDataFromObject($object),
-            StringUtils::formatCase($property, StringUtils::FORMAT_LOWER_SNAKE_CASE));
-    }
-
-
-    /**
-     * Given a column name and the table data for an object, this method will give the column type
-     *
-     * @param DataBaseObject $object A valid database object instance
-     * @param array $tableData The table data that is obtained from the object instance
-     * @param string $columnName The name of the column for which we want to obtain the type
-     *
-     * @return array An array with 2 possible values.<br>
-     *         First will be the type (DataBaseObjectsManager::BOOL, ::INT, ::DOUBLE, ::STRING)<br>
-     *         Second one will be the type size (digits)
-     */
-    private function _getTypeFromObjectTableColumn(DataBaseObject $object, array $tableData, string $columnName){
 
         // Try to find a strongly defined type for the requested column on the provided object instance.
         // This will have preference over the type that is automatically detected from the table value.
@@ -423,24 +398,27 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 throw new UnexpectedValueException('Cannot define type for '.$typeProperty.' cause it does not exist on class');
             }
 
-            if(StringUtils::formatCase($typeProperty, StringUtils::FORMAT_LOWER_SNAKE_CASE) === $columnName){
+            if($typeProperty === $property){
+
+                if($propertyTypeDefs[0] === self::ARRAY){
+
+                    return [$propertyTypeDefs[0], $propertyTypeDefs[1], isset($propertyTypeDefs[2]) ? $propertyTypeDefs[2] : 1];
+                }
 
                 return [$propertyTypeDefs[0], isset($propertyTypeDefs[1]) ? $propertyTypeDefs[1] : 1];
             }
         }
 
-        return $this->_getTypeFromValue($tableData[$columnName]);
+        return $this->_getTypeFromValue($object->{$property});
     }
 
 
     /**
-     * Given a raw value, this method will give its type
+     * Given a raw value, this method will give its class type
      *
      * @param mixed $value Any value for which we want to obtain the type
      *
-     * @return array An array with 2 possible values.<br>
-     *         First will be the type (DataBaseObjectsManager::BOOL, ::INT, ::DOUBLE, ::STRING)<br>
-     *         Second one will be the type size (digits)
+     * @return array same as $this->_getTypeFromObjectProperty
      */
     private function _getTypeFromValue($value){
 
@@ -463,49 +441,79 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             return [self::STRING, strlen($value)];
         }
+
+        if(is_array($value) && count($value) > 0){
+
+            return [self::ARRAY, $this->_getTypeFromValue($value[0]), strlen($value)];
+        }
     }
 
 
     /**
      * Aux method to create the table that represents the provided object on database
      *
-     * @param string $tableName The name for the DataBaseObject table
-     * @param array $tableData Array with all the object data with snake case column names
+     * @param DataBaseObject $object A valid database object instance
+     * @param string $tableName The name for the table that represents the database object
+     *
+     * @return array The object database table structure and values
      */
-    private function _createObjectTable(DataBaseObject $object, string $tableName, array $tableData){
+    private function _createObjectTable(DataBaseObject $object, string $tableName){
 
-        $tableColumns = [];
+        // Obtain the relation between column names and object properties
+        $properties = [];
+
+        foreach (array_keys(get_object_vars($object)) as $property) {
+
+            $columnName = StringUtils::formatCase($property, StringUtils::FORMAT_LOWER_SNAKE_CASE);
+
+            $properties[$columnName] = $property;
+
+            // Create all the tables that store array properties
+            if($this->_getTypeFromObjectProperty($object, $property)[0] === self::ARRAY){
+
+                $this->_db->tableCreate($tableName.'_'.$columnName, [
+                    'db_id '.$this->_baseObjectColumns['db_id'],
+                    'value '.$this->getSQLTypeFromObjectProperty($object, $properties[$columnName])
+                ]);
+            }
+        }
+
+        $columnsToCreate = [];
+        $tableData = $this->getTableDataFromObject($object);
 
         foreach (array_keys($tableData) as $columnName) {
 
-            $tableColumns[] = $columnName.' '.$this->_getSQLTypeFromObjectTableColumn($object, $tableData, $columnName);
+            $columnsToCreate[] = $columnName.' '.$this->getSQLTypeFromObjectProperty($object, $properties[$columnName]);
         }
 
-        $this->_db->tableCreate($tableName, $tableColumns, ['db_id'], [['uuid']], [['sort_index']]);
+        $this->_db->tableCreate($tableName, $columnsToCreate, ['db_id'], [['uuid']], [['sort_index']]);
+
+        return $tableData;
     }
 
 
     /**
-     * Given a table name and the data so store for one specific object, this method will check that the table columns and types are valid
-     * to store the provided object information, and depending on the configuration values it will update the table structure so the object can be correctly
+     * This method will check that the table columns and types are valid to store the provided object information,
+     * and depending on the configuration values it will update the table structure so the object can be correctly
      * saved. The following checks are performed:
      *
      * 1. Test that the table has the same columns as the object data. If not, exception will be thrown unless $this->isTableAlteredWhenColumnsChange is true
      * 2. Test that all the table columns have data types which can store the same object table column values. If not, exception will be thrown unless $this->isTableAlteredWhenColumnsChange is true
      *
-     * @param string $tableName The name for the table we want to inspect, and alter if setup allows us
-     * @param array $objectTableData The object data that we want to save on the database table
+     * @param DataBaseObject $object A valid database object instance
+     * @param string $tableName The name for the table we want to inspect and alter if is allowed by current setup
      *
      * @throws UnexpectedValueException If the current setup forbids us to modify the table so it can fit the object data
      *
-     * @return void
+     * @return array The object database table structure and values
      */
-    private function _updateTableToFitObject($tableName, array $objectTableData){
+    private function _updateTableToFitObject(DataBaseObject $object, string $tableName){
 
+        $tableData = $this->getTableDataFromObject($object);
         $tableColumnTypes = $this->_db->tableGetColumnDataTypes($tableName);
 
         // Test that the table and object have the same columns
-        if(!ArrayUtils::isEqualTo(array_keys($objectTableData), array_keys($tableColumnTypes))){
+        if(!ArrayUtils::isEqualTo(array_keys($tableData), array_keys($tableColumnTypes))){
 
             if($this->isTableAlteredWhenColumnsChange){
 
@@ -527,7 +535,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             }
 
             // Get the sql type that fits the provided object value
-            $objectColumnType = $this->_db->getSQLTypeFromValue($objectTableData[$tableColumnName]);
+            $objectColumnType = $this->_db->getSQLTypeFromValue($tableData[$tableColumnName]);
 
             if($objectColumnType !== $tableColumnType){
 
@@ -567,6 +575,8 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 }
             }
         }
+
+        return $tableData;
     }
 
 
@@ -618,23 +628,31 @@ class DataBaseObjectsManager extends BaseStrictClass{
             throw new UnexpectedValueException('Creation date must be null if dbid is null');
         }
 
-        // Properties that start with _ are forbidden, cause they are reserved for setup private properties
         foreach(array_keys(get_class_vars($class)) as $classProperty){
 
+            // Properties that start with _ are forbidden, cause they are reserved for setup private properties
             if(substr($classProperty, 0, 1) === '_'){
 
                 throw new UnexpectedValueException('Properties starting with _ are forbidden, but found: '.$classProperty);
             }
 
             // Properties that have a type definition must have values of the same type
-            $valueType = $this->_getTypeFromValue($object->{$classProperty})[0];
-            $propertyType = $this->_getTypeFromObjectProperty($object, $classProperty)[0];
+            if($object->{$classProperty} !== null && $object->{$classProperty} !== []){
 
-            // The only exception is that a property of type double can store a value of type int
-            if($propertyType !== $valueType &&
-               !($propertyType === self::DOUBLE && $valueType === self::INT)){
+                $valueType = $this->_getTypeFromValue($object->{$classProperty})[0];
+                $propertyType = $this->_getTypeFromObjectProperty($object, $classProperty);
 
-                   throw new UnexpectedValueException('Property '.$classProperty.' ('.$object->{$classProperty}.') does not match required type: '.$propertyType);
+                if($propertyType[0] === self::ARRAY){
+
+                    array_shift($propertyType);
+                }
+
+                // The only exception is that a property of type double can store a value of type int
+                if($propertyType[0] !== $valueType &&
+                    !($propertyType[0] === self::DOUBLE && $valueType === self::INT)){
+
+                       throw new UnexpectedValueException('Property '.$classProperty.' ('.$object->{$classProperty}.') does not match required type: '.$propertyType[0]);
+                }
             }
         }
 
