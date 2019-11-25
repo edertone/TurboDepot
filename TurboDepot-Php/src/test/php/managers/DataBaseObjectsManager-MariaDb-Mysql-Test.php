@@ -23,6 +23,8 @@ use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\Custom
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongPropThatStartsWithUnderscore;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNullNonTypedProperty;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNonExistantTypedProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongEmptyNonTypedArrayProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerWithArrayProps;
 
 
 /**
@@ -311,7 +313,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(1, $this->sut->save($object));
         $this->assertSame(1, $object->dbId);
         $this->assertSame(1, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['db_id' => 'bigint(20)', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20)',
+        $this->assertSame(['db_id' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20) unsigned',
             'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(1)',
             'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
 
@@ -328,7 +330,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(3, $this->sut->save($object));
         $this->assertSame(3, $object->dbId);
         $this->assertSame(3, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['db_id' => 'bigint(20)', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20)',
+        $this->assertSame(['db_id' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20) unsigned',
             'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(1)',
             'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
 
@@ -351,7 +353,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(4, $object->dbId);
         $this->assertSame('customer', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['db_id' => 'bigint(20)', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20)',
+        $this->assertSame(['db_id' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20) unsigned',
             'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(8)',
             'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
 
@@ -360,7 +362,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(4, $this->sut->save($object));
         $this->assertSame('customer updated', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['db_id' => 'bigint(20)', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20)',
+        $this->assertSame(['db_id' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20) unsigned',
             'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(16)',
             'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
 
@@ -369,7 +371,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(4, $this->sut->save($object));
         $this->assertSame('customer updated with a much longer text that should resize the name column to a bigger varchar size', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['db_id' => 'bigint(20)', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20)',
+        $this->assertSame(['db_id' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20) unsigned',
             'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(100)',
             'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
 
@@ -464,7 +466,8 @@ class DataBaseObjectsManagerTest extends TestCase {
         // Try to save database objects that contains invalid methods or properties
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongMethods()); }, '/Only __construct method is allowed for DataBaseObjects but found: methodThatCantBeHere/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongPropThatStartsWithUnderscore()); }, '/Properties starting with _ are forbidden, but found: _name/');
-        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNullNonTypedProperty()); }, '/age invalid: Could not detect SQL type from value: NULL/');
+        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNullNonTypedProperty()); }, '/Could not detect type from property age: Could not detect type from NULL/');
+        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongEmptyNonTypedArrayProperty()); }, '/Could not detect type from property emails: Could not detect type from array/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNonExistantTypedProperty()); }, '/Cannot define type for nonexistant cause it does not exist on class/');
 
         // Add an unexpected column to the customer table and make sure saving fails
@@ -473,174 +476,204 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         // All exceptions must have not created any database object
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
-   }
+    }
 
 
-   /**
-    * testSave_Strong_typed_Object
+    /**
+    * testSave_simple_object_performs_no_more_than_2_db_queries
     *
     * @return void
     */
-   public function testSave_simple_object_performs_no_more_than_2_db_queries(){
+    public function testSave_simple_object_performs_no_more_than_2_db_queries(){
 
-       $this->assertFalse($this->sut->getDataBaseManager()->isAnyTransactionActive());
-       $this->assertSame(0, count($this->sut->getDataBaseManager()->getQueryHistory()));
+        $this->assertFalse($this->sut->getDataBaseManager()->isAnyTransactionActive());
+        $this->assertSame(0, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
-       $object = new Customer();
-       $object->name = 'customer';
-       $this->assertSame(1, $this->sut->save($object));
+        $object = new Customer();
+        $object->name = 'customer';
+        $this->assertSame(1, $this->sut->save($object));
 
-       $this->assertFalse($this->sut->getDataBaseManager()->isAnyTransactionActive());
-       $this->assertSame(2, count($this->sut->getDataBaseManager()->getQueryHistory()));
+        $this->assertFalse($this->sut->getDataBaseManager()->isAnyTransactionActive());
+        $this->assertSame(2, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
-       $object = new Customer();
-       $object->name = 'c2';
-       $this->assertSame(2, $this->sut->save($object));
-       $this->assertSame(4, count($this->sut->getDataBaseManager()->getQueryHistory()));
-   }
-
-
-   /**
-    * testSave_Strong_typed_Object
-    *
-    * @return void
-    */
-   public function testSave_Strong_typed_Object(){
-
-       // Test empty values
-       // Not necessary
-
-       // Test ok values
-       $object = new CustomerTyped();
-       $object->name = 'customer';
-       $this->assertSame(1, $this->sut->save($object));
-       // TODO - Verify that all the tables related to array properties are created and are valid
-       // TODO - more tests
-
-       // Test wrong values
-       $object = new CustomerTyped();
-       $object->setup = 'notabool';
-       AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property setup .notabool. does not match required type: BOOL/');
-
-       $object = new CustomerTyped();
-       $object->name = 123123;
-       AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property name .123123. does not match required type: STRING/');
-
-       $object = new CustomerTyped();
-       $object->age = 'stringinsteadofint';
-       AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property age .stringinsteadofint. does not match required type: INT/');
-
-       $object = new CustomerTyped();
-       $object->age = 10.2;
-       AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property age .10.2. does not match required type: INT/');
-       // TODO - more properties with incorrect types
-
-       // Test exceptions
-       // TODO
-   }
+        $object = new Customer();
+        $object->name = 'c2';
+        $this->assertSame(2, $this->sut->save($object));
+        $this->assertSame(4, count($this->sut->getDataBaseManager()->getQueryHistory()));
+    }
 
 
-   /**
+    /**
+     * testSave_and_update_simple_object_with_array_typed_properties
+     *
+     * @return void
+     */
+    public function testSave_and_update_simple_object_with_array_typed_properties(){
+
+        $objectTableName = $this->sut->tablesPrefix.StringUtils::formatCase('CustomerWithArrayProps', StringUtils::FORMAT_LOWER_SNAKE_CASE);
+        $this->assertSame(0, count($this->sut->getDataBaseManager()->getQueryHistory()));
+
+        $object = new CustomerWithArrayProps();
+        $object->name = 'this customer has array typed properties';
+        $object->emails = ['email1', 'email2', 'email3'];
+        $this->assertSame(1, $this->sut->save($object));
+
+        $this->assertSame(['db_id' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20) unsigned',
+            'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(40)',
+            'age' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName));
+
+        $this->assertSame(['db_id' => 'bigint(20) unsigned', 'value' => 'varchar(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_emails'));
+
+        $this->assertSame(['1', '1', '1'], $this->db->tableGetColumnValues($objectTableName.'_emails', 'db_id'));
+        $this->assertSame(['email1', 'email2', 'email3'], $this->db->tableGetColumnValues($objectTableName.'_emails', 'value'));
+        $this->assertSame(4, count($this->sut->getDataBaseManager()->getQueryHistory()));
+
+        // TODO - test different types of arrays: int, bool, string, double...
+        // TODO update an existing CustomerWithArrayProps and test that array values have correctly changed
+    }
+
+
+    /**
+     * testSave_Strong_typed_Object
+     *
+     * @return void
+     */
+    public function testSave_Strong_typed_Object(){
+
+        // Test empty values
+        // Not necessary
+
+        // Test ok values
+        $object = new CustomerTyped();
+        $object->name = 'customer';
+        $this->assertSame(1, $this->sut->save($object));
+        // TODO - Verify that all the tables related to array properties are created and are valid
+        // TODO - more tests
+
+        // Test wrong values
+        $object = new CustomerTyped();
+        $object->setup = 'notabool';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property setup .notabool. does not match required type: BOOL/');
+
+        $object = new CustomerTyped();
+        $object->name = 123123;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property name .123123. does not match required type: STRING/');
+
+        $object = new CustomerTyped();
+        $object->age = 'stringinsteadofint';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property age .stringinsteadofint. does not match required type: INT/');
+
+        $object = new CustomerTyped();
+        $object->age = 10.2;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property age .10.2. does not match required type: INT/');
+        // TODO - more properties with incorrect types
+
+        // Test exceptions
+        // TODO
+    }
+
+
+    /**
     * testGetTableNameFromObject
     *
     * @return void
     */
-   public function testGetTableNameFromObject(){
+    public function testGetTableNameFromObject(){
 
-       // Test empty values
-       // TODO
+        // Test empty values
+        // TODO
 
-       // Test ok values
-       // TODO
+        // Test ok values
+        // TODO
 
-       // Test wrong values
-       // TODO
+        // Test wrong values
+        // TODO
 
-       // Test exceptions
-       // TODO
+        // Test exceptions
+        // TODO
 
-       $this->markTestIncomplete('This test has not been implemented yet.');
-   }
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
 
 
-   /**
+    /**
     * testGetTableDataFromObject
     *
     * @return void
     */
-   public function testGetTableDataFromObject(){
+    public function testGetTableDataFromObject(){
 
-       // Test empty values
-       // TODO
+        // Test empty values
+        // TODO
 
-       // Test ok values
-       // TODO
+        // Test ok values
+        // TODO
 
-       // Test wrong values
-       // TODO
+        // Test wrong values
+        // TODO
 
-       // Test exceptions
-       // TODO
+        // Test exceptions
+        // TODO
 
-       $this->markTestIncomplete('This test has not been implemented yet.');
-   }
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
 
 
-   /**
+    /**
     * testGetSQLTypeFromObjectProperty
     *
     * @return void
     */
-   public function testGetSQLTypeFromObjectProperty(){
+    public function testGetSQLTypeFromObjectProperty(){
 
-       // Test empty values
-       AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(null, null); }, '/Argument 1.*must be an instance of.*DataBaseObject, null given/');
-       AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(new Customer(), null); }, '/Undefined/');
-       AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(new Customer(), ''); }, '/Undefined/');
+        // Test empty values
+        AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(null, null); }, '/Argument 1.*must be an instance of.*DataBaseObject, null given/');
+        AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(new Customer(), null); }, '/Undefined/');
+        AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(new Customer(), ''); }, '/Undefined/');
 
-       // Test ok values
-       $object = new Customer();
-       $this->assertSame('varchar(1)', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
-       $this->assertSame('varchar(1)', $this->sut->getSQLTypeFromObjectProperty($object, 'commercialName'));
-       $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
+        // Test ok values
+        $object = new Customer();
+        $this->assertSame('varchar(1)', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
+        $this->assertSame('varchar(1)', $this->sut->getSQLTypeFromObjectProperty($object, 'commercialName'));
+        $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
 
-       $object->name = 'customer name';
-       $object->commercialName = 'commercial name';
-       $object->age = 12456;
-       $this->assertSame('varchar(13)', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
-       $this->assertSame('varchar(15)', $this->sut->getSQLTypeFromObjectProperty($object, 'commercialName'));
-       $this->assertSame('mediumint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
-       $object->age = 1234;
-       $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
-       $object->age = 1122212121;
-       $this->assertSame('bigint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
+        $object->name = 'customer name';
+        $object->commercialName = 'commercial name';
+        $object->age = 12456;
+        $this->assertSame('varchar(13)', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
+        $this->assertSame('varchar(15)', $this->sut->getSQLTypeFromObjectProperty($object, 'commercialName'));
+        $this->assertSame('mediumint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
+        $object->age = 1234;
+        $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
+        $object->age = 1122212121;
+        $this->assertSame('bigint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
 
-       $object = new CustomerTyped();
-       $this->assertSame('varchar(20)', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
-       $this->assertSame('varchar(25)', $this->sut->getSQLTypeFromObjectProperty($object, 'commercialName'));
-       $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
-       $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'oneDigitInt'));
-       $this->assertSame('mediumint', $this->sut->getSQLTypeFromObjectProperty($object, 'sixDigitInt'));
-       $this->assertSame('bigint', $this->sut->getSQLTypeFromObjectProperty($object, 'twelveDigitInt'));
-       $this->assertSame('double', $this->sut->getSQLTypeFromObjectProperty($object, 'doubleValue'));
-       $this->assertSame('boolean', $this->sut->getSQLTypeFromObjectProperty($object, 'setup'));
-       $this->assertSame('varchar(75)', $this->sut->getSQLTypeFromObjectProperty($object, 'emails'));
-       $this->assertSame('boolean', $this->sut->getSQLTypeFromObjectProperty($object, 'boolArray'));
-       $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'intArray'));
-       $this->assertSame('double', $this->sut->getSQLTypeFromObjectProperty($object, 'doubleArray'));
+        $object = new CustomerTyped();
+        $this->assertSame('varchar(20)', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
+        $this->assertSame('varchar(25)', $this->sut->getSQLTypeFromObjectProperty($object, 'commercialName'));
+        $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
+        $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'oneDigitInt'));
+        $this->assertSame('mediumint', $this->sut->getSQLTypeFromObjectProperty($object, 'sixDigitInt'));
+        $this->assertSame('bigint', $this->sut->getSQLTypeFromObjectProperty($object, 'twelveDigitInt'));
+        $this->assertSame('double', $this->sut->getSQLTypeFromObjectProperty($object, 'doubleValue'));
+        $this->assertSame('boolean', $this->sut->getSQLTypeFromObjectProperty($object, 'setup'));
+        $this->assertSame('varchar(75)', $this->sut->getSQLTypeFromObjectProperty($object, 'emails'));
+        $this->assertSame('boolean', $this->sut->getSQLTypeFromObjectProperty($object, 'boolArray'));
+        $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'intArray'));
+        $this->assertSame('double', $this->sut->getSQLTypeFromObjectProperty($object, 'doubleArray'));
 
-       // Test wrong values
-       $object = new CustomerTyped();
-       $object->name = 1231231;
-       $object->age = 'stringinsteadofint';
-       $this->assertSame('varchar(20)', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
-       $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
+        // Test wrong values
+        $object = new CustomerTyped();
+        $object->name = 1231231;
+        $object->age = 'stringinsteadofint';
+        $this->assertSame('varchar(20)', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
+        $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
 
-       // Test exceptions
-       AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, 'nonexistantproperty'); }, '/Undefined property: nonexistantproperty/');
-       AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, ''); }, '/Undefined property:/');
-       AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty(new stdClass(), ''); }, '/Argument 1 passed to .*getSQLTypeFromObjectProperty.*must be an instance of.*DataBaseObject.*stdClass given/');
-   }
+        // Test exceptions
+        AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, 'nonexistantproperty'); }, '/Undefined property: nonexistantproperty/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, ''); }, '/Undefined property:/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty(new stdClass(), ''); }, '/Argument 1 passed to .*getSQLTypeFromObjectProperty.*must be an instance of.*DataBaseObject.*stdClass given/');
+    }
 }
 
 ?>

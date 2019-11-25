@@ -408,19 +408,29 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
-     * Given any raw value this method will calculate the SQL type which can store it with the smallest possible precision.
+     * Given any raw value this method will generate the SQL type string definition that will allow us to store that value with the
+     * smallest precision possible.
      *
-     * @param mixed $value
+     * @param mixed $value Any raw value we want to evaluate
+     * @param boolean $isNullable If set to true, the generated SQL type definition will allow null values, if set to false the type won't allow null values
+     * @param boolean $isUnsigned Only valid for numeric types, If set to true the generated SQL type definition will specify only positive values, if set
+     *        to false positive and negative values
+     * @param boolean $isAutoIncrement If set to true, the generated SQL type definition will declare auto increment values
      *
-     * @return string The name of the SQL type that can be used to store the given value to database tables, like SMALLINT, VARCHAR(20), etc..
+     * @return string The SQL type that can be used to declare columns to can store the given value to database tables like SMALLINT,
+     *         VARCHAR(20), BIGINT NOT NULL, INT UNSIGNED, etc..
      */
-    public function getSQLTypeFromValue($value){
+    public function getSQLTypeFromValue($value, bool $isNullable = true, bool $isUnsigned = false, $isAutoIncrement = false){
 
         if($this->_engine === self::MYSQL){
 
+            $sqlNotNull = $isNullable ? '' : ' NOT NULL';
+            $sqlUnsigned = $isUnsigned ? ' UNSIGNED' : '';
+            $sqlAutoIncrement = $isAutoIncrement ? ' AUTO_INCREMENT' : '';
+
             if(is_bool($value)){
 
-                return 'boolean';
+                return 'boolean'.$sqlNotNull;
             }
 
             if(is_integer($value)){
@@ -428,33 +438,55 @@ class DataBaseManager extends BaseStrictClass {
                 // We calculate the biggest possible value with the provided number of digits (9999....) to check which mysql type will fit
                 $maxIntValue = pow(10, strlen((string)abs($value))) - 1;
 
-                if($maxIntValue < 32767){
+                if($isUnsigned){
 
-                    return 'smallint';
+                    if($maxIntValue < 65535){
+
+                        return 'smallint'.$sqlUnsigned.$sqlNotNull.$sqlAutoIncrement;
+                    }
+
+                    if($maxIntValue < 16777215){
+
+                        return 'mediumint'.$sqlUnsigned.$sqlNotNull.$sqlAutoIncrement;
+                    }
+
+                    if($maxIntValue < 4294967295){
+
+                        return 'int'.$sqlUnsigned.$sqlNotNull.$sqlAutoIncrement;
+                    }
+
+                    return 'bigint'.$sqlUnsigned.$sqlNotNull.$sqlAutoIncrement;
+
+                }else{
+
+                    if($maxIntValue < 32767){
+
+                        return 'smallint'.$sqlUnsigned.$sqlNotNull.$sqlAutoIncrement;
+                    }
+
+                    if($maxIntValue < 8388607){
+
+                        return 'mediumint'.$sqlUnsigned.$sqlNotNull.$sqlAutoIncrement;
+                    }
+
+                    if($maxIntValue < 2147483647){
+
+                        return 'int'.$sqlUnsigned.$sqlNotNull.$sqlAutoIncrement;
+                    }
+
+                    return 'bigint'.$sqlUnsigned.$sqlNotNull.$sqlAutoIncrement;
                 }
-
-                if($maxIntValue < 8388607){
-
-                    return 'mediumint';
-                }
-
-                if($maxIntValue < 2147483647){
-
-                    return 'int';
-                }
-
-                return 'bigint';
             }
 
             if(is_float($value)){
 
-                return 'double';
+                return 'double'.$sqlUnsigned.$sqlNotNull.$sqlAutoIncrement;
             }
 
             if(is_string($value)){
 
                 $valueLen = max(1, strlen($value));
-                return $valueLen > 65500 ? 'longtext' : 'varchar('.$valueLen.')';
+                return $valueLen > 65500 ? 'longtext' : 'varchar('.$valueLen.')'.$sqlNotNull;
             }
         }
 
@@ -677,14 +709,17 @@ class DataBaseManager extends BaseStrictClass {
      *
      * @param string $tableName Table that contains the requested column
      * @param string $columnName Name for the table column we want to list
+     * @param string $removeDuplicates If set to true, all the duplicate values will be removed from the resulting list
      *
-     * @return array A list with all the values that can be found on the specified table and column. Note that list is unique, repeated values are removed
+     * @return array A list with all the values that can be found on the specified table and column.
      */
-    public function tableGetColumnValues($tableName, $columnName){
+    public function tableGetColumnValues($tableName, $columnName, $removeDuplicates = false){
+
+        $sqlDistinct = $removeDuplicates ? ' DISTINCT ': '';
 
         if($this->_engine === self::MYSQL){
 
-            $mysqlResult = $this->query('SELECT DISTINCT '.$columnName.' FROM '.$tableName);
+            $mysqlResult = $this->query('SELECT '.$sqlDistinct.' '.$columnName.' FROM '.$tableName);
 
             if($mysqlResult !== false){
 
@@ -704,26 +739,33 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
-     * Add all the values for a single row to the specified database table
+     * Add all the values for one or more rows to the specified database table
      *
      * @param string $tableName The name for the table we want to update
-     * @param array $rowValues An associative array with all the data for a single table row, where each array key is the column name and
+     * @param array $rowValues An array of associative arrays with all the data for a single table row, where each array key is the column name and
      *              each array value the column value
      *
      * @return boolean True if the row was correctly added
      */
-    public function tableAddRow($tableName, array $rowValues){
+    public function tableAddRows($tableName, array $rows){
 
-        $cols = array_keys($rowValues);
+        $cols = array_keys($rows[0]);
 
-        $values = [];
+        $sqlRows = [];
 
-        foreach ($rowValues as $value) {
+        foreach ($rows as $row) {
 
-            $values[] = $this->_prepareRawValeForSqlQuery($value);
+            $sqlRow = [];
+
+            foreach ($row as $value) {
+
+                $sqlRow[] = $this->_prepareRawValeForSqlQuery($value);
+            }
+
+            $sqlRows[] = '('.implode(',', $sqlRow).')';
         }
 
-        if($this->query('INSERT INTO '.$tableName.' ('.implode(',', $cols).') VALUES ('.implode(',', $values).')') !== false){
+        if($this->query('INSERT INTO '.$tableName.' ('.implode(',', $cols).') VALUES '.implode(',', $sqlRows)) !== false){
 
             return true;
         }
