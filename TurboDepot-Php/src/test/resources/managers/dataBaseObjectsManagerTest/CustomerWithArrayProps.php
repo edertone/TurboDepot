@@ -13,6 +13,12 @@ class CustomerWithArrayProps extends DataBaseObject{
     public $age = 0;
 
     public $emails = [];
+
+    public $boolArray = [];
+
+    public $intArray = [];
+
+    public $doubleArray = [];
 }
 
 ?>

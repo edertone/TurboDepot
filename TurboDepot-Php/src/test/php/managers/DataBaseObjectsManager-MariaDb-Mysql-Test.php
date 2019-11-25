@@ -450,6 +450,10 @@ class DataBaseObjectsManagerTest extends TestCase {
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tddo_customer column name data type expected: varchar.100. but received: mediumint/');
 
         $object = new Customer();
+        $object->name = new stdClass();
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not detect type from property name: Could not detect type from object/');
+
+        $object = new Customer();
         $object->age = 'string instead of int';
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tddo_customer column age data type expected: smallint.6. but received: varchar.21./');
 
@@ -516,19 +520,33 @@ class DataBaseObjectsManagerTest extends TestCase {
         $object = new CustomerWithArrayProps();
         $object->name = 'this customer has array typed properties';
         $object->emails = ['email1', 'email2', 'email3'];
+        $object->boolArray = [true, false];
+        $object->intArray = [10, 20, 30, 40];
+        $object->doubleArray = [10.0, 100.454, 0.254676];
         $this->assertSame(1, $this->sut->save($object));
+
+        $this->assertSame(10, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
         $this->assertSame(['db_id' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20) unsigned',
             'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(40)',
             'age' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $this->assertSame(['db_id' => 'bigint(20) unsigned', 'value' => 'varchar(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_emails'));
-
         $this->assertSame(['1', '1', '1'], $this->db->tableGetColumnValues($objectTableName.'_emails', 'db_id'));
         $this->assertSame(['email1', 'email2', 'email3'], $this->db->tableGetColumnValues($objectTableName.'_emails', 'value'));
-        $this->assertSame(4, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
-        // TODO - test different types of arrays: int, bool, string, double...
+        $this->assertSame(['db_id' => 'bigint(20) unsigned', 'value' => 'tinyint(1)'], $this->db->tableGetColumnDataTypes($objectTableName.'_bool_array'));
+        $this->assertSame(['1', '1'], $this->db->tableGetColumnValues($objectTableName.'_bool_array', 'db_id'));
+        $this->assertSame(['1', '0'], $this->db->tableGetColumnValues($objectTableName.'_bool_array', 'value'));
+
+        $this->assertSame(['db_id' => 'bigint(20) unsigned', 'value' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_int_array'));
+        $this->assertSame(['1', '1', '1', '1'], $this->db->tableGetColumnValues($objectTableName.'_int_array', 'db_id'));
+        $this->assertSame(['10', '20', '30', '40'], $this->db->tableGetColumnValues($objectTableName.'_int_array', 'value'));
+
+        $this->assertSame(['db_id' => 'bigint(20) unsigned', 'value' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName.'_double_array'));
+        $this->assertSame(['1', '1', '1'], $this->db->tableGetColumnValues($objectTableName.'_double_array', 'db_id'));
+        $this->assertSame(['10', '100.454', '0.254676'], $this->db->tableGetColumnValues($objectTableName.'_double_array', 'value'));
+
         // TODO update an existing CustomerWithArrayProps and test that array values have correctly changed
     }
 
@@ -540,6 +558,8 @@ class DataBaseObjectsManagerTest extends TestCase {
      */
     public function testSave_Strong_typed_Object(){
 
+        $objectTableName = $this->sut->tablesPrefix.StringUtils::formatCase('CustomerTyped', StringUtils::FORMAT_LOWER_SNAKE_CASE);
+
         // Test empty values
         // Not necessary
 
@@ -547,7 +567,20 @@ class DataBaseObjectsManagerTest extends TestCase {
         $object = new CustomerTyped();
         $object->name = 'customer';
         $this->assertSame(1, $this->sut->save($object));
-        // TODO - Verify that all the tables related to array properties are created and are valid
+
+        $this->assertSame(6, count($this->sut->getDataBaseManager()->getQueryHistory()));
+
+        $this->assertSame(['db_id' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20) unsigned',
+            'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(20)',
+            'commercial_name' => 'varchar(25)', 'age' => 'smallint(6)', 'one_digit_int' => 'smallint(6)', 'six_digit_int' => 'mediumint(9)',
+            'twelve_digit_int' => 'bigint(20)', 'double_value' => 'double', 'setup' => 'tinyint(1)'
+            ], $this->db->tableGetColumnDataTypes($objectTableName));
+
+        $this->assertSame(['db_id' => 'bigint(20) unsigned', 'value' => 'varchar(75)'], $this->db->tableGetColumnDataTypes($objectTableName.'_emails'));
+        $this->assertSame([], $this->db->tableGetColumnValues($objectTableName.'_emails', 'db_id'));
+        $this->assertSame([], $this->db->tableGetColumnValues($objectTableName.'_emails', 'value'));
+
+        // TODO update an existing CustomerTyped and test that all values have correctly changed
         // TODO - more tests
 
         // Test wrong values
@@ -665,9 +698,11 @@ class DataBaseObjectsManagerTest extends TestCase {
         // Test wrong values
         $object = new CustomerTyped();
         $object->name = 1231231;
+        $object->commercialName = new stdClass();
         $object->age = 'stringinsteadofint';
         $this->assertSame('varchar(20)', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
         $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
+        $this->assertSame('varchar(25)', $this->sut->getSQLTypeFromObjectProperty($object, 'commercialName'));
 
         // Test exceptions
         AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, 'nonexistantproperty'); }, '/Undefined property: nonexistantproperty/');

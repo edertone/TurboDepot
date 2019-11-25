@@ -319,7 +319,8 @@ class DataBaseManager extends BaseStrictClass {
      *
      * @return boolean|int|array <br>
      * - False if the query generates any error (error message will be available with getLastError())<br>
-     * - An array of associative arrays with the query result data for queries that generate values (like SELECT, SHOW, DESCRIBE or EXPLAIN).<br>
+     * - An array of associative arrays with the query result data for queries that generate values (like SELECT, SHOW, DESCRIBE or EXPLAIN). Note that in PHP
+     *   all query result values are returned as strings which must be casted to the appropiate types by the user<br>
      * - An integer containing the affected rows for successful queries that do not generate vaules (like CREATE, DROP, UPDATE, INSERT...).<br>
      */
     public function query($query){

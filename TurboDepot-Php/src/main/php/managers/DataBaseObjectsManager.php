@@ -362,26 +362,20 @@ class DataBaseObjectsManager extends BaseStrictClass{
             array_shift($type);
         }
 
-        try {
+        switch ($type[0]) {
 
-            switch ($type[0]) {
+            case self::BOOL:
+                return $this->_db->getSQLTypeFromValue(true);
 
-                case self::BOOL:
-                    return $this->_db->getSQLTypeFromValue(true);
+            case self::INT:
+                return $this->_db->getSQLTypeFromValue(pow(10, $type[1]) - 1);
 
-                case self::INT:
-                    return $this->_db->getSQLTypeFromValue(pow(10, $type[1]) - 1);
+            case self::DOUBLE:
+                return $this->_db->getSQLTypeFromValue(1.0);
 
-                case self::DOUBLE:
-                    return $this->_db->getSQLTypeFromValue(1.0);
-
-                case self::STRING:
-                    return $this->_db->getSQLTypeFromValue(str_repeat(' ', $type[1]));
-            }
-
-        } catch (Throwable $e) {
-
-            throw new UnexpectedValueException($property.' invalid: '.$e->getMessage());
+            case self::STRING:
+            default:
+                return $this->_db->getSQLTypeFromValue(str_repeat(' ', $type[1]));
         }
     }
 
@@ -694,8 +688,8 @@ class DataBaseObjectsManager extends BaseStrictClass{
             // Properties that have a type definition must have values of the same type
             if($object->{$classProperty} !== null && $object->{$classProperty} !== []){
 
-                $valueType = $this->_getTypeFromValue($object->{$classProperty});
                 $propertyType = $this->_getTypeFromObjectProperty($object, $classProperty);
+                $valueType = $this->_getTypeFromValue($object->{$classProperty});
 
                 if($propertyType[0] === self::ARRAY){
 
