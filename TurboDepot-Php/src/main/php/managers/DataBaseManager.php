@@ -409,6 +409,27 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
+     * Get the SQL type string definition for a date and time database value
+     *
+     * @param bool $isNullable If set to true, the generated SQL type definition will allow null values, if set to false the type won't allow null values
+     * @param bool $acceptMiliseconds If set to true, the generated SQL type definition will accept miliseconds precision, if set to false only seconds
+     *
+     * @return string A valid datetime SQL type string definition like 'datetime', 'datetime(3)', 'datetime NOT NULL', etc...
+     */
+    public function getSQLDateTimeType(bool $isNullable = true, bool $acceptMiliseconds = false){
+
+        $sqlNotNull = $isNullable ? '' : ' NOT NULL';
+
+        if($this->_engine === self::MYSQL){
+
+            $sqlPrecision = $acceptMiliseconds ? '(3)' : '';
+
+            return 'datetime'.$sqlPrecision.$sqlNotNull;
+        }
+    }
+
+
+    /**
      * Given any raw value this method will generate the SQL type string definition that will allow us to store that value with the
      * smallest precision possible.
      *
@@ -621,6 +642,34 @@ class DataBaseManager extends BaseStrictClass {
         }
 
         throw new UnexpectedValueException('Could not add column '.$columnName.' to table '.$tableName.': '.$this->_lastError);
+    }
+
+
+    /**
+     * Create a new foreign key on the specified table
+     *
+     * @param string $tableName The name for the table where we want to add a new column
+     * @param string $fkName The name we want to set to the new foreign key
+     * @param array $fkColumns The colums that are affected by the new foreign key
+     * @param string $refTable The name for the table that is referenced by this foreign key (the one that contains pk values that must exist on our table)
+     * @param array $refColumns The colums on the referenced table that are affected by the new foreign key
+     * @param string $onDelete What to do when a delete happens (by default CASCADE)
+     * @param string $onUpdate What to do when an update happens (by default CASCADE)
+     *
+     * @throws UnexpectedValueException If the foreign key cannot be added
+     *
+     * @return boolean True if the foreign key was correctly added
+     */
+    public function tableAddForeignKey($tableName, $fkName, array $fkColumns, $refTable, array $refColumns, $onDelete = 'CASCADE', $onUpdate = 'CASCADE'){
+
+        if($this->query('ALTER TABLE '.$tableName.' ADD CONSTRAINT '.$fkName.
+            ' FOREIGN KEY ('.implode(',', $fkColumns).') REFERENCES '.$refTable.'('.implode(',', $refColumns).
+            ') ON DELETE '.$onDelete.' ON UPDATE '.$onUpdate) !== false){
+
+            return true;
+        }
+
+        throw new UnexpectedValueException('Could not add foreignKey '.$fkName.' to table '.$tableName.': '.$this->_lastError);
     }
 
 
@@ -842,6 +891,35 @@ class DataBaseManager extends BaseStrictClass {
         }
 
         throw new UnexpectedValueException('Could not delete table '.$tableName.': '.$this->_lastError);
+    }
+
+
+    /**
+     * Deletes all the rows from a table that meet the specified column values
+     *
+     * @param string $tableName The name for the table that we want to delete rows from
+     * @param array $columnValues An associative array where each key is the name of a column and each value the value that must be
+     *              found on the table rows that will be deleted. A row will be deleted from the table only if all the column values
+     *              defined here are found.
+     *
+     * @return int The number of deleted rows
+     */
+    public function tableDeleteRows(string $tableName, array $columnValues) {
+
+        $sqlWhere = [];
+
+        foreach ($columnValues as $columnName => $value) {
+
+            $sqlWhere[] = $columnName."='".$value."'";
+        }
+
+        if($this->_engine === self::MYSQL &&
+            ($result = $this->query('DELETE FROM '.$tableName.' WHERE '.implode(' AND ', $sqlWhere))) !== false){
+
+            return $result;
+        }
+
+        throw new UnexpectedValueException('Error trying to delete rows from '.$tableName.': '.$this->_lastError);
     }
 
 
