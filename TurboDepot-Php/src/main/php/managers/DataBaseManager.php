@@ -846,16 +846,24 @@ class DataBaseManager extends BaseStrictClass {
      * Update all the values for an existing single row on the specified database table
      *
      * @param string $tableName The name for the table we want to update
-     * @param string $primaryKeyName The name for the column that contains the table primary key
-     * @param mixed $primaryKeyValue The value that must be found on the primary key for the row to be updated
-     * @param array $rowValues An associative array with all the data for a single table row, where each array key is the column name and
+     * @param array $keyValues Associative array with key/value pairs (column names / values) that must exist on the row to be updated
+     * @param array $rowValues An associative array with all the data to be updated on the table row, where each array key is the column name and
      *              each array value the column value
      *
      * @throws UnexpectedValueException In case the update could not be performed
      *
      * @return boolean True if the row is correctly updated
      */
-    public function tableUpdateRow($tableName, $primaryKeyName, $primaryKeyValue, array $rowValues){
+    public function tableUpdateRow($tableName, array $keyValues, array $rowValues){
+
+        $sqlKey = [];
+
+        foreach ($keyValues as $keyName => $keyValue) {
+
+            $sqlKey[] = $keyName."='".$keyValue."'";
+        }
+
+        $sqlKey = implode(' AND ', $sqlKey);
 
         $values = [];
 
@@ -864,12 +872,16 @@ class DataBaseManager extends BaseStrictClass {
             $values[] = $colName.' = '.$this->_prepareRawValeForSqlQuery($value);
         }
 
-        if(($queryResult = $this->query('UPDATE '.$tableName.' SET '.implode(',', $values).' WHERE '.$primaryKeyName."='".$primaryKeyValue."'")) === 1){
+        $queryResult = $this->query('UPDATE '.$tableName.' SET '.implode(',', $values).' WHERE '.$sqlKey);
+
+        // A 0 result may mean that the table row existed but all the row values were already the same and nothing was updated, but the result is ok
+        if($queryResult === 1 ||
+           ($queryResult === 0 && count($this->query('SELECT * FROM '.$tableName.' WHERE '.$sqlKey)) === 1)){
 
             return true;
         }
 
-        throw new UnexpectedValueException('Could not update row on table '.$tableName.': query affected '.$queryResult.' rows. '.$this->_lastError);
+        throw new UnexpectedValueException('Could not update row on table '.$tableName.' for '.$sqlKey.' '.$this->_lastError);
     }
 
 

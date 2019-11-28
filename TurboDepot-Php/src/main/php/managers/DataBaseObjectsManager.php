@@ -12,6 +12,7 @@
 
 namespace org\turbodepot\src\main\php\managers;
 
+use DateTime;
 use Throwable;
 use ReflectionClass;
 use ReflectionObject;
@@ -127,7 +128,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * Defines the format in which dates are stored to database tables
      * @var string
      */
-    private $_sqlDateFormat = 'Y-m-d H:i:s';
+    private $_sqlDateFormat = 'Y-m-d H:i:s.v';
 
 
     /**
@@ -200,49 +201,24 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         try {
 
-            if(!$this->_db->tableExists($tableName)){
+            $tableData = $this->_db->tableExists($tableName) ?
+                $this->_updateTablesToFitObject($object, $tableName) :
+                $this->_createObjectTables($object, $tableName);
 
-                $tableData = $this->_createObjectTables($object, $tableName);
-
-            }else{
-
-                $tableData = $this->_updateTablesToFitObject($object, $tableName);
-            }
+            $tableData['modification_date'] = (DateTime::createFromFormat('U.u', microtime(true)))->format($this->_sqlDateFormat);
 
             // Store or update the object into the database
-            $tableData['modification_date'] = date($this->_sqlDateFormat);
-
             if($object->dbId === null){
 
-                $tableData['creation_date'] = date($this->_sqlDateFormat);
+                $tableData['creation_date'] = $tableData['modification_date'];
 
                 $this->_db->tableAddRows($tableName, [$tableData]);
-
-                $object->dbId = $this->_db->getLastInsertId();
-
-                // Insert all the values for the array typed properties
-                foreach ($this->_getArrayTypedProperties($object) as $property) {
-
-                    if(($propertyCount = count($object->{$property})) > 0){
-
-                        $rowsToAdd = [];
-                        $column = StringUtils::formatCase($property, StringUtils::FORMAT_LOWER_SNAKE_CASE);
-
-                        for ($i = 0; $i < $propertyCount; $i++) {
-
-                            $rowsToAdd[] = ['db_id' => $object->dbId, 'value' => $object->{$property}[$i]];
-                        }
-
-                        $this->_db->tableAddRows($tableName.'_'.$column, $rowsToAdd);
-                    }
-                }
+                $object->dbId = $this->_insertArrayPropsToDb($object, $tableName, $this->_db->getLastInsertId());
 
             }else{
 
-                $this->_db->tableUpdateRow($tableName, 'db_id', $object->dbId, $tableData);
-
-                // Update all the values for the array typed properties
-                // TODO
+                $this->_db->tableUpdateRow($tableName, ['db_id' => $object->dbId], $tableData);
+                $this->_insertArrayPropsToDb($object, $tableName, $object->dbId, true);
             }
 
             $object->modificationDate = $tableData['modification_date'];
@@ -258,6 +234,44 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             throw $e;
         }
+    }
+
+
+    /**
+     * Auxiliary method to store all the array typed properties values to database
+     *
+     * @param DataBaseObject $object An instance to save or update
+     * @param string $tableName The name for the object table
+     * @param int $dbId The object dbId to which the array values will be linked
+     * @param boolean $deleteBeforeInsert If set to true, all existing array values will be deleted before inserting
+     *
+     * @return int The object dbId
+     */
+    private function _insertArrayPropsToDb(DataBaseObject $object, string $tableName, int $dbId, $deleteBeforeInsert = false){
+
+        foreach ($this->_getArrayTypedProperties($object) as $property) {
+
+            $column = StringUtils::formatCase($property, StringUtils::FORMAT_LOWER_SNAKE_CASE);
+
+            if($deleteBeforeInsert){
+
+                $this->_db->tableDeleteRows($tableName.'_'.$column, ['db_id' => $object->dbId]);
+            }
+
+            if(($propertyCount = count($object->{$property})) > 0){
+
+                $rowsToAdd = [];
+
+                for ($i = 0; $i < $propertyCount; $i++) {
+
+                    $rowsToAdd[] = ['db_id' => $dbId, 'value' => $object->{$property}[$i]];
+                }
+
+                $this->_db->tableAddRows($tableName.'_'.$column, $rowsToAdd);
+            }
+        }
+
+        return $dbId;
     }
 
 
@@ -293,7 +307,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      *
      * @return array The generated table as an associative array
      */
-    public function getTableDataFromObject(DataBaseObject $object){
+    public function convertObjectToTableData(DataBaseObject $object){
 
         $tableData = [];
 
@@ -345,13 +359,12 @@ class DataBaseObjectsManager extends BaseStrictClass{
             case 'sort_index':
                 return $this->_db->getSQLTypeFromValue(999999999999999, true, true);
 
-            // TODO - SQL date types are hardcoded here
             case 'deleted':
-                return 'datetime';
+                return $this->_db->getSQLDateTimeType(true, true);
 
             case 'creation_date':
             case 'modification_date':
-                return 'datetime NOT NULL';
+                return $this->_db->getSQLDateTimeType(false, true);
         }
 
         $type = $this->_getTypeFromObjectProperty($object, $property);
@@ -433,7 +446,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             throw new UnexpectedValueException('Could not detect type from property '.$property.': '.$e->getMessage());
         }
-
     }
 
 
@@ -468,6 +480,15 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         if(is_array($value) && count($value) > 0){
 
+            // All array elements must be the same type
+            for ($i = 0, $l = count($value); $i < $l - 1; $i++) {
+
+                if(gettype($value[$i]) !== gettype($value[$i + 1])){
+
+                    throw new UnexpectedValueException('All array elements must be the same type');
+                }
+            }
+
             return array_merge([self::ARRAY], $this->_getTypeFromValue($value[0]));
         }
 
@@ -486,11 +507,30 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $result = [];
 
-        foreach(array_keys(get_object_vars($object)) as $classProperty){
+        foreach(array_keys(get_object_vars($object)) as $property){
 
-            if($this->_getTypeFromObjectProperty($object, $classProperty)[0] === self::ARRAY){
+            try {
 
-                $result[] = $classProperty;
+                if($this->_getTypeFromObjectProperty($object, $property)[0] === self::ARRAY){
+
+                    $result[] = $property;
+                }
+
+            } catch (Throwable $e) {
+
+                // A property may still be an empty array which has an already created database table to detect its type, so
+                // we will check it here
+                $columnName = StringUtils::formatCase($property, StringUtils::FORMAT_LOWER_SNAKE_CASE);
+
+                if(is_array($object->{$property}) && count($object->{$property}) === 0 &&
+                   $this->_db->tableExists($this->getTableNameFromObject($object).'_'.$columnName)){
+
+                    $result[] = $property;
+
+                }else{
+
+                    throw $e;
+                }
             }
         }
 
@@ -513,22 +553,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         foreach (array_keys(get_object_vars($object)) as $property) {
 
-            $columnName = StringUtils::formatCase($property, StringUtils::FORMAT_LOWER_SNAKE_CASE);
-
-            $properties[$columnName] = $property;
-
-            // Create all the tables that store array properties
-            if($this->_getTypeFromObjectProperty($object, $property)[0] === self::ARRAY){
-
-                $this->_db->tableCreate($tableName.'_'.$columnName, [
-                    'db_id '.$this->_db->getSQLTypeFromValue(999999999999999, false, true),
-                    'value '.$this->getSQLTypeFromObjectProperty($object, $properties[$columnName])
-                ]);
-            }
+            $properties[StringUtils::formatCase($property, StringUtils::FORMAT_LOWER_SNAKE_CASE)] = $property;
         }
 
         $columnsToCreate = [];
-        $tableData = $this->getTableDataFromObject($object);
+        $tableData = $this->convertObjectToTableData($object);
 
         foreach (array_keys($tableData) as $columnName) {
 
@@ -536,6 +565,19 @@ class DataBaseObjectsManager extends BaseStrictClass{
         }
 
         $this->_db->tableCreate($tableName, $columnsToCreate, ['db_id'], [['uuid']], [['sort_index']]);
+
+        // Create all the tables that store array properties
+        foreach ($this->_getArrayTypedProperties($object) as $property) {
+
+            $columnName = StringUtils::formatCase($property, StringUtils::FORMAT_LOWER_SNAKE_CASE);
+
+            $this->_db->tableCreate($tableName.'_'.$columnName, [
+                'db_id '.$this->_db->getSQLTypeFromValue(999999999999999, false, true),
+                'value '.$this->getSQLTypeFromObjectProperty($object, $properties[$columnName])
+            ]);
+
+            $this->_db->tableAddForeignKey($tableName.'_'.$columnName, $tableName.'_'.$columnName.'_db_id_fk', ['db_id'], $tableName, ['db_id']);
+        }
 
         return $tableData;
     }
@@ -558,7 +600,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     private function _updateTablesToFitObject(DataBaseObject $object, string $tableName){
 
-        $tableData = $this->getTableDataFromObject($object);
+        $tableData = $this->convertObjectToTableData($object);
         $tableColumnTypes = $this->_db->tableGetColumnDataTypes($tableName);
 
         // Test that the table and object have the same columns
@@ -625,6 +667,8 @@ class DataBaseObjectsManager extends BaseStrictClass{
             }
         }
 
+        // TODO - test that array typed properties can be stored on the respective database tables
+
         return $tableData;
     }
 
@@ -640,7 +684,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $class = get_class($object);
         $className = StringUtils::getPathElement($class);
-        $dateRegex = '/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9]/';
+        $dateRegex = '/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9][0-9][0-9]/';
 
         if($object->dbId !== null && (!is_integer($object->dbId) || $object->dbId < 1)){
 
@@ -672,9 +716,9 @@ class DataBaseObjectsManager extends BaseStrictClass{
             throw new UnexpectedValueException('Invalid '.$className.' deleted: '.$object->deleted);
         }
 
-        if($object->dbId === null && $object->creationDate !== null){
+        if($object->dbId === null && ($object->creationDate !== null || $object->modificationDate !== null)){
 
-            throw new UnexpectedValueException('Creation date must be null if dbid is null');
+            throw new UnexpectedValueException('Creation and modification date must be null if dbid is null');
         }
 
         foreach(array_keys(get_class_vars($class)) as $classProperty){

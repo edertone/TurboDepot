@@ -314,12 +314,21 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(1, $object->dbId);
         $this->assertSame(1, $this->db->tableCountRows($objectTableName));
         $this->assertSame(['db_id' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20) unsigned',
-            'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(1)',
+            'creation_date' => 'datetime(3)', 'modification_date' => 'datetime(3)', 'deleted' => 'datetime(3)', 'name' => 'varchar(1)',
             'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         // test that columns are in the correct order
         $this->assertSame(['db_id', 'uuid', 'sort_index', 'creation_date', 'modification_date', 'deleted', 'name', 'commercial_name', 'age', 'debt'],
             $this->db->tableGetColumnNames($objectTableName));
+
+        // Test that datetime values are stored with miliseconds information
+        $this->assertRegExp('/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9][0-9][0-9]/',
+            $this->db->tableGetColumnValues($objectTableName, 'creation_date')[0]);
+
+        $this->assertRegExp('/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9][0-9][0-9]/',
+            $this->db->tableGetColumnValues($objectTableName, 'modification_date')[0]);
+
+        $this->assertSame($this->db->tableGetColumnValues($objectTableName, 'creation_date')[0], $this->db->tableGetColumnValues($objectTableName, 'modification_date')[0]);
 
         $object = new Customer();
         $this->assertSame(2, $this->sut->save($object));
@@ -331,7 +340,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(3, $object->dbId);
         $this->assertSame(3, $this->db->tableCountRows($objectTableName));
         $this->assertSame(['db_id' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20) unsigned',
-            'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(1)',
+            'creation_date' => 'datetime(3)', 'modification_date' => 'datetime(3)', 'deleted' => 'datetime(3)', 'name' => 'varchar(1)',
             'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         // Test ok values - update instances
@@ -354,7 +363,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame('customer', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
         $this->assertSame(['db_id' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20) unsigned',
-            'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(8)',
+            'creation_date' => 'datetime(3)', 'modification_date' => 'datetime(3)', 'deleted' => 'datetime(3)', 'name' => 'varchar(8)',
             'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $object->name = 'customer updated';
@@ -363,7 +372,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame('customer updated', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
         $this->assertSame(['db_id' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20) unsigned',
-            'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(16)',
+            'creation_date' => 'datetime(3)', 'modification_date' => 'datetime(3)', 'deleted' => 'datetime(3)', 'name' => 'varchar(16)',
             'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $object->name = 'customer updated with a much longer text that should resize the name column to a bigger varchar size';
@@ -372,7 +381,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame('customer updated with a much longer text that should resize the name column to a bigger varchar size', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
         $this->assertSame(['db_id' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20) unsigned',
-            'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(100)',
+            'creation_date' => 'datetime(3)', 'modification_date' => 'datetime(3)', 'deleted' => 'datetime(3)', 'name' => 'varchar(100)',
             'commercial_name' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $object->debt = 10;
@@ -395,7 +404,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         // Put a non existant id number
         $object = new Customer();
         $object->dbId = 5000000;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not update row on table tddo_customer: query affected 0 rows/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not update row on table tddo_customer for db_id=\'5000000\'/');
 
         $object = new Customer();
         $object->dbId = 'string';
@@ -427,8 +436,12 @@ class DataBaseObjectsManagerTest extends TestCase {
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer creationDate: not a date/');
 
         $object = new Customer();
-        $object->creationDate = '2019-11-16 10:41:38';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Creation date must be null if dbid is null/');
+        $object->creationDate = '2019-11-16 10:41:38.123';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Creation and modification date must be null if dbid is null/');
+
+        $object = new Customer();
+        $object->modificationDate = '2019-11-16 10:41:38.123';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Creation and modification date must be null if dbid is null/');
 
         $object = new Customer();
         $object->modificationDate = 1;
@@ -525,10 +538,10 @@ class DataBaseObjectsManagerTest extends TestCase {
         $object->doubleArray = [10.0, 100.454, 0.254676];
         $this->assertSame(1, $this->sut->save($object));
 
-        $this->assertSame(10, count($this->sut->getDataBaseManager()->getQueryHistory()));
+        $this->assertSame(14, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
         $this->assertSame(['db_id' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20) unsigned',
-            'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(40)',
+            'creation_date' => 'datetime(3)', 'modification_date' => 'datetime(3)', 'deleted' => 'datetime(3)', 'name' => 'varchar(40)',
             'age' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $this->assertSame(['db_id' => 'bigint(20) unsigned', 'value' => 'varchar(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_emails'));
@@ -547,7 +560,66 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(['1', '1', '1'], $this->db->tableGetColumnValues($objectTableName.'_double_array', 'db_id'));
         $this->assertSame(['10', '100.454', '0.254676'], $this->db->tableGetColumnValues($objectTableName.'_double_array', 'value'));
 
-        // TODO update an existing CustomerWithArrayProps and test that array values have correctly changed
+        // Update the existing object with new array values
+        // Warning: This next test may fail if the database is not able to store miliseconds precision on dates. This will lead to the same modification date
+        // on the updated object, and therefore no changes will be detected on the object table so no rows will be updated and an error will happen.
+        $object->emails = ['new1', 'new2'];
+        $object->boolArray = [false, true];
+        $object->intArray = [40, 30, 20, 10];
+        $object->doubleArray = [9.999];
+        $this->assertSame(1, $this->sut->save($object));
+
+        $this->assertSame(['db_id' => 'bigint(20) unsigned', 'value' => 'varchar(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_emails'));
+        $this->assertSame(['1', '1'], $this->db->tableGetColumnValues($objectTableName.'_emails', 'db_id'));
+        $this->assertSame(['new1', 'new2'], $this->db->tableGetColumnValues($objectTableName.'_emails', 'value'));
+
+        $this->assertSame(['db_id' => 'bigint(20) unsigned', 'value' => 'tinyint(1)'], $this->db->tableGetColumnDataTypes($objectTableName.'_bool_array'));
+        $this->assertSame(['1', '1'], $this->db->tableGetColumnValues($objectTableName.'_bool_array', 'db_id'));
+        $this->assertSame(['0', '1'], $this->db->tableGetColumnValues($objectTableName.'_bool_array', 'value'));
+
+        $this->assertSame(['db_id' => 'bigint(20) unsigned', 'value' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_int_array'));
+        $this->assertSame(['1', '1', '1', '1'], $this->db->tableGetColumnValues($objectTableName.'_int_array', 'db_id'));
+        $this->assertSame(['40', '30', '20', '10'], $this->db->tableGetColumnValues($objectTableName.'_int_array', 'value'));
+
+        $this->assertSame(['db_id' => 'bigint(20) unsigned', 'value' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName.'_double_array'));
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_double_array', 'db_id'));
+        $this->assertSame(['9.999'], $this->db->tableGetColumnValues($objectTableName.'_double_array', 'value'));
+
+        $object->emails = [34563456, 1232323, 12];
+        $object->boolArray = [];
+        $object->intArray = [];
+        $object->doubleArray = [];
+        $this->assertSame(1, $this->sut->save($object));
+
+        $object = new CustomerWithArrayProps();
+        $this->assertSame(2, $this->sut->save($object));
+        $object->emails = ['email1', 'email2', 'email3'];
+        $this->assertSame(2, $this->sut->save($object));
+        $object->boolArray = [true, false, false];
+        $this->assertSame(2, $this->sut->save($object));
+        $this->assertSame(2, $object->dbId);
+
+        // Test wrong values
+
+        // TODO - this must fail
+//         $object->emails = ['this value is too long for the created table'];
+//         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Must fail cause value is too big for the database table column size/');
+
+        $object = new CustomerWithArrayProps();
+        $object->name = 'this customer has array typed properties';
+        $object->emails = ['email1', 'email2', 'email3'];
+        $object->boolArray = [true, 123];
+        $object->intArray = [10, 20, 30, 40];
+        $object->doubleArray = [10.0, 100.454, 0.254676];
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not detect type from property boolArray: All array elements must be the same type/');
+
+        $object = new CustomerWithArrayProps();
+        $object->name = '';
+        $object->emails = ['email1', 1232323, 'email3'];
+        $object->boolArray = [true];
+        $object->intArray = [10];
+        $object->doubleArray = [0.254676];
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not detect type from property emails: All array elements must be the same type/');
     }
 
 
@@ -568,10 +640,10 @@ class DataBaseObjectsManagerTest extends TestCase {
         $object->name = 'customer';
         $this->assertSame(1, $this->sut->save($object));
 
-        $this->assertSame(6, count($this->sut->getDataBaseManager()->getQueryHistory()));
+        $this->assertSame(10, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
         $this->assertSame(['db_id' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20) unsigned',
-            'creation_date' => 'datetime', 'modification_date' => 'datetime', 'deleted' => 'datetime', 'name' => 'varchar(20)',
+            'creation_date' => 'datetime(3)', 'modification_date' => 'datetime(3)', 'deleted' => 'datetime(3)', 'name' => 'varchar(20)',
             'commercial_name' => 'varchar(25)', 'age' => 'smallint(6)', 'one_digit_int' => 'smallint(6)', 'six_digit_int' => 'mediumint(9)',
             'twelve_digit_int' => 'bigint(20)', 'double_value' => 'double', 'setup' => 'tinyint(1)'
             ], $this->db->tableGetColumnDataTypes($objectTableName));
@@ -581,6 +653,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame([], $this->db->tableGetColumnValues($objectTableName.'_emails', 'value'));
 
         // TODO update an existing CustomerTyped and test that all values have correctly changed
+        // TODO Test storing array values that do not fit on the previously created table
         // TODO - more tests
 
         // Test wrong values
@@ -630,11 +703,11 @@ class DataBaseObjectsManagerTest extends TestCase {
 
 
     /**
-    * testGetTableDataFromObject
+    * testConvertObjectToTableData
     *
     * @return void
     */
-    public function testGetTableDataFromObject(){
+    public function testConvertObjectToTableData(){
 
         // Test empty values
         // TODO
