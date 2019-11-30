@@ -409,6 +409,21 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
+     * Check if two SQL types share the same data type
+     *
+     * @param string $sqlType1 A valid SQL type definition like int, bigint, varchar(20), double NOT NULL, varchar(250) NOT NULL etc...
+     * @param string $sqlType2 A valid SQL type definition like int, bigint, varchar(20), double NOT NULL, varchar(250) NOT NULL etc...
+     *
+     * @return boolean True if both sql types share the same data type like varchar, double, bigint, etc..
+     */
+    public function isSQLSameType(string $sqlType1, string $sqlType2){
+
+        // Compare the object and table data types without the (N) part. They must be exactly the same
+        return $sqlType1 === $sqlType2 || explode('(', $sqlType1)[0] === explode('(', $sqlType2)[0];
+    }
+
+
+    /**
      * Get the SQL type string definition for a date and time database value
      *
      * @param bool $isNullable If set to true, the generated SQL type definition will allow null values, if set to false the type won't allow null values
@@ -426,6 +441,21 @@ class DataBaseManager extends BaseStrictClass {
 
             return 'datetime'.$sqlPrecision.$sqlNotNull;
         }
+    }
+
+
+    /**
+     * Obtain the size for the provided SQL type string
+     *
+     * @param string $sqlType A valid SQL type definition like int, bigint, varchar(20), double NOT NULL, varchar(250) NOT NULL etc...
+     *
+     * @return number The sql type size. For example:  varchar(20) will return 20, varchar(250) 250, etc..
+     */
+    public function getSQLTypeSizeFromValue(string $sqlType){
+
+        $sqlTypeExploded = explode('(', $sqlType);
+
+        return isset($sqlTypeExploded[1]) ? (int)substr($sqlTypeExploded[1], 0, -1) : 0;
     }
 
 
@@ -452,7 +482,7 @@ class DataBaseManager extends BaseStrictClass {
 
             if(is_bool($value)){
 
-                return 'boolean'.$sqlNotNull;
+                return 'tinyint(1)'.$sqlNotNull;
             }
 
             if(is_integer($value)){
@@ -723,6 +753,11 @@ class DataBaseManager extends BaseStrictClass {
             foreach ($types as $type) {
 
                 $result[$type['COLUMN_NAME']] = strtolower($type['COLUMN_TYPE']);
+            }
+
+            if(count($result) === 0 && !$this->tableExists($tableName)){
+
+                throw new UnexpectedValueException('Table does not exist: '.$tableName);
             }
 
             return $result;

@@ -589,7 +589,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $object->boolArray = [];
         $object->intArray = [];
         $object->doubleArray = [];
-        $this->assertSame(1, $this->sut->save($object));
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tddo_customer_with_array_props_emails column value data type expected: varchar.6. but received: int/');
 
         $object = new CustomerWithArrayProps();
         $this->assertSame(2, $this->sut->save($object));
@@ -601,9 +601,27 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         // Test wrong values
 
-        // TODO - this must fail
-//         $object->emails = ['this value is too long for the created table'];
-//         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Must fail cause value is too big for the database table column size/');
+        $object->emails = ['this value is too long for the created table'];
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tddo_customer_with_array_props_emails column value data type expected: varchar.6. but received: varchar.44./');
+
+        $object->emails = ['ok', 'this value is too long for the created table'];
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tddo_customer_with_array_props_emails column value data type expected: varchar.6. but received: varchar.44./');
+
+        $object = new CustomerWithArrayProps();
+        $object->intArray = ['string'];
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tddo_customer_with_array_props_int_array column value data type expected: smallint.6. but received: varchar.6./');
+
+        $object = new CustomerWithArrayProps();
+        $object->intArray = [111, 452435234523452345];
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tddo_customer_with_array_props_int_array column value data type expected: smallint.6. but received: bigint/');
+
+        $object = new CustomerWithArrayProps();
+        $object->boolArray = [111];
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/tddo_customer_with_array_props_bool_array column value data type expected: tinyint.1. but received: smallint/');
+
+        $object = new CustomerWithArrayProps();
+        $object->name = ['storing an array into a non array prop'];
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Table does not exist: tddo_customer_with_array_props_name/');
 
         $object = new CustomerWithArrayProps();
         $object->name = 'this customer has array typed properties';
@@ -762,9 +780,9 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame('mediumint', $this->sut->getSQLTypeFromObjectProperty($object, 'sixDigitInt'));
         $this->assertSame('bigint', $this->sut->getSQLTypeFromObjectProperty($object, 'twelveDigitInt'));
         $this->assertSame('double', $this->sut->getSQLTypeFromObjectProperty($object, 'doubleValue'));
-        $this->assertSame('boolean', $this->sut->getSQLTypeFromObjectProperty($object, 'setup'));
+        $this->assertSame('tinyint(1)', $this->sut->getSQLTypeFromObjectProperty($object, 'setup'));
         $this->assertSame('varchar(75)', $this->sut->getSQLTypeFromObjectProperty($object, 'emails'));
-        $this->assertSame('boolean', $this->sut->getSQLTypeFromObjectProperty($object, 'boolArray'));
+        $this->assertSame('tinyint(1)', $this->sut->getSQLTypeFromObjectProperty($object, 'boolArray'));
         $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'intArray'));
         $this->assertSame('double', $this->sut->getSQLTypeFromObjectProperty($object, 'doubleArray'));
 

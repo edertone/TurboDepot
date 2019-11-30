@@ -19,7 +19,6 @@ use ReflectionObject;
 use UnexpectedValueException;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
 use org\turbodepot\src\main\php\model\DataBaseObject;
-use org\turbocommons\src\main\php\utils\ArrayUtils;
 use org\turbocommons\src\main\php\utils\StringUtils;
 
 
@@ -600,76 +599,87 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     private function _updateTablesToFitObject(DataBaseObject $object, string $tableName){
 
+        // Verify that array typed properties can be stored on their respective database tables
+        foreach ($this->_getArrayTypedProperties($object) as $property) {
+
+            if(count($object->{$property}) > 0){
+
+                $arrayPropTableName = $tableName.'_'.StringUtils::formatCase($property, StringUtils::FORMAT_LOWER_SNAKE_CASE);
+                $tableColumnType = $this->_db->tableGetColumnDataTypes($arrayPropTableName)['value'];
+
+                foreach ($object->{$property} as $value) {
+
+                    $this->_checkColumnFitsType($arrayPropTableName, 'value', $tableColumnType, $this->_db->getSQLTypeFromValue($value));
+                }
+            }
+        }
+
         $tableData = $this->convertObjectToTableData($object);
         $tableColumnTypes = $this->_db->tableGetColumnDataTypes($tableName);
 
         // Test that the table and object have the same columns
-        if(!ArrayUtils::isEqualTo(array_keys($tableData), array_keys($tableColumnTypes))){
+        if(array_keys($tableData) !== array_keys($tableColumnTypes)){
 
-            if($this->isTableAlteredWhenColumnsChange){
-
-                // TODO - update the table to contain the same columns as the object data, trying to destroy the less possible data
-
-            }else{
+            if(!$this->isTableAlteredWhenColumnsChange){
 
                 throw new UnexpectedValueException($tableName.' columns ('.implode(',', array_keys($tableColumnTypes)).') are different from its related object');
             }
+
+            // TODO - update the table to contain the same columns as the object data, trying to destroy the less possible data
         }
 
         // Test that all columns have data types which can store the provided object data
+        $baseObjectColumnNames = array_keys($this->_baseObjectColumns);
+
         foreach ($tableColumnTypes as $tableColumnName => $tableColumnType) {
 
             // The base object properties are ignored because they are already tested by the _validateDataBaseObject method
-            if(in_array($tableColumnName, array_keys($this->_baseObjectColumns))){
+            if(!in_array($tableColumnName, $baseObjectColumnNames)){
 
-                continue;
-            }
-
-            // Get the sql type that fits the provided object value
-            $objectColumnType = $this->_db->getSQLTypeFromValue($tableData[$tableColumnName]);
-
-            if($objectColumnType !== $tableColumnType){
-
-                // Remove the (N) part if exists from the object and table column data types
-                $objectColTypeExploded = explode('(', $objectColumnType);
-                $tableColTypeExploded = explode('(', $tableColumnType);
-
-                // Compare the object and table data types without the (N) part. They must be exactly the same or at least the table type must be able to save the
-                // object value type
-                if($objectColTypeExploded[0] !== $tableColTypeExploded[0] &&
-                    !($this->_db->isSQLDoubleType($tableColTypeExploded[0]) && $this->_db->isSQLNumericType($objectColTypeExploded[0]))){
-
-                    if($this->isTableAlteredWhenColumnsChange){
-
-                        // TODO - update the table column to accept the same data type as the object expects
-
-                    }else{
-
-                        throw new UnexpectedValueException($tableName.' column '.$tableColumnName.' data type expected: '.$tableColumnType.' but received: '.$objectColumnType);
-                    }
-                }
-
-                // Extract the N value from the datatype(N) on each table and object column data types. If the column N value is smaller than the object one,
-                // the table cannot store the object value without truncating.
-                if(isset($tableColTypeExploded[1]) && isset($objectColTypeExploded[1]) &&
-                   (int)substr($tableColTypeExploded[1], 0, -1) < (int)substr($objectColTypeExploded[1], 0, -1)){
-
-                    if($this->isColumnResizedWhenValueisBigger){
-
-                        // Increase the size of the table column so it can fit the object value
-                        $this->_db->query('ALTER TABLE '.$tableName.' MODIFY COLUMN '.$tableColumnName.' '.$objectColumnType);
-
-                    }else{
-
-                        throw new UnexpectedValueException($tableName.' column '.$tableColumnName.' data type expected: '.$tableColumnType.' but received: '.$objectColumnType);
-                    }
-                }
+                $this->_checkColumnFitsType($tableName, $tableColumnName, $tableColumnType, $this->_db->getSQLTypeFromValue($tableData[$tableColumnName]));
             }
         }
 
-        // TODO - test that array typed properties can be stored on the respective database tables
-
         return $tableData;
+    }
+
+
+    /**
+     * Verify that the specified table column type fits the specified object property value type.
+     * When the column does not fit the value type, depending on the class setup, the table will altered to fit the value type or an exception will be
+     * thrown
+     *
+     * @param string $tableName The Name for the table that contains the column to check
+     * @param string $tableColumnName The name for the column to check
+     * @param string $tableColumnType The sql type for the column to check
+     * @param string $valueType The sql type for the value that we want to test against the column
+     *
+     * @throws UnexpectedValueException If the class setup is restrictive to table changes, when column does not fit the value type,
+     *         an exception will be thrown
+     */
+    private function _checkColumnFitsType(string $tableName, string $tableColumnName, string $tableColumnType, string $valueType){
+
+        if(!$this->_db->isSQLSameType($valueType, $tableColumnType) &&
+           !($this->_db->isSQLDoubleType($tableColumnType) && $this->_db->isSQLNumericType($valueType))){
+
+            if(!$this->isTableAlteredWhenColumnsChange){
+
+                throw new UnexpectedValueException($tableName.' column '.$tableColumnName.' data type expected: '.$tableColumnType.' but received: '.$valueType);
+            }
+
+            // TODO - update the table column to accept the same data type as the object expects
+        }
+
+        if($this->_db->getSQLTypeSizeFromValue($tableColumnType) < $this->_db->getSQLTypeSizeFromValue($valueType)){
+
+            if(!$this->isColumnResizedWhenValueisBigger){
+
+                throw new UnexpectedValueException($tableName.' column '.$tableColumnName.' data type expected: '.$tableColumnType.' but received: '.$valueType);
+            }
+
+            // Increase the size of the table column so it can fit the object value
+            $this->_db->query('ALTER TABLE '.$tableName.' MODIFY COLUMN '.$tableColumnName.' '.$valueType);
+        }
     }
 
 
