@@ -63,11 +63,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * added to all the tables that are used by this class. It will be automatically added when tables are created, and expected when
      * tables are read.
      *
-     * By default, this class uses the tddo_ prefix, which is an abbreviature of TurboDepotDatabaseObjectsmanager_
+     * By default, this class uses the td_ prefix, which is an abbreviature of TurboDepot_
      *
      * @var string
      */
-    public $tablesPrefix = 'tddo_';
+    public $tablesPrefix = 'td_';
 
 
     /**
@@ -139,7 +139,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * @var array
      */
     private $_baseObjectColumns = ['db_id' => [self::INT, 11], 'uuid' => [self::STRING, 36], 'sort_index' => [self::INT, 11],
-        'creation_date' => [self::STRING, 11], 'modification_date' => [self::STRING, 11], 'deleted' => [self::STRING, 11]];
+        'creation_date' => [self::STRING, 23], 'modification_date' => [self::STRING, 23], 'deleted' => [self::STRING, 23]];
 
 
     /**
@@ -233,6 +233,12 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             throw $e;
         }
+
+        // TODO - PENDING:
+        // TODO - save multilanguage objects
+        // TODO - save a property with a complex type
+        // TODO - save an array of complex types
+        // TODO - save pictures linked to the object
     }
 
 
@@ -432,6 +438,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $colName = StringUtils::formatCase($property, StringUtils::FORMAT_LOWER_SNAKE_CASE);
 
+        // Check if the requested column is found at the base object columns
         if(in_array($colName, array_keys($this->_baseObjectColumns))){
 
             return $this->_baseObjectColumns[$colName];
@@ -479,16 +486,26 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         if(is_array($value) && count($value) > 0){
 
-            // All array elements must be the same type
-            for ($i = 0, $l = count($value); $i < $l - 1; $i++) {
+            $biggestValueIndex = 0;
+            $biggestValueSize = 0;
 
-                if(gettype($value[$i]) !== gettype($value[$i + 1])){
+            for ($i = 0, $l = count($value); $i < $l; $i++) {
+
+                // All array elements must be the same type
+                if($i < $l - 1 && gettype($value[$i]) !== gettype($value[$i + 1])){
 
                     throw new UnexpectedValueException('All array elements must be the same type');
                 }
+
+                // Calculate the index for the biggest value on the array, so it's type can be correctly detected
+                if((is_string($value[$i]) && strlen($value[$i]) > $biggestValueSize) ||
+                   ((is_int($value[$i]) || is_double($value[$i])) && $value[$i] > $biggestValueSize)){
+
+                    $biggestValueIndex = $i;
+                }
             }
 
-            return array_merge([self::ARRAY], $this->_getTypeFromValue($value[0]));
+            return array_merge([self::ARRAY], $this->_getTypeFromValue($value[$biggestValueIndex]));
         }
 
         throw new UnexpectedValueException('Could not detect type from '.gettype($value));
@@ -660,7 +677,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
     private function _checkColumnFitsType(string $tableName, string $tableColumnName, string $tableColumnType, string $valueType){
 
         if(!$this->_db->isSQLSameType($valueType, $tableColumnType) &&
-           !($this->_db->isSQLDoubleType($tableColumnType) && $this->_db->isSQLNumericType($valueType))){
+           !$this->_db->isSQLNumericTypeCompatibleWith($tableColumnType, $valueType)){
 
             if(!$this->isTableAlteredWhenColumnsChange){
 
@@ -685,6 +702,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
     /**
      * Verifies that the specified DataBaseObject instance is correctly defined to be used by this class
+     * This method tests the object at the language level: No database checks are performed, only class values and types are checked
      *
      * @param DataBaseObject $object An instance to validate
      *
@@ -731,39 +749,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
             throw new UnexpectedValueException('Creation and modification date must be null if dbid is null');
         }
 
-        foreach(array_keys(get_class_vars($class)) as $classProperty){
-
-            // Properties that start with _ are forbidden, cause they are reserved for setup private properties
-            if(substr($classProperty, 0, 1) === '_'){
-
-                throw new UnexpectedValueException('Properties starting with _ are forbidden, but found: '.$classProperty);
-            }
-
-            // Properties that have a type definition must have values of the same type
-            if($object->{$classProperty} !== null && $object->{$classProperty} !== []){
-
-                $propertyType = $this->_getTypeFromObjectProperty($object, $classProperty);
-                $valueType = $this->_getTypeFromValue($object->{$classProperty});
-
-                if($propertyType[0] === self::ARRAY){
-
-                    array_shift($propertyType);
-                }
-
-                if($valueType[0] === self::ARRAY){
-
-                    array_shift($valueType);
-                }
-
-                // The only exception is that a property of type double can store a value of type int
-                if($propertyType[0] !== $valueType[0] &&
-                    !($propertyType[0] === self::DOUBLE && $valueType[0] === self::INT)){
-
-                        throw new UnexpectedValueException('Property '.$classProperty.' ('.print_r($object->{$classProperty}, true).') does not match required type: '.$propertyType[0]);
-                }
-            }
-        }
-
         // Database objects must not have any unexpected method defined, cause they are only data containers
         if(($classMethods = (new ReflectionClass(get_class($object)))->getMethods()) > 0){
 
@@ -773,6 +758,42 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 if(!in_array($classMethod->name, ['__construct', '__set', '__get'])){
 
                     throw new UnexpectedValueException('Only __construct method is allowed for DataBaseObjects but found: '.$classMethod->name);
+                }
+            }
+        }
+
+        // Verify that all the object properties are valid regarding naming and type
+        foreach(array_keys(get_class_vars($class)) as $classProperty){
+
+            // Properties that start with _ are forbidden, cause they are reserved for setup private properties
+            if(substr($classProperty, 0, 1) === '_'){
+
+                throw new UnexpectedValueException('Properties starting with _ are forbidden, but found: '.$classProperty);
+            }
+
+            // Property type must be valid based on the object defined restrictions and it must fit the expected precision
+            if($object->{$classProperty} !== null && $object->{$classProperty} !== []){
+
+                $propertyExpectedType = $this->_getTypeFromObjectProperty($object, $classProperty);
+                $propertyValueType = $this->_getTypeFromValue($object->{$classProperty});
+
+                if($propertyExpectedType[0] === self::ARRAY){
+
+                    array_shift($propertyExpectedType);
+                    array_shift($propertyValueType);
+                }
+
+                // Check that property type matches expected one (note that double types are able to store int values)
+                if($propertyExpectedType[0] !== $propertyValueType[0] &&
+                   !($propertyExpectedType[0] === self::DOUBLE && $propertyValueType[0] === self::INT)){
+
+                        throw new UnexpectedValueException('Property '.$classProperty.' ('.print_r($object->{$classProperty}, true).') does not match required type: '.$propertyExpectedType[0]);
+                }
+
+                // The property maximum allowed type size must be respected
+                if($propertyValueType[1] > $propertyExpectedType[1]){
+
+                    throw new UnexpectedValueException('Property '.$classProperty.' value size '.$propertyValueType[1].' exceeds '.$propertyExpectedType[1]);
                 }
             }
         }

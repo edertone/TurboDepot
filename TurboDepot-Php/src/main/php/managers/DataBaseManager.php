@@ -373,6 +373,24 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
+     * Check if the provided SQL type string corresponds to a numeric double (or float) type
+     *
+     * @param string $sqlType A valid SQL type definition like int, bigint, varchar(20), double NOT NULL, varchar(250) NOT NULL etc...
+     *
+     * @return boolean True if the provided SQL type represents a numeric double type
+     */
+    public function isSQLDoubleType(string $sqlType){
+
+        $sqlTypeName = explode(' ', explode('(', trim($sqlType))[0])[0];
+
+        if($this->_engine === self::MYSQL){
+
+            return $sqlTypeName === 'double';
+        }
+    }
+
+
+    /**
      * Check if the provided SQL type string corresponds to a numeric data type like int, small int, big int, double...
      *
      * @param string $sqlType A valid SQL type definition like int, bigint, varchar(20), double NOT NULL, varchar(250) NOT NULL etc...
@@ -391,20 +409,30 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
-     * Check if the provided SQL type string corresponds to a numeric double (or float) type
+     * Check that two SQL types correspond to numeric data types and the first one has enought precision to store values from the second one
      *
-     * @param string $sqlType A valid SQL type definition like int, bigint, varchar(20), double NOT NULL, varchar(250) NOT NULL etc...
+     * @param string $sqlType1 an SQL type definition that must declare a numeric type and have enough precision to store values from sqlType2
+     * @param string $sqlType2 an SQL type definition that must declare a numeric type and which must fit into the first one
      *
-     * @return boolean True if the provided SQL type represents a numeric double type
+     * @return boolean True if both SQL type definitions are numeric and values from second SQL type fit on the first one
      */
-    public function isSQLDoubleType(string $sqlType){
-
-        $sqlTypeName = explode(' ', explode('(', trim($sqlType))[0])[0];
+    public function isSQLNumericTypeCompatibleWith(string $sqlType1, string $sqlType2){
 
         if($this->_engine === self::MYSQL){
 
-            return $sqlTypeName === 'double';
+            // List of numeric sql types sorted by smallest to biggest precision
+            $sqlTypes = ['smallint', 'mediumint', 'int', 'bigint', 'double'];
+
+            $sqlType1Index = array_search(explode(' ', explode('(', trim($sqlType1))[0])[0], $sqlTypes);
+            $sqlType2Index = array_search(explode(' ', explode('(', trim($sqlType2))[0])[0], $sqlTypes);
+
+            if($sqlType1Index !== false && $sqlType2Index !== false){
+
+                return $sqlType1Index >= $sqlType2Index;
+            }
         }
+
+        return false;
     }
 
 
