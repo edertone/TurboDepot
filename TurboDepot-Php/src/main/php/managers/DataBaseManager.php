@@ -409,6 +409,24 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
+     * Check if the provided SQL type string corresponds to a string data type like varchar
+     *
+     * @param string $sqlType A valid SQL type definition like int, bigint, varchar(20), double NOT NULL, varchar(250) NOT NULL etc...
+     *
+     * @return boolean True if the provided SQL type represents a string type
+     */
+    public function isSQLStringType(string $sqlType){
+
+        $sqlTypeName = explode(' ', explode('(', trim($sqlType))[0])[0];
+
+        if($this->_engine === self::MYSQL){
+
+            return $sqlTypeName === 'varchar';
+        }
+    }
+
+
+    /**
      * Check if the provided SQL type string corresponds to a datetime data type like datetime, datetime(3), ...
      *
      * @param string $sqlType A valid SQL type definition like int, bigint, varchar(20), double NOT NULL, varchar(250) NOT NULL etc...
@@ -495,9 +513,9 @@ class DataBaseManager extends BaseStrictClass {
      *
      * @param string $sqlType A valid SQL type definition like int, bigint, varchar(20), double NOT NULL, varchar(250) NOT NULL etc...
      *
-     * @return number The sql type size. For example:  varchar(20) will return 20, varchar(250) 250, etc..
+     * @return number The sql type size. For example: varchar(20) will return 20, varchar(250) 250, etc..
      */
-    public function getSQLTypeSizeFromValue(string $sqlType){
+    public function getSQLTypeSize(string $sqlType){
 
         $sqlTypeExploded = explode('(', $sqlType);
 
