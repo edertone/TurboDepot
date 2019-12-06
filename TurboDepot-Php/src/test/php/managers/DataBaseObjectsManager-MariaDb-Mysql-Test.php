@@ -662,8 +662,9 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         $this->assertSame(['db_id' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sort_index' => 'bigint(20) unsigned',
             'creation_date' => 'datetime(3)', 'modification_date' => 'datetime(3)', 'deleted' => 'datetime(3)', 'name' => 'varchar(20)',
-            'commercial_name' => 'varchar(25)', 'age' => 'smallint(6)', 'one_digit_int' => 'smallint(6)', 'six_digit_int' => 'mediumint(9)',
-            'twelve_digit_int' => 'bigint(20)', 'double_value' => 'double', 'setup' => 'tinyint(1)'
+            'commercial_name' => 'varchar(25)', 'birth_date' => 'datetime', 'mili_seconds_date' => 'datetime(3)', 'age' => 'smallint(6)',
+            'one_digit_int' => 'smallint(6)', 'six_digit_int' => 'mediumint(9)', 'twelve_digit_int' => 'bigint(20)', 'double_value' => 'double',
+            'setup' => 'tinyint(1)'
             ], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $this->assertSame(['db_id' => 'bigint(20) unsigned', 'value' => 'varchar(75)'], $this->db->tableGetColumnDataTypes($objectTableName.'_emails'));
@@ -671,6 +672,12 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame([], $this->db->tableGetColumnValues($objectTableName.'_emails', 'value'));
 
         // Update the object by modifying some properties values
+        $object->birthDate = '2019-12-01 12:00:01';
+        $this->assertSame(1, $this->sut->save($object));
+
+        $object->miliSecondsDate = '2019-12-01 12:00:01.123';
+        $this->assertSame(1, $this->sut->save($object));
+
         $object->emails = ['mail1', 'mail2'];
         $this->assertSame(1, $this->sut->save($object));
 
@@ -692,8 +699,6 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(['db_id' => 'bigint(20) unsigned', 'value' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName.'_double_array'));
         $this->assertSame(['1', '2', '3', '4'], $this->db->tableGetColumnValues($objectTableName.'_double_array', 'value'));
 
-        // TODO - what happens with properties that store datetime? how to manage this kind of type? create a ::DATETIME constant?
-
         // Test wrong values
         // Test exceptions
         $object = new CustomerTyped();
@@ -707,6 +712,46 @@ class DataBaseObjectsManagerTest extends TestCase {
         $object = new CustomerTyped();
         $object->commercialName = '12345678901234567890123456';
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/commercialName value size 26 exceeds 25/');
+
+        $object = new CustomerTyped();
+        $object->birthDate = 12345;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property birthDate .12345. does not match required type: DATETIME/');
+
+        $object = new CustomerTyped();
+        $object->birthDate = 'notadatestring';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer_typed column birth_date data type expected: datetime but received: varchar.14./');
+
+        $object = new CustomerTyped();
+        $object->birthDate = '2019-10-12';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer_typed column birth_date data type expected: datetime but received: varchar.10./');
+
+        $object = new CustomerTyped();
+        $object->birthDate = '2019-10-12 23:10:x';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer_typed column birth_date data type expected: datetime but received: varchar.18./');
+
+        $object = new CustomerTyped();
+        $object->birthDate = '2019-10-12 23:10:667';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property birthDate value size 20 exceeds 19/');
+
+        $object = new CustomerTyped();
+        $object->miliSecondsDate = 12345;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property miliSecondsDate .12345. does not match required type: DATETIME/');
+
+        $object = new CustomerTyped();
+        $object->miliSecondsDate = 'notadatestring';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer_typed column mili_seconds_date data type expected: datetime.3. but received: varchar.14./');
+
+        $object = new CustomerTyped();
+        $object->miliSecondsDate = '2019-10-12 23:10:26';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer_typed column mili_seconds_date data type expected: datetime.3. but received: varchar.19./');
+
+        $object = new CustomerTyped();
+        $object->miliSecondsDate = '2019-10-12 23:10:26.00';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer_typed column mili_seconds_date data type expected: datetime.3. but received: varchar.22./');
+
+        $object = new CustomerTyped();
+        $object->miliSecondsDate = '2019-10-12 23:10:26.0000';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property miliSecondsDate value size 24 exceeds 23/');
 
         $object = new CustomerTyped();
         $object->age = 'stringinsteadofint';
@@ -763,6 +808,8 @@ class DataBaseObjectsManagerTest extends TestCase {
         $object = new CustomerTyped();
         $object->doubleArray = ['string', 'string'];
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property doubleArray.*string.*does not match required type.*DOUBLE/s');
+
+        // TODO - Test that objects with wrongly defined types (sizes, values, etc...) throw exceptions
     }
 
 

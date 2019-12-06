@@ -53,6 +53,13 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
+     * Date time type that can be used to constrain object properties.
+     * Accepted size values are 19 for seconds precision and 23 for miliseconds
+     */
+    const DATETIME = 'DATETIME';
+
+
+    /**
      * Array type that can be used to constrain object properties
      */
     const ARRAY = 'ARRAY';
@@ -139,7 +146,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * @var array
      */
     private $_baseObjectColumns = ['db_id' => [self::INT, 11], 'uuid' => [self::STRING, 36], 'sort_index' => [self::INT, 11],
-        'creation_date' => [self::STRING, 23], 'modification_date' => [self::STRING, 23], 'deleted' => [self::STRING, 23]];
+        'creation_date' => [self::DATETIME, 23], 'modification_date' => [self::DATETIME, 23], 'deleted' => [self::DATETIME, 23]];
 
 
     /**
@@ -391,7 +398,9 @@ class DataBaseObjectsManager extends BaseStrictClass{
             case self::DOUBLE:
                 return $this->_db->getSQLTypeFromValue(1.0);
 
-            case self::STRING:
+            case self::DATETIME:
+                return $this->_db->getSQLDateTimeType(true, $type[1] === 23);
+
             default:
                 return $this->_db->getSQLTypeFromValue(str_repeat(' ', $type[1]));
         }
@@ -413,26 +422,27 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         // Try to find a strongly defined type for the requested column on the provided object instance.
         // This will have preference over the type that is automatically detected from the table value.
-        $objectProperties = array_keys(get_object_vars($object));
         $objectDefinedTypes = (new ReflectionObject($object))->getProperty('_types');
         $objectDefinedTypes->setAccessible(true);
         $typesSetup = $objectDefinedTypes->getValue($object);
 
-        foreach ($typesSetup as $typeProperty => $propertyTypeDefs) {
+        if(isset($typesSetup[$property])){
+
+            if($typesSetup[$property][0] === self::ARRAY){
+
+                return [$typesSetup[$property][0], $typesSetup[$property][1], isset($typesSetup[$property][2]) ? $typesSetup[$property][2] : 1];
+            }
+
+            return [$typesSetup[$property][0], isset($typesSetup[$property][1]) ? $typesSetup[$property][1] : 1];
+        }
+
+        $objectProperties = array_keys(get_object_vars($object));
+
+        foreach (array_keys($typesSetup) as $typeProperty) {
 
             if(!in_array($typeProperty, $objectProperties)){
 
                 throw new UnexpectedValueException('Cannot define type for '.$typeProperty.' cause it does not exist on class');
-            }
-
-            if($typeProperty === $property){
-
-                if($propertyTypeDefs[0] === self::ARRAY){
-
-                    return [$propertyTypeDefs[0], $propertyTypeDefs[1], isset($propertyTypeDefs[2]) ? $propertyTypeDefs[2] : 1];
-                }
-
-                return [$propertyTypeDefs[0], isset($propertyTypeDefs[1]) ? $propertyTypeDefs[1] : 1];
             }
         }
 
@@ -676,8 +686,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     private function _checkColumnFitsType(string $tableName, string $tableColumnName, string $tableColumnType, string $valueType){
 
+        $isTableColumnDateType = false;
+
         if(!$this->_db->isSQLSameType($valueType, $tableColumnType) &&
-           !$this->_db->isSQLNumericTypeCompatibleWith($tableColumnType, $valueType)){
+           !$this->_db->isSQLNumericTypeCompatibleWith($tableColumnType, $valueType) &&
+           !($isTableColumnDateType = $this->_db->isSQLDateTimeType($tableColumnType) && $this->_db->isSQLStringType($valueType))){
 
             if(!$this->isTableAlteredWhenColumnsChange){
 
@@ -687,7 +700,12 @@ class DataBaseObjectsManager extends BaseStrictClass{
             // TODO - update the table column to accept the same data type as the object expects
         }
 
-        if($this->_db->getSQLTypeSizeFromValue($tableColumnType) < $this->_db->getSQLTypeSizeFromValue($valueType)){
+        $valueTypeSize = $this->_db->getSQLTypeSize($valueType);
+        $tableColumnTypeSize = $this->_db->getSQLTypeSize($tableColumnType);
+
+        if($tableColumnTypeSize < $valueTypeSize &&
+           !($isTableColumnDateType && $tableColumnTypeSize === 0 && ($valueTypeSize === 1 || $valueTypeSize === 19)) &&
+           !($isTableColumnDateType && $tableColumnTypeSize === 3 && ($valueTypeSize === 1 || $valueTypeSize === 23))){
 
             if(!$this->isColumnResizedWhenValueisBigger){
 
@@ -783,11 +801,12 @@ class DataBaseObjectsManager extends BaseStrictClass{
                     array_shift($propertyValueType);
                 }
 
-                // Check that property type matches expected one (note that double types are able to store int values)
+                // Check that property type matches expected one (note that double types are able to store int values and datetime types string values)
                 if($propertyExpectedType[0] !== $propertyValueType[0] &&
-                   !($propertyExpectedType[0] === self::DOUBLE && $propertyValueType[0] === self::INT)){
+                   !($propertyExpectedType[0] === self::DOUBLE && $propertyValueType[0] === self::INT) &&
+                   !($propertyExpectedType[0] === self::DATETIME && $propertyValueType[0] === self::STRING && in_array($propertyValueType[0], [0, 19, 23]))){
 
-                        throw new UnexpectedValueException('Property '.$classProperty.' ('.print_r($object->{$classProperty}, true).') does not match required type: '.$propertyExpectedType[0]);
+                    throw new UnexpectedValueException('Property '.$classProperty.' ('.print_r($object->{$classProperty}, true).') does not match required type: '.$propertyExpectedType[0]);
                 }
 
                 // The property maximum allowed type size must be respected

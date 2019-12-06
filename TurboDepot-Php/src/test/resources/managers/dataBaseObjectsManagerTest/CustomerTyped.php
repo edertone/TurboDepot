@@ -18,6 +18,8 @@ class CustomerTyped extends DataBaseObject{
 
         $this->_types['name'] = [DataBaseObjectsManager::STRING, 20];
         $this->_types['commercialName'] = [DataBaseObjectsManager::STRING, 25];
+        $this->_types['birthDate'] = [DataBaseObjectsManager::DATETIME, 19];
+        $this->_types['miliSecondsDate'] = [DataBaseObjectsManager::DATETIME, 23];
         $this->_types['age'] = [DataBaseObjectsManager::INT, 2];
         $this->_types['oneDigitInt'] = [DataBaseObjectsManager::INT, 1];
         $this->_types['sixDigitInt'] = [DataBaseObjectsManager::INT, 6];
@@ -34,6 +36,10 @@ class CustomerTyped extends DataBaseObject{
     public $name = '';
 
     public $commercialName = '';
+
+    public $birthDate = '';
+
+    public $miliSecondsDate = '';
 
     public $age = 0;
 
