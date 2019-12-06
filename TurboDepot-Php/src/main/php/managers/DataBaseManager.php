@@ -409,6 +409,24 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
+     * Check if the provided SQL type string corresponds to a datetime data type like datetime, datetime(3), ...
+     *
+     * @param string $sqlType A valid SQL type definition like int, bigint, varchar(20), double NOT NULL, varchar(250) NOT NULL etc...
+     *
+     * @return boolean True if the provided SQL type represents a datetime type
+     */
+    public function isSQLDateTimeType(string $sqlType){
+
+        $sqlTypeName = explode(' ', explode('(', trim($sqlType))[0])[0];
+
+        if($this->_engine === self::MYSQL){
+
+            return $sqlTypeName === 'datetime';
+        }
+    }
+
+
+    /**
      * Check that two SQL types correspond to numeric data types and the first one has enought precision to store values from the second one
      *
      * @param string $sqlType1 an SQL type definition that must declare a numeric type and have enough precision to store values from sqlType2
