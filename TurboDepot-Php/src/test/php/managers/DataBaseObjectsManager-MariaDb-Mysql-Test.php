@@ -11,20 +11,23 @@
 
 namespace org\turbodepot\src\test\php\managers;
 
-use stdClass;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 use org\turbocommons\src\main\php\utils\StringUtils;
-use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 use org\turbodepot\src\main\php\managers\DataBaseManager;
+use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\Customer;
-use org\turbotesting\src\main\php\utils\AssertUtils;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongMethods;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerTyped;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongPropThatStartsWithUnderscore;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNullNonTypedProperty;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNonExistantTypedProperty;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongEmptyNonTypedArrayProperty;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerWithArrayProps;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongEmptyNonTypedArrayProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongMethods;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNonExistantTypedProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNullNonTypedProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongPropThatStartsWithUnderscore;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongStringTypeSize;
+use org\turbotesting\src\main\php\utils\AssertUtils;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongDateTypeSize;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongArrayTypeSize;
 
 
 /**
@@ -808,6 +811,10 @@ class DataBaseObjectsManagerTest extends TestCase {
         $object = new CustomerTyped();
         $object->doubleArray = ['string', 'string'];
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property doubleArray.*string.*does not match required type.*DOUBLE/s');
+
+        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongStringTypeSize()); }, '/name is defined as STRING but size is invalid/');
+        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongDateTypeSize()); }, '/date DATETIME size must be 19 or 23/');
+        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongArrayTypeSize()); }, '/array is defined as an array of STRING but size is invalid/');
 
         // TODO - Test that objects with wrongly defined types (sizes, values, etc...) throw exceptions
     }

@@ -430,7 +430,22 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             if($typesSetup[$property][0] === self::ARRAY){
 
+                if(isset($typesSetup[$property][2]) && !is_int($typesSetup[$property][2])){
+
+                    throw new UnexpectedValueException($property.' is defined as an array of '.$typesSetup[$property][1].' but size is invalid');
+                }
+
                 return [$typesSetup[$property][0], $typesSetup[$property][1], isset($typesSetup[$property][2]) ? $typesSetup[$property][2] : 1];
+            }
+
+            if(isset($typesSetup[$property][1]) && !is_int($typesSetup[$property][1])){
+
+                throw new UnexpectedValueException($property.' is defined as '.$typesSetup[$property][0].' but size is invalid');
+            }
+
+            if($typesSetup[$property][0] === self::DATETIME && !in_array($typesSetup[$property][1], [19, 23])){
+
+                throw new UnexpectedValueException($property.' DATETIME size must be 19 or 23');
             }
 
             return [$typesSetup[$property][0], isset($typesSetup[$property][1]) ? $typesSetup[$property][1] : 1];
