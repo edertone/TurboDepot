@@ -245,7 +245,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
         // TODO - save multilanguage objects
         // TODO - save a property with a complex type
         // TODO - save an array of complex types
-        // TODO - save pictures linked to the object
+        // TODO - save pictures and binary files linked to the object
     }
 
 
@@ -422,7 +422,8 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         // Try to find a strongly defined type for the requested column on the provided object instance.
         // This will have preference over the type that is automatically detected from the table value.
-        $objectDefinedTypes = (new ReflectionObject($object))->getProperty('_types');
+        $reflectionObject = new ReflectionObject($object);
+        $objectDefinedTypes = $reflectionObject->getProperty('_types');
         $objectDefinedTypes->setAccessible(true);
         $typesSetup = $objectDefinedTypes->getValue($object);
 
@@ -451,20 +452,35 @@ class DataBaseObjectsManager extends BaseStrictClass{
             return [$typesSetup[$property][0], isset($typesSetup[$property][1]) ? $typesSetup[$property][1] : 1];
         }
 
-        $objectProperties = array_keys(get_object_vars($object));
+        // If types definition are mandatory, we will check here that all the object properties have a defined data type
+        $colName = StringUtils::formatCase($property, StringUtils::FORMAT_LOWER_SNAKE_CASE);
+        $isBaseColumn = in_array($colName, array_keys($this->_baseObjectColumns));
 
-        foreach (array_keys($typesSetup) as $typeProperty) {
+        if(count($typesSetup) > 0 && !$isBaseColumn){
 
-            if(!in_array($typeProperty, $objectProperties)){
+            $isTypingMandatory = $reflectionObject->getProperty('_isTypingMandatory');
+            $isTypingMandatory->setAccessible(true);
+            $isTypingMandatory = $isTypingMandatory->getValue($object);
 
-                throw new UnexpectedValueException('Cannot define type for '.$typeProperty.' cause it does not exist on class');
+            if($isTypingMandatory){
+
+                throw new UnexpectedValueException($property.' has no defined type but typing is mandatory. Define a type or disable this restriction by setting _isTypingMandatory = false');
             }
         }
 
-        $colName = StringUtils::formatCase($property, StringUtils::FORMAT_LOWER_SNAKE_CASE);
+        // Check that all the defined types belong to object properties.
+        $objectProperties = array_keys(get_object_vars($object));
+
+        foreach (array_keys($typesSetup) as $propertyType) {
+
+            if(!in_array($propertyType, $objectProperties)){
+
+                throw new UnexpectedValueException('Cannot define type for '.$propertyType.' cause it does not exist on class');
+            }
+        }
 
         // Check if the requested column is found at the base object columns
-        if(in_array($colName, array_keys($this->_baseObjectColumns))){
+        if($isBaseColumn){
 
             return $this->_baseObjectColumns[$colName];
         }

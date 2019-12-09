@@ -21,9 +21,24 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
+     * If set to true and the types array is used to specify data types for the object properties, all the properties must have their respective type
+     * definition or an exception will be thrown.
+     *
+     * If set to false, it will be allowed to leave one or more object properties without type definition.
+     *
+     * This flag won't have any effect if the _types array is not used
+     *
+     * @see DataBaseObject::$_types
+     *
+     * @var string
+     */
+    protected $_isTypingMandatory = true;
+
+
+    /**
      * Associative array that defines the data types to use with the object properties. Each array key must be the object property to set
-     * and the value an array with the following elements:<br>
-     * 1. The property data type: DataBaseObjectsManager::BOOL, ::INT, ::DOUBLE, ::STRING or ::ARRAY<br>
+     * and each value an array with the following elements:<br>
+     * 1. The property data type: DataBaseObjectsManager::BOOL, ::INT, ::DOUBLE, ::STRING, ::DATETIME or ::ARRAY<br>
      * 2. The property data size (for int and string values the maximum number of digits that can be stored)
      * 3. True if the property can have null values, false otherwise
      *
@@ -64,7 +79,7 @@ abstract class DataBaseObject extends BaseStrictClass{
 
     /**
      * When an object is deleted, the date and time of deletion is stored on this property, meaning it's been moved to trash. To delete it totally,
-     * we need to empty the trash
+     * we need to empty the trash (or disable the trash feature)
      */
     public $deleted = null;
 }

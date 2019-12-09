@@ -28,6 +28,8 @@ use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\Object
 use org\turbotesting\src\main\php\utils\AssertUtils;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongDateTypeSize;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongArrayTypeSize;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNotAllTypesDefined;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithTypingDisabled;
 
 
 /**
@@ -702,6 +704,9 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(['db_id' => 'bigint(20) unsigned', 'value' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName.'_double_array'));
         $this->assertSame(['1', '2', '3', '4'], $this->db->tableGetColumnValues($objectTableName.'_double_array', 'value'));
 
+        $object = new ObjectWithTypingDisabled();
+        $this->assertSame(1, $this->sut->save($object));
+
         // Test wrong values
         // Test exceptions
         $object = new CustomerTyped();
@@ -815,8 +820,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongStringTypeSize()); }, '/name is defined as STRING but size is invalid/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongDateTypeSize()); }, '/date DATETIME size must be 19 or 23/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongArrayTypeSize()); }, '/array is defined as an array of STRING but size is invalid/');
-
-        // TODO - Test that objects with wrongly defined types (sizes, values, etc...) throw exceptions
+        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNotAllTypesDefined()); }, '/notDefined has no defined type but typing is mandatory. Define a type or disable this restriction by setting _isTypingMandatory = false/');
     }
 
 
@@ -921,7 +925,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         // Test exceptions
         AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, 'nonexistantproperty'); }, '/Undefined property: nonexistantproperty/');
         AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, ''); }, '/Undefined property:/');
-        AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty(new stdClass(), ''); }, '/Argument 1 passed to .*getSQLTypeFromObjectProperty.*must be an instance of.*DataBaseObject.*stdClass given/');
+        AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(new stdClass(), ''); }, '/Argument 1 passed to .*getSQLTypeFromObjectProperty.*must be an instance of.*DataBaseObject.*stdClass given/');
     }
 }
 
