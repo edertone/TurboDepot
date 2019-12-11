@@ -325,11 +325,6 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function query($query){
 
-        if(!$this->isConnected()){
-
-            throw new UnexpectedValueException('Not connected to a database host');
-        }
-
         $result = false;
 
         $queryStart = microtime(true);
@@ -344,21 +339,13 @@ class DataBaseManager extends BaseStrictClass {
 
                 $this->_lastError = StringUtils::isEmpty($errorMessage) ? 'unknown sql error' : $errorMessage;
 
+            }else if($mysqlResult === true){
+
+                $result = mysqli_affected_rows($this->_mysqlConnectionId);
+
             }else{
 
-                if($mysqlResult === true){
-
-                    $result = mysqli_affected_rows($this->_mysqlConnectionId);
-
-                }else{
-
-                    $result = [];
-
-                    while($line = mysqli_fetch_assoc($mysqlResult)){
-
-                        $result[] = $line;
-                    }
-                }
+                $result = mysqli_fetch_all($mysqlResult, MYSQLI_ASSOC);
             }
         }
 

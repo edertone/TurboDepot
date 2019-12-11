@@ -715,7 +715,7 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         $object = new CustomerTyped();
         $object->name = 123123;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property name .123123. does not match required type: STRING/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property name .123123. does not match STRING.20./');
 
         $object = new CustomerTyped();
         $object->commercialName = '12345678901234567890123456';
@@ -723,51 +723,51 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         $object = new CustomerTyped();
         $object->birthDate = 12345;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property birthDate .12345. does not match required type: DATETIME/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property birthDate .12345. does not match DATETIME.19./');
 
         $object = new CustomerTyped();
         $object->birthDate = 'notadatestring';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customertyped column birthdate data type expected: datetime but received: varchar.14./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property birthDate .notadatestring. does not match DATETIME.19./');
 
         $object = new CustomerTyped();
         $object->birthDate = '2019-10-12';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customertyped column birthdate data type expected: datetime but received: varchar.10./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property birthDate .2019-10-12. does not match DATETIME.19./');
 
         $object = new CustomerTyped();
         $object->birthDate = '2019-10-12 23:10:x';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customertyped column birthdate data type expected: datetime but received: varchar.18./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property birthDate .2019-10-12 23:10:x. does not match DATETIME.19./');
 
         $object = new CustomerTyped();
         $object->birthDate = '2019-10-12 23:10:667';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property birthDate value size 20 exceeds 19/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property birthDate .2019-10-12 23:10:667. does not match DATETIME.19./');
 
         $object = new CustomerTyped();
         $object->miliSecondsDate = 12345;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property miliSecondsDate .12345. does not match required type: DATETIME/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property miliSecondsDate .12345. does not match DATETIME.23./');
 
         $object = new CustomerTyped();
         $object->miliSecondsDate = 'notadatestring';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customertyped column milisecondsdate data type expected: datetime.3. but received: varchar.14./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property miliSecondsDate .notadatestring. does not match DATETIME.23./');
 
         $object = new CustomerTyped();
         $object->miliSecondsDate = '2019-10-12 23:10:26';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customertyped column milisecondsdate data type expected: datetime.3. but received: varchar.19./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property miliSecondsDate .2019-10-12 23:10:26. does not match DATETIME.23./');
 
         $object = new CustomerTyped();
         $object->miliSecondsDate = '2019-10-12 23:10:26.00';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customertyped column milisecondsdate data type expected: datetime.3. but received: varchar.22./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property miliSecondsDate .2019-10-12 23:10:26.00. does not match DATETIME.23./');
 
         $object = new CustomerTyped();
         $object->miliSecondsDate = '2019-10-12 23:10:26.0000';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property miliSecondsDate value size 24 exceeds 23/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property miliSecondsDate .2019-10-12 23:10:26.0000. does not match DATETIME.23./');
 
         $object = new CustomerTyped();
         $object->age = 'stringinsteadofint';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property age .stringinsteadofint. does not match required type: INT/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property age .stringinsteadofint. does not match INT.2./');
 
         $object = new CustomerTyped();
         $object->age = 10.2;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property age .10.2. does not match required type: INT/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property age .10.2. does not match INT.2./');
 
         $object = new CustomerTyped();
         $object->age = 123;
@@ -787,15 +787,19 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         $object = new CustomerTyped();
         $object->doubleValue = 'string';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property doubleValue .string. does not match required type: DOUBLE/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property doubleValue .string. does not match DOUBLE.1./');
 
         $object = new CustomerTyped();
         $object->setup = 'notabool';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property setup .notabool. does not match required type: BOOL/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property setup .notabool. does not match BOOL.1./');
+
+        $object = new CustomerTyped();
+        $object->emails = 12;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property emails.*does not match STRING.75./s');
 
         $object = new CustomerTyped();
         $object->emails = [12, 123];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property emails.*does not match required type: STRING/s');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property emails.*does not match STRING.75./s');
 
         $object = new CustomerTyped();
         $object->emails = ['a', 'aaa', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'];
@@ -803,11 +807,11 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         $object = new CustomerTyped();
         $object->boolArray = ['string', 'string'];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property boolArray.*string.*does not match required type.*BOOL/s');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property boolArray.*string.*does not match BOOL.1./s');
 
         $object = new CustomerTyped();
         $object->intArray = ['string', 'string'];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property intArray.*string.*does not match required type.*INT/s');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property intArray.*string.*does not match INT.3./s');
 
         $object = new CustomerTyped();
         $object->intArray = [1, 22, 333, 4444];
@@ -815,7 +819,7 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         $object = new CustomerTyped();
         $object->doubleArray = ['string', 'string'];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property doubleArray.*string.*does not match required type.*DOUBLE/s');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property doubleArray.*string.*does not match DOUBLE.1./s');
 
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongStringTypeSize()); }, '/name is defined as STRING but size is invalid/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongDateTypeSize()); }, '/date DATETIME size must be 19 or 23/');

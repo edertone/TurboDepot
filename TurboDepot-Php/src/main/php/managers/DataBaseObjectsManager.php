@@ -66,6 +66,18 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
+     * TODO
+     */
+    const MULTI_LANGUAGE = 'MULTI_LANGUAGE';
+
+
+    /**
+     * TODO
+     */
+    const NOT_NULL = 'NOT_NULL';
+
+
+    /**
      * To prevent name collisions with any other possible existing database tables, we can define a prefix here that will be
      * added to all the tables that are used by this class. It will be automatically added when tables are created, and expected when
      * tables are read.
@@ -75,6 +87,13 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * @var string
      */
     public $tablesPrefix = 'td_';
+
+
+    /**
+     * TODO - this should be optional and may be specifically modified by each databaseobject if necessary
+     * @var string
+     */
+    public $isUuidEnabled = false;
 
 
     /**
@@ -140,8 +159,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
     /**
      * Contains the list of table column names and class types that must exist on all the created objects by default.
      * These represent the DataBaseObject base properties that are common for all the objects.
-     *
-     * TODO - date types are not correctly defined
      *
      * @var array
      */
@@ -384,12 +401,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $type = $this->_getTypeFromObjectProperty($object, $property);
 
-        // Array type first element is the array definition itself, so it must be removed
-        if($type[0] === self::ARRAY){
-
-            array_shift($type);
-        }
-
         switch ($type[0]) {
 
             case self::BOOL:
@@ -411,15 +422,18 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Given the name for an object property, this method will give its class type
+     * Given the name for an object property, this method will give an array with all the information about its class defined type
      *
      * @param DataBaseObject $object A valid database object instance
-     * @param string $property The name of a property for which we want to obtain the type
+     * @param string $property The name of a property for which we want to obtain the class type info
      *
-     * @return array An array with 2 or 3 possible values:<br>
-     *         First will be the type (DataBaseObjectsManager::BOOL, ::INT, ::DOUBLE, ::STRING, ::ARRAY)<br>
-     *         Second one will be the type size (digits) when the type is a simple one, or the type for each array element if the type is an array
-     *         Third one will be the type size if we are declaring an array
+     * @return array An array with the following possible values:<br>
+     *         First element: The property type (DataBaseObjectsManager::BOOL, DataBaseObjectsManager::INT, DataBaseObjectsManager::DOUBLE, DataBaseObjectsManager::STRING, DataBaseObjectsManager::DATETIME)<br>
+     *         Second element: The type precision size (or digits) when the type is a simple one, or the type for each array element if the type is an array<br>
+     *         Next elements may contain any of the following extra flags:<br>
+     *         - DataBaseObjectsManager::NOT_NULL If the property does not allow null values
+     *         - DataBaseObjectsManager::MULTI_LANGUAGE If the property values can be different depending on the language
+     *         - DataBaseObjectsManager::ARRAY If the property is an array of elements, in which case each element will match the same type definition
      */
     private function _getTypeFromObjectProperty(DataBaseObject $object, string $property){
 
@@ -432,32 +446,12 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         if(isset($typesSetup[$property])){
 
-            if($typesSetup[$property][0] === self::ARRAY){
-
-                if(isset($typesSetup[$property][2]) && !is_int($typesSetup[$property][2])){
-
-                    throw new UnexpectedValueException($property.' is defined as an array of '.$typesSetup[$property][1].' but size is invalid');
-                }
-
-                return [$typesSetup[$property][0], $typesSetup[$property][1], isset($typesSetup[$property][2]) ? $typesSetup[$property][2] : 1];
-            }
-
-            if(isset($typesSetup[$property][1]) && !is_int($typesSetup[$property][1])){
-
-                throw new UnexpectedValueException($property.' is defined as '.$typesSetup[$property][0].' but size is invalid');
-            }
-
-            if($typesSetup[$property][0] === self::DATETIME && !in_array($typesSetup[$property][1], [19, 23])){
-
-                throw new UnexpectedValueException($property.' DATETIME size must be 19 or 23');
-            }
-
-            return [$typesSetup[$property][0], isset($typesSetup[$property][1]) ? $typesSetup[$property][1] : 1];
+            return $this->_validateAndFormatTypeArray($typesSetup[$property], $property);
         }
 
         // If types definition are mandatory, we will check here that all the object properties have a defined data type
         $colName = strtolower($property);
-        $isBaseColumn = in_array($colName, array_keys($this->_baseObjectColumns));
+        $isBaseColumn = in_array($colName, array_keys($this->_baseObjectColumns), true);
 
         if(count($typesSetup) > 0 && !$isBaseColumn){
 
@@ -476,7 +470,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         foreach (array_keys($typesSetup) as $propertyType) {
 
-            if(!in_array($propertyType, $objectProperties)){
+            if(!in_array($propertyType, $objectProperties, true)){
 
                 throw new UnexpectedValueException('Cannot define type for '.$propertyType.' cause it does not exist on class');
             }
@@ -496,6 +490,76 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             throw new UnexpectedValueException('Could not detect type from property '.$property.': '.$e->getMessage());
         }
+    }
+
+
+    /**
+     * Aux method that will process a raw array containing type definitions like [STRING, 20], [10, INT, ARRAY],...
+     * It will check that all values are valid to define a property type and return the same array but sorted as this class expects:
+     * First element will be the data type (STRING, BOOL, INT, ...)
+     * Second element will be an integer wit the data size
+     * All the next elements will contain optional flags like ARRAY, NOTNULL, MULTILANGUAGE, etc..
+     *
+     * @param array $array An unordered array containing type definitions
+     * @param string $property The name for the property to which the type defs are applied
+     *
+     * @throws UnexpectedValueException In case the type definitions are invalid
+     *
+     * @return array The expected array
+     */
+    private function _validateAndFormatTypeArray(array $array, $property){
+
+        $result = ['', 1];
+        $isArray = false;
+        $isNotNull = false;
+        $isMultiLanguage = false;
+
+        foreach ($array as $item) {
+
+            switch ($item) {
+                case self::BOOL: case self::INT: case self::DOUBLE: case self::STRING: case self::DATETIME:
+                    $result[0] = $item;
+                    break;
+
+                case self::ARRAY:
+                    $isArray = true;
+                    break;
+
+                case self::MULTI_LANGUAGE:
+                    $isMultiLanguage = true;
+                    break;
+
+                default:
+                    $result[1] = $item;
+            }
+        }
+
+        if(!is_int($result[1])){
+
+            throw new UnexpectedValueException($property.' is defined as '.(($isArray) ? 'an array of ' : '').$result[0].' but size is invalid');
+        }
+
+        if($result[0] === self::DATETIME && !in_array($result[1], [19, 23], true)){
+
+            throw new UnexpectedValueException($property.' DATETIME size must be 19 or 23');
+        }
+
+        if($isArray){
+
+            $result[] = self::ARRAY;
+        }
+
+        if($isNotNull){
+
+            $result[] = self::NOT_NULL;
+        }
+
+        if($isMultiLanguage){
+
+            $result[] = self::MULTI_LANGUAGE;
+        }
+
+        return $result;
     }
 
 
@@ -549,7 +613,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 }
             }
 
-            return array_merge([self::ARRAY], $this->_getTypeFromValue($value[$biggestValueIndex]));
+            return array_merge($this->_getTypeFromValue($value[$biggestValueIndex]), [self::ARRAY]);
         }
 
         throw new UnexpectedValueException('Could not detect type from '.gettype($value));
@@ -571,7 +635,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             try {
 
-                if($this->_getTypeFromObjectProperty($object, $property)[0] === self::ARRAY){
+                if(in_array(self::ARRAY, $this->_getTypeFromObjectProperty($object, $property), true)){
 
                     $result[] = $property;
                 }
@@ -693,7 +757,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
         foreach ($tableColumnTypes as $tableColumnName => $tableColumnType) {
 
             // The base object properties are ignored because they are already tested by the _validateDataBaseObject method
-            if(!in_array($tableColumnName, $baseObjectColumnNames)){
+            if(!in_array($tableColumnName, $baseObjectColumnNames, true)){
 
                 $this->_checkColumnFitsType($tableName, $tableColumnName, $tableColumnType, $this->_db->getSQLTypeFromValue($tableData[$tableColumnName]));
             }
@@ -805,7 +869,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             foreach($classMethods as $classMethod){
 
                 // setup() and BaseStrictClass methods are the only ones that are allowed
-                if(!in_array($classMethod->name, ['__construct', '__set', '__get'])){
+                if(!in_array($classMethod->name, ['__construct', '__set', '__get'], true)){
 
                     throw new UnexpectedValueException('Only __construct method is allowed for DataBaseObjects but found: '.$classMethod->name);
                 }
@@ -827,18 +891,12 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 $propertyExpectedType = $this->_getTypeFromObjectProperty($object, $classProperty);
                 $propertyValueType = $this->_getTypeFromValue($object->{$classProperty});
 
-                if($propertyExpectedType[0] === self::ARRAY){
-
-                    array_shift($propertyExpectedType);
-                    array_shift($propertyValueType);
-                }
-
                 // Check that property type matches expected one (note that double types are able to store int values and datetime types string values)
                 if($propertyExpectedType[0] !== $propertyValueType[0] &&
                    !($propertyExpectedType[0] === self::DOUBLE && $propertyValueType[0] === self::INT) &&
-                   !($propertyExpectedType[0] === self::DATETIME && $propertyValueType[0] === self::STRING && in_array($propertyValueType[0], [0, 19, 23]))){
+                    !($propertyExpectedType[0] === self::DATETIME && $propertyValueType[0] === self::STRING && in_array(strlen($object->{$classProperty}), [0, $propertyExpectedType[1]], true))){
 
-                    throw new UnexpectedValueException('Property '.$classProperty.' ('.print_r($object->{$classProperty}, true).') does not match required type: '.$propertyExpectedType[0]);
+                        throw new UnexpectedValueException('Property '.$classProperty.' ('.print_r($object->{$classProperty}, true).') does not match '.$propertyExpectedType[0].'('.$propertyExpectedType[1].')');
                 }
 
                 // The property maximum allowed type size must be respected
