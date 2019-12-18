@@ -131,6 +131,12 @@ class DataBaseManager extends BaseStrictClass {
             throw new UnexpectedValueException('Could not set connection encoding');
         }
 
+        // Timezone is set to UTC to prevent date and time problems
+        if(!mysqli_query($id, "SET SESSION time_zone = '+00:00'")){
+
+            throw new UnexpectedValueException('Could not set connection to UTC'.mysqli_error($id));
+        }
+
         $this->_engine = self::MYSQL;
         $this->_mysqlConnectionId = $id;
         $this->_selectedDatabase = StringUtils::isEmpty((string)$dataBaseName) ? '' : $dataBaseName;
@@ -478,17 +484,29 @@ class DataBaseManager extends BaseStrictClass {
      * Get the SQL type string definition for a date and time database value
      *
      * @param bool $isNullable If set to true, the generated SQL type definition will allow null values, if set to false the type won't allow null values
-     * @param bool $acceptMiliseconds If set to true, the generated SQL type definition will accept miliseconds precision, if set to false only seconds
+     * @param bool $secondsPrecision Set it to 0 to use only seconds, to 3 for miliseconds precision and to 6 for microseconds precision
      *
      * @return string A valid datetime SQL type string definition like 'datetime', 'datetime(3)', 'datetime NOT NULL', etc...
      */
-    public function getSQLDateTimeType(bool $isNullable = true, bool $acceptMiliseconds = false){
+    public function getSQLDateTimeType(bool $isNullable = true, int $secondsPrecision = 0){
 
         $sqlNotNull = $isNullable ? '' : ' NOT NULL';
 
         if($this->_engine === self::MYSQL){
 
-            $sqlPrecision = $acceptMiliseconds ? '(3)' : '';
+            switch ($secondsPrecision) {
+
+                case 3:
+                    $sqlPrecision = '(3)';
+                    break;
+
+                case 6:
+                    $sqlPrecision = '(6)';
+                    break;
+
+                default:
+                    $sqlPrecision = '';
+            }
 
             return 'datetime'.$sqlPrecision.$sqlNotNull;
         }
