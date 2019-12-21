@@ -31,6 +31,7 @@ use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\Object
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNotAllTypesDefined;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithTypingDisabled;
 use org\turbocommons\src\main\php\model\DateTimeObject;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithDateTimeNotNull;
 
 
 /**
@@ -437,34 +438,42 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         $object = new Customer();
         $object->creationDate = 9234;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer creationDate: 9234/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/creationDate .9234. is not a DATETIME.6./');
 
         $object = new Customer();
         $object->creationDate = 'not a date';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer creationDate: not a date/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/creationDate .not a date. is not a DATETIME.6./');
 
         $object = new Customer();
         $object->creationDate = '2019-11-16 10:41:38.123';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/creationDate .2019-11-16 10:41:38.123. must have a UTC timezone/');
+
+        $object = new Customer();
+        $object->creationDate = '2019-11-16 10:41:38.123456Z';
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Creation and modification date must be null if dbid is null/');
 
         $object = new Customer();
         $object->modificationDate = '2019-11-16 10:41:38.123';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/modificationDate .2019-11-16 10:41:38.123. must have a UTC timezone/');
+
+        $object = new Customer();
+        $object->modificationDate = '2019-11-16 10:41:38.123456Z';
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Creation and modification date must be null if dbid is null/');
 
         $object = new Customer();
         $object->modificationDate = 1;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer modificationDate: 1/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/modificationDate .1. is not a DATETIME.6./');
 
         $object = new Customer();
         $object->modificationDate = 'hello';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer modificationDate: hello/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/modificationDate .hello. is not a DATETIME.6./');
         $this->assertSame(null, $object->dbId);
         $this->assertSame(null, $object->creationDate);
         $this->assertSame('hello', $object->modificationDate);
 
         $object = new Customer();
         $object->deleted = 1;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer deleted: 1/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/deleted .1. is not a DATETIME.6./');
 
         $object = new Customer();
         $object->name = 12345;
@@ -514,28 +523,92 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         // Test that creation and modification dates are correct
         $object = new Customer();
-        $dateBeforeCreation = new DateTimeObject();
+        $dateBeforeCreation = (new DateTimeObject())->toString();
         $this->assertSame(1, $this->sut->save($object));
-        $dateAfterCreation = new DateTimeObject();
+        $dateAfterCreation = (new DateTimeObject())->toString();
 
         $objectCreationDate = $this->db->tableGetColumnValues($objectTableName, 'creationDate')[0];
         $objectModificationDate = $this->db->tableGetColumnValues($objectTableName, 'modificationDate')[0];
         $this->assertTrue((new DateTimeObject($objectCreationDate))->isEqualTo(new DateTimeObject($object->creationDate)));
+        $this->assertTrue((new DateTimeObject($objectModificationDate))->isEqualTo(new DateTimeObject($object->modificationDate)));
 
         $this->assertSame($objectCreationDate, $objectModificationDate);
-        $this->assertContains(DateTimeObject::compare($dateBeforeCreation, $objectCreationDate), [0, 2], $dateBeforeCreation->toString().' must be before '.$objectCreationDate);
-        $this->assertContains(DateTimeObject::compare($dateAfterCreation, $objectCreationDate), [0, 1], $dateAfterCreation->toString().' must be after '.$objectCreationDate);
+        $this->assertContains(DateTimeObject::compare($dateBeforeCreation, $objectCreationDate), [0, 2], $dateBeforeCreation.' must be before '.$objectCreationDate);
+        $this->assertContains(DateTimeObject::compare($dateAfterCreation, $objectCreationDate), [0, 1], $dateAfterCreation.' must be after '.$objectCreationDate);
+        $this->assertContains(DateTimeObject::compare($dateBeforeCreation, $objectModificationDate), [0, 2], $dateBeforeCreation.' must be before '.$objectModificationDate);
+        $this->assertContains(DateTimeObject::compare($dateAfterCreation, $objectModificationDate), [0, 1], $dateAfterCreation.' must be after '.$objectModificationDate);
 
         // Test that modification date has changed after some time has passed, but creation date remains the same
-        
-        // TODO-  assegurarse que el datetimeobject es crea en utc, crear metode isUTC()
-        // TODO - assegurarse que les dates es guarden realment en utc a la bd, i que cuadren amb lo que tenim en codi
-        // TODO - mirar que modification date canvia i creation no
-        // TODO - mirar que es guarden en utc!
-        // TODO- que passa amb el caracter T de iso?
-        // TODO - mirar que les dates del objecte tenen el +00:00
-        // TODO - qualsevol timezone offset que no sigui 00:00 ha de fallar ¿que passaria amb el Z que representa utc?
-        // TODO - les dates no haurien de poder tenir valor ''. null, 25, 29 o 32!!
+        sleep(1);
+        $this->assertSame(1, $this->sut->save($object));
+        $dateAfterModification = (new DateTimeObject())->toString();
+
+        $objectCreationDate2 = $this->db->tableGetColumnValues($objectTableName, 'creationDate')[0];
+        $objectModificationDate = $this->db->tableGetColumnValues($objectTableName, 'modificationDate')[0];
+        $this->assertTrue((new DateTimeObject($objectCreationDate2))->isEqualTo(new DateTimeObject($object->creationDate)));
+        $this->assertTrue((new DateTimeObject($objectModificationDate))->isEqualTo(new DateTimeObject($object->modificationDate)));
+
+        $this->assertSame($objectCreationDate, $objectCreationDate2);
+        $this->assertSame(2, DateTimeObject::compare($objectCreationDate2, $objectModificationDate), $objectCreationDate2.' must be before '.$objectModificationDate);
+        $this->assertContains(DateTimeObject::compare($dateBeforeCreation, $objectCreationDate2), [0, 2], $dateBeforeCreation.' must be after '.$objectCreationDate2);
+        $this->assertSame(1, DateTimeObject::compare($dateAfterModification, $objectCreationDate2), $dateAfterModification.' must be after '.$objectCreationDate2);
+        $this->assertSame(2, DateTimeObject::compare($dateBeforeCreation, $objectModificationDate), $dateBeforeCreation.' must be before '.$objectModificationDate);
+        $this->assertContains(DateTimeObject::compare($dateAfterModification, $objectModificationDate), [0, 1], $dateAfterModification.' must be after '.$objectModificationDate);
+
+        // Make sure all object dates are always UTC
+        $this->assertTrue((new DateTimeObject($object->creationDate))->isUTC());
+        $this->assertTrue((new DateTimeObject($object->modificationDate))->isUTC());
+        $this->assertNull($object->deleted);
+
+        $objectTyped = new CustomerTyped();
+        $objectTyped->birthDate = (new DateTimeObject())->toString('Y-M-D H:N:SOffset');
+        $objectTyped->miliSecondsDate = (new DateTimeObject())->toString('Y-M-DTH:N:S.uZ');
+        $objectTyped->microSecondsDate = (new DateTimeObject())->toString();
+        $this->assertSame(1, $this->sut->save($objectTyped));
+
+        $this->assertTrue((new DateTimeObject($objectTyped->creationDate))->isUTC());
+        $this->assertTrue((new DateTimeObject($objectTyped->modificationDate))->isUTC());
+        $this->assertNull($objectTyped->deleted);
+        $this->assertTrue((new DateTimeObject($objectTyped->birthDate))->isUTC());
+        $this->assertTrue((new DateTimeObject($objectTyped->miliSecondsDate))->isUTC());
+        $this->assertTrue((new DateTimeObject($objectTyped->microSecondsDate))->isUTC());
+
+        // Test that non UTC values throw exceptions
+        $nonUtcDate = (new DateTimeObject())->setTimeZoneOffset('+05:00');
+
+        $objectTyped->modificationDate = $nonUtcDate->toString('Y-M-DTH:N:SOffset');
+        AssertUtils::throwsException(function() use ($objectTyped) { $this->sut->save($objectTyped); }, '/modificationDate .....-..-.....:..:..\+05:00. must have a UTC timezone/');
+
+        $objectTyped = new CustomerTyped();
+        $objectTyped->birthDate = $nonUtcDate->toString('Y-M-DTH:N:SOffset');
+        AssertUtils::throwsException(function() use ($objectTyped) { $this->sut->save($objectTyped); }, '/birthDate .....-..-.....:..:..\+05:00. must have a UTC timezone/');
+
+        $nonUtcDate->setTimeZoneOffset('-05:00');
+        $objectTyped = new CustomerTyped();
+        $objectTyped->miliSecondsDate = $nonUtcDate->toString('Y-M-D H:N:S.uOffset');
+        AssertUtils::throwsException(function() use ($objectTyped) { $this->sut->save($objectTyped); }, '/miliSecondsDate .....-..-.....:..:..\....-05:00. must have a UTC timezone/');
+
+        $nonUtcDate->setTimeZoneOffset('+03:50');
+        $objectTyped = new CustomerTyped();
+        $objectTyped->microSecondsDate = $nonUtcDate->toString('Y-M-DTH:N:S.UOffset');
+        AssertUtils::throwsException(function() use ($objectTyped) { $this->sut->save($objectTyped); }, '/microSecondsDate .....-..-.....:..:..\.......+03:50. must have a UTC timezone/');
+
+        // Dates without a specifically defined UTC timezone will throw an error
+        $objectTyped = new CustomerTyped();
+        $objectTyped->miliSecondsDate = '2019-01-01 01:01:01.333';
+        AssertUtils::throwsException(function() use ($objectTyped) { $this->sut->save($objectTyped); }, '/miliSecondsDate .2019-01-01 01:01:01.333. must have a UTC timezone/');
+
+        // Date values cannot be empty strings. Only null (if null is accepted)
+        $objectTyped = new CustomerTyped();
+        $objectTyped->miliSecondsDate = '';
+        AssertUtils::throwsException(function() use ($objectTyped) { $this->sut->save($objectTyped); }, '/miliSecondsDate .. is not a DATETIME.3./');
+
+        $objectTyped = new CustomerTyped();
+        $objectTyped->miliSecondsDate = null;
+        $this->assertSame(2, $this->sut->save($objectTyped));
+
+        $dateObject = new ObjectWithDateTimeNotNull();
+        AssertUtils::throwsException(function() use ($dateObject) { $this->sut->save($dateObject); }, '/NULL value is not accepted by date property/');
     }
 
 
@@ -753,7 +826,7 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         $object = new CustomerTyped();
         $object->name = 123123;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property name .123123. does not match STRING.20./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/name .123123. does not match STRING.20./');
 
         $object = new CustomerTyped();
         $object->commercialName = '12345678901234567890123456';
@@ -761,123 +834,123 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         $object = new CustomerTyped();
         $object->birthDate = 12345;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property birthDate .12345. does not match DATETIME.0./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/birthDate .12345. is not a DATETIME.0./');
 
         $object = new CustomerTyped();
         $object->birthDate = 'notadatestring';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property birthDate .notadatestring. does not match DATETIME.0./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/birthDate .notadatestring. is not a DATETIME.0./');
 
         $object = new CustomerTyped();
         $object->birthDate = '2019-10-12';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property birthDate .2019-10-12. does not match DATETIME.0./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/birthDate .2019-10-12. must have a UTC timezone/');
 
         $object = new CustomerTyped();
         $object->birthDate = '2019-10-12 23:10:x';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property birthDate .2019-10-12 23:10:x. does not match DATETIME.0./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/birthDate .2019-10-12 23:10:x. is not a DATETIME.0./');
 
         $object = new CustomerTyped();
         $object->birthDate = '2019-10-12 23:10:667';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property birthDate .2019-10-12 23:10:667. does not match DATETIME.0./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/birthDate .2019-10-12 23:10:667. is not a DATETIME.0./');
 
         $object = new CustomerTyped();
         $object->miliSecondsDate = 12345;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property miliSecondsDate .12345. does not match DATETIME.3./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/miliSecondsDate .12345. is not a DATETIME.3./');
 
         $object = new CustomerTyped();
         $object->miliSecondsDate = 'notadatestring';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property miliSecondsDate .notadatestring. does not match DATETIME.3./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/miliSecondsDate .notadatestring. is not a DATETIME.3./');
 
         $object = new CustomerTyped();
         $object->miliSecondsDate = '2019-10-12 23:10:26';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property miliSecondsDate .2019-10-12 23:10:26. does not match DATETIME.3./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/miliSecondsDate .2019-10-12 23:10:26. must have a UTC timezone/');
 
         $object = new CustomerTyped();
-        $object->miliSecondsDate = '2019-10-12 23:10:26.00';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property miliSecondsDate .2019-10-12 23:10:26.00. does not match DATETIME.3./');
+        $object->miliSecondsDate = '2019-10-12 23:10:26.00+00:00';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/miliSecondsDate .2019-10-12 23:10:26.00.00:00. does not match DATETIME.3./');
 
         $object = new CustomerTyped();
-        $object->miliSecondsDate = '2019-10-12 23:10:26.0000';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property miliSecondsDate .2019-10-12 23:10:26.0000. does not match DATETIME.3./');
+        $object->miliSecondsDate = '2019-10-12 23:10:26.0000+00:00';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/miliSecondsDate .2019-10-12 23:10:26.0000.00:00. does not match DATETIME.3./');
 
         $object = new CustomerTyped();
         $object->microSecondsDate = 12345;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property microSecondsDate .12345. does not match DATETIME.6./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/microSecondsDate .12345. is not a DATETIME.6./');
 
         $object = new CustomerTyped();
         $object->microSecondsDate = 'notadatestring';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property microSecondsDate .notadatestring. does not match DATETIME.6./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/microSecondsDate .notadatestring. is not a DATETIME.6./');
 
         $object = new CustomerTyped();
-        $object->microSecondsDate = '2019-10-12 23:10:26';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property microSecondsDate .2019-10-12 23:10:26. does not match DATETIME.6./');
+        $object->microSecondsDate = '2019-10-12 23:10:26+00:00';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/microSecondsDate .2019-10-12 23:10:26.00:00. does not match DATETIME.6./');
 
         $object = new CustomerTyped();
-        $object->microSecondsDate = '2019-10-12 23:10:26.000';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property microSecondsDate .2019-10-12 23:10:26.000. does not match DATETIME.6./');
+        $object->microSecondsDate = '2019-10-12 23:10:26.000+00:00';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/microSecondsDate .2019-10-12 23:10:26.000.00:00. does not match DATETIME.6./');
 
         $object = new CustomerTyped();
-        $object->microSecondsDate = '2019-10-12 23:10:26.00000';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property microSecondsDate .2019-10-12 23:10:26.00000. does not match DATETIME.6./');
+        $object->microSecondsDate = '2019-10-12 23:10:26.00000+00:00';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/microSecondsDate .2019-10-12 23:10:26.00000.00:00. does not match DATETIME.6./');
 
         $object = new CustomerTyped();
         $object->age = 'stringinsteadofint';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property age .stringinsteadofint. does not match INT.2./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/age .stringinsteadofint. does not match INT.2./');
 
         $object = new CustomerTyped();
         $object->age = 10.2;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property age .10.2. does not match INT.2./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/age .10.2. does not match INT.2./');
 
         $object = new CustomerTyped();
         $object->age = 123;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property age value size 3 exceeds 2/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/age value size 3 exceeds 2/');
 
         $object = new CustomerTyped();
         $object->oneDigitInt = 12;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property oneDigitInt value size 2 exceeds 1/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/oneDigitInt value size 2 exceeds 1/');
 
         $object = new CustomerTyped();
         $object->sixDigitInt = 1234567;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property sixDigitInt value size 7 exceeds 6/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/sixDigitInt value size 7 exceeds 6/');
 
         $object = new CustomerTyped();
         $object->twelveDigitInt = 1234567890123;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property twelveDigitInt value size 13 exceeds 12/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/twelveDigitInt value size 13 exceeds 12/');
 
         $object = new CustomerTyped();
         $object->doubleValue = 'string';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property doubleValue .string. does not match DOUBLE.1./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/doubleValue .string. does not match DOUBLE.1./');
 
         $object = new CustomerTyped();
         $object->setup = 'notabool';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property setup .notabool. does not match BOOL.1./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/setup .notabool. does not match BOOL.1./');
 
         $object = new CustomerTyped();
         $object->emails = 12;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property emails.*does not match STRING.75./s');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/emails.*does not match STRING.75./s');
 
         $object = new CustomerTyped();
         $object->emails = [12, 123];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property emails.*does not match STRING.75./s');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/emails.*does not match STRING.75./s');
 
         $object = new CustomerTyped();
         $object->emails = ['a', 'aaa', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property emails value size 76 exceeds 75/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/emails value size 76 exceeds 75/');
 
         $object = new CustomerTyped();
         $object->boolArray = ['string', 'string'];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property boolArray.*string.*does not match BOOL.1./s');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/boolArray.*string.*does not match BOOL.1./s');
 
         $object = new CustomerTyped();
         $object->intArray = ['string', 'string'];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property intArray.*string.*does not match INT.3./s');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/intArray.*string.*does not match INT.3./s');
 
         $object = new CustomerTyped();
         $object->intArray = [1, 22, 333, 4444];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property intArray value size 4 exceeds 3/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/intArray value size 4 exceeds 3/');
 
         $object = new CustomerTyped();
         $object->doubleArray = ['string', 'string'];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Property doubleArray.*string.*does not match DOUBLE.1./s');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/doubleArray.*string.*does not match DOUBLE.1./s');
 
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongStringTypeSize()); }, '/name is defined as STRING but size is invalid/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongDateTypeSize()); }, '/date DATETIME size must be 0, 3 or 6/');

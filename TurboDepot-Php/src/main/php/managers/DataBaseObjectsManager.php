@@ -13,13 +13,15 @@
 namespace org\turbodepot\src\main\php\managers;
 
 use DateTime;
-use Throwable;
+use DateTimeZone;
 use ReflectionClass;
 use ReflectionObject;
+use Throwable;
 use UnexpectedValueException;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
-use org\turbodepot\src\main\php\model\DataBaseObject;
+use org\turbocommons\src\main\php\model\DateTimeObject;
 use org\turbocommons\src\main\php\utils\StringUtils;
+use org\turbodepot\src\main\php\model\DataBaseObject;
 
 
 /**
@@ -53,8 +55,13 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Date time type that can be used to constrain object properties.
-     * Accepted size values are 19 for seconds precision and 23 for miliseconds
+     * Date type that can be used to constrain object properties which must be always defined as ISO 8601 strings
+     * with a mandatory UTC +0 timezone (yyyy-mm-ddTHH:MM:SS.UUUUUU+00:00), or an exception will be thrown.
+     *
+     * The UTC offset is mandatory so all the dates are standarized and consistent.Local timezone may be applied at the presentation layer
+     * if necessary.
+     *
+     * Accepted size values are 0 for seconds precision, 3 for miliseconds and 6 for microseconds
      */
     const DATETIME = 'DATETIME';
 
@@ -66,13 +73,13 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * TODO - implement
      */
     const MULTI_LANGUAGE = 'MULTI_LANGUAGE';
 
 
     /**
-     * TODO
+     * Flag that is used to specify that a data type cannot be null
      */
     const NOT_NULL = 'NOT_NULL';
 
@@ -90,7 +97,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * TODO - this should be optional and may be specifically modified by each databaseobject if necessary
+     * TODO - implement - this should be optional and may be specifically modified by each databaseobject if necessary
      * @var string
      */
     public $isUuidEnabled = false;
@@ -150,10 +157,10 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Defines the format in which dates are stored to database tables
+     * Defines the format in which dates are stored to database tables (using microseconds)
      * @var string
      */
-    private $_sqlDateFormat = 'Y-m-d H:i:s.v';
+    private $_sqlDateFormat = 'Y-m-d H:i:s.u';
 
 
     /**
@@ -163,7 +170,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * @var array
      */
     private $_baseObjectColumns = ['dbid' => [self::INT, 11], 'uuid' => [self::STRING, 36], 'sortindex' => [self::INT, 11],
-        'creationdate' => [self::DATETIME, 23], 'modificationdate' => [self::DATETIME, 23], 'deleted' => [self::DATETIME, 23]];
+        'creationdate' => [self::DATETIME, 6], 'modificationdate' => [self::DATETIME, 6], 'deleted' => [self::DATETIME, 6]];
 
 
     /**
@@ -228,7 +235,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 $this->_updateTablesToFitObject($object, $tableName) :
                 $this->_createObjectTables($object, $tableName);
 
-            $tableData['modificationdate'] = (DateTime::createFromFormat('U.u', microtime(true)))->format($this->_sqlDateFormat);
+            $tableData['modificationdate'] = (new DateTime(null, new DateTimeZone('UTC')))->format($this->_sqlDateFormat);
 
             // Store or update the object into the database
             if($object->dbId === null){
@@ -244,10 +251,10 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 $this->_insertArrayPropsToDb($object, $tableName, $object->dbId, true);
             }
 
-            $object->modificationDate = $tableData['modificationdate'];
-            $object->creationDate = $tableData['creationdate'];
-
             $this->_db->transactionCommit();
+
+            $object->modificationDate = $tableData['modificationdate'].'+00:00';
+            $object->creationDate = str_replace('+00:00', '', $tableData['creationdate']).'+00:00';
 
             return $object->dbId;
 
@@ -392,11 +399,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 return $this->_db->getSQLTypeFromValue(999999999999999, true, true);
 
             case 'deleted':
-                return $this->_db->getSQLDateTimeType(true, true);
+                return $this->_db->getSQLDateTimeType(true, 6);
 
             case 'creationdate':
             case 'modificationdate':
-                return $this->_db->getSQLDateTimeType(false, true);
+                return $this->_db->getSQLDateTimeType(false, 6);
         }
 
         $type = $this->_getTypeFromObjectProperty($object, $property);
@@ -413,7 +420,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 return $this->_db->getSQLTypeFromValue(1.0);
 
             case self::DATETIME:
-                return $this->_db->getSQLDateTimeType(true, $type[1] === 23);
+                return $this->_db->getSQLDateTimeType(true, $type[1]);
 
             default:
                 return $this->_db->getSQLTypeFromValue(str_repeat(' ', $type[1]));
@@ -516,13 +523,17 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         foreach ($array as $item) {
 
-            switch ($item) {
+            switch ((string)$item) {
                 case self::BOOL: case self::INT: case self::DOUBLE: case self::STRING: case self::DATETIME:
                     $result[0] = $item;
                     break;
 
                 case self::ARRAY:
                     $isArray = true;
+                    break;
+
+                case self::NOT_NULL:
+                    $isNotNull = true;
                     break;
 
                 case self::MULTI_LANGUAGE:
@@ -539,9 +550,9 @@ class DataBaseObjectsManager extends BaseStrictClass{
             throw new UnexpectedValueException($property.' is defined as '.(($isArray) ? 'an array of ' : '').$result[0].' but size is invalid');
         }
 
-        if($result[0] === self::DATETIME && !in_array($result[1], [19, 23], true)){
+        if($result[0] === self::DATETIME && !in_array($result[1], [0, 3, 6], true)){
 
-            throw new UnexpectedValueException($property.' DATETIME size must be 19 or 23');
+            throw new UnexpectedValueException($property.' DATETIME size must be 0, 3 or 6');
         }
 
         if($isArray){
@@ -757,7 +768,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
         foreach ($tableColumnTypes as $tableColumnName => $tableColumnType) {
 
             // The base object properties are ignored because they are already tested by the _validateDataBaseObject method
-            if(!in_array($tableColumnName, $baseObjectColumnNames, true)){
+            if($tableData[$tableColumnName] !== null && !in_array($tableColumnName, $baseObjectColumnNames, true)){
 
                 $this->_checkColumnFitsType($tableName, $tableColumnName, $tableColumnType, $this->_db->getSQLTypeFromValue($tableData[$tableColumnName]));
             }
@@ -800,8 +811,9 @@ class DataBaseObjectsManager extends BaseStrictClass{
         $tableColumnTypeSize = $this->_db->getSQLTypeSize($tableColumnType);
 
         if($tableColumnTypeSize < $valueTypeSize &&
-           !($isTableColumnDateType && $tableColumnTypeSize === 0 && ($valueTypeSize === 1 || $valueTypeSize === 19)) &&
-           !($isTableColumnDateType && $tableColumnTypeSize === 3 && ($valueTypeSize === 1 || $valueTypeSize === 23))){
+           !($isTableColumnDateType && $tableColumnTypeSize === 0 && ($valueTypeSize === 1 || $valueTypeSize === 25)) &&
+           !($isTableColumnDateType && $tableColumnTypeSize === 3 && ($valueTypeSize === 1 || $valueTypeSize === 29)) &&
+           !($isTableColumnDateType && $tableColumnTypeSize === 6 && ($valueTypeSize === 1 || $valueTypeSize === 32))){
 
             if(!$this->isColumnResizedWhenValueisBigger){
 
@@ -826,7 +838,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $class = get_class($object);
         $className = StringUtils::getPathElement($class);
-        $dateRegex = '/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9][0-9][0-9]/';
 
         if($object->dbId !== null && (!is_integer($object->dbId) || $object->dbId < 1)){
 
@@ -843,19 +854,19 @@ class DataBaseObjectsManager extends BaseStrictClass{
             throw new UnexpectedValueException('Invalid '.$className.' sortIndex: '.$object->sortIndex);
         }
 
-        if($object->creationDate !== null && (!is_string($object->creationDate) || !preg_match($dateRegex, $object->creationDate))){
+        if($object->creationDate !== null){
 
-            throw new UnexpectedValueException('Invalid '.$className.' creationDate: '.$object->creationDate);
+            $this->_validateDateTimeValue($object->creationDate, 6, 'creationDate');
         }
 
-        if($object->modificationDate !== null && (!is_string($object->modificationDate) || !preg_match($dateRegex, $object->modificationDate))){
+        if($object->modificationDate !== null){
 
-            throw new UnexpectedValueException('Invalid '.$className.' modificationDate: '.$object->modificationDate);
+            $this->_validateDateTimeValue($object->modificationDate, 6, 'modificationDate');
         }
 
-        if($object->deleted !== null && (!is_string($object->deleted) || !preg_match($dateRegex, $object->deleted))){
+        if($object->deleted !== null){
 
-            throw new UnexpectedValueException('Invalid '.$className.' deleted: '.$object->deleted);
+            $this->_validateDateTimeValue($object->deleted, 6, 'deleted');
         }
 
         if($object->dbId === null && ($object->creationDate !== null || $object->modificationDate !== null)){
@@ -885,26 +896,79 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 throw new UnexpectedValueException('Properties starting with _ are forbidden, but found: '.$classProperty);
             }
 
-            // Property type must be valid based on the object defined restrictions and it must fit the expected precision
-            if($object->{$classProperty} !== null && $object->{$classProperty} !== []){
+            if($object->{$classProperty} === []){
 
-                $propertyExpectedType = $this->_getTypeFromObjectProperty($object, $classProperty);
-                $propertyValueType = $this->_getTypeFromValue($object->{$classProperty});
+                continue;
+            }
 
-                // Check that property type matches expected one (note that double types are able to store int values and datetime types string values)
-                if($propertyExpectedType[0] !== $propertyValueType[0] &&
-                   !($propertyExpectedType[0] === self::DOUBLE && $propertyValueType[0] === self::INT) &&
-                    !($propertyExpectedType[0] === self::DATETIME && $propertyValueType[0] === self::STRING && in_array(strlen($object->{$classProperty}), [0, $propertyExpectedType[1]], true))){
+            $propertyExpectedType = $this->_getTypeFromObjectProperty($object, $classProperty);
 
-                        throw new UnexpectedValueException('Property '.$classProperty.' ('.print_r($object->{$classProperty}, true).') does not match '.$propertyExpectedType[0].'('.$propertyExpectedType[1].')');
+            if($object->{$classProperty} === null){
+
+                if(in_array(self::NOT_NULL, $propertyExpectedType, true)){
+
+                    throw new UnexpectedValueException('NULL value is not accepted by '.$classProperty.' property');
                 }
 
-                // The property maximum allowed type size must be respected
-                if($propertyValueType[1] > $propertyExpectedType[1]){
+                continue;
+            }
 
-                    throw new UnexpectedValueException('Property '.$classProperty.' value size '.$propertyValueType[1].' exceeds '.$propertyExpectedType[1]);
+            $propertyValueType = $this->_getTypeFromValue($object->{$classProperty});
+
+            // Check that property type matches expected one (note that double types are able to store int values and datetime types string values)
+            // Property type must be valid based on the object defined restrictions and it must fit the expected precision
+            if($propertyExpectedType[0] !== $propertyValueType[0] &&
+               !($propertyExpectedType[0] === self::DOUBLE && $propertyValueType[0] === self::INT)){
+
+                if($propertyExpectedType[0] === self::DATETIME){
+
+                    $this->_validateDateTimeValue($object->{$classProperty}, $propertyExpectedType[1], $classProperty);
+
+                }else{
+
+                    throw new UnexpectedValueException($classProperty.' ('.print_r($object->{$classProperty}, true).') does not match '.$propertyExpectedType[0].'('.$propertyExpectedType[1].')');
                 }
             }
+
+            // The property maximum allowed type size must be respected
+            if($propertyExpectedType[0] !== self::DATETIME && $propertyValueType[1] > $propertyExpectedType[1]){
+
+                throw new UnexpectedValueException($classProperty.' value size '.$propertyValueType[1].' exceeds '.$propertyExpectedType[1]);
+            }
+        }
+    }
+
+
+    /**
+     * Validate that the provided value is acceptable to be stored as a DatabaseObject datetime property
+     *
+     * @param string $dateValue The value to test
+     * @param int $microseconds The number of digits that are accepted for the microseconds precision (0, 3 or 6)
+     * @param string $classProperty The name for the property that stores the value so it can be shown by error messages
+     *
+     * @throws UnexpectedValueException If the provided datetime value does not meet requirements
+     *
+     * return void
+     */
+    private function _validateDateTimeValue($dateValue, $microseconds, string $classProperty){
+
+        if(!DateTimeObject::isValidDateTime($dateValue)){
+
+            throw new UnexpectedValueException($classProperty.' ('.print_r($dateValue, true).') is not a DATETIME('.$microseconds.')');
+        }
+
+        $microSeconds = [];
+
+        if(preg_match('/(\.......|\....)?(\+00:00|-00:00|Z)$/', $dateValue, $microSeconds) === 0){
+
+            throw new UnexpectedValueException($classProperty.' ('.print_r($dateValue, true).') must have a UTC timezone');
+        }
+
+        $microLen = isset($microSeconds[1]) ? max(0, strlen($microSeconds[1]) - 1) : 0;
+
+        if($microLen !== $microseconds){
+
+            throw new UnexpectedValueException($classProperty.' ('.print_r($dateValue, true).') does not match DATETIME('.$microseconds.')');
         }
     }
 
