@@ -113,7 +113,7 @@ class DataBaseObjectsManagerTest extends TestCase {
      */
     public function testTablesPrefix(){
 
-        $objectTableName = $this->sut->tablesPrefix.StringUtils::formatCase('Customer', StringUtils::FORMAT_LOWER_SNAKE_CASE);
+        $objectTableName = $this->sut->tablesPrefix.'customer';
         $this->assertFalse($this->db->tableExists($objectTableName));
 
         $object = new Customer();
@@ -125,7 +125,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $object = new Customer();
         $this->assertSame(1, $this->sut->save($object));
         $this->assertTrue($this->db->tableExists($objectTableName));
-        $this->assertTrue($this->db->tableExists($this->sut->tablesPrefix.StringUtils::formatCase('Customer', StringUtils::FORMAT_LOWER_SNAKE_CASE)));
+        $this->assertTrue($this->db->tableExists($this->sut->tablesPrefix.'customer'));
     }
 
 
@@ -304,15 +304,13 @@ class DataBaseObjectsManagerTest extends TestCase {
      */
     public function testSave(){
 
-        $objectTableName = $this->sut->tablesPrefix.StringUtils::formatCase('Customer', StringUtils::FORMAT_LOWER_SNAKE_CASE);
+        $objectTableName = $this->sut->tablesPrefix.'customer';
 
         // Test empty values
         AssertUtils::throwsException(function(){ $this->sut->save(); }, '/Too few arguments to function/');
         AssertUtils::throwsException(function(){ $this->sut->save(null); }, '/must be an instance of .*DataBaseObject/');
         AssertUtils::throwsException(function(){ $this->sut->save(''); }, '/must be an instance of .*DataBaseObject/');
         AssertUtils::throwsException(function(){ $this->sut->save(new stdClass()); }, '/must be an instance of .*DataBaseObject/');
-
-        // TODO - Test what happens with null and not null values on properties
 
         // Test ok values - new instances
         AssertUtils::throwsException(function() use ($objectTableName) { $this->db->tableCountRows($objectTableName); }, '/Could not count table rows: Table .*td_customer.* doesn\'t exist/');
@@ -322,9 +320,9 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(1, $this->sut->save($object));
         $this->assertSame(1, $object->dbId);
         $this->assertSame(1, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
-            'creationdate' => 'datetime(6)', 'modificationdate' => 'datetime(6)', 'deleted' => 'datetime(6)', 'name' => 'varchar(1)',
-            'commercialname' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
+            'creationdate' => 'datetime(6) NOT NULL', 'modificationdate' => 'datetime(6) NOT NULL', 'deleted' => 'datetime(6)', 'name' => 'varchar(1) NOT NULL',
+            'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         // test that columns are in the correct order
         $this->assertSame(['dbid', 'uuid', 'sortindex', 'creationdate', 'modificationdate', 'deleted', 'name', 'commercialname', 'age', 'debt'],
@@ -348,50 +346,50 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(3, $this->sut->save($object));
         $this->assertSame(3, $object->dbId);
         $this->assertSame(3, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
-            'creationdate' => 'datetime(6)', 'modificationdate' => 'datetime(6)', 'deleted' => 'datetime(6)', 'name' => 'varchar(1)',
-            'commercialname' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
+            'creationdate' => 'datetime(6) NOT NULL', 'modificationdate' => 'datetime(6) NOT NULL', 'deleted' => 'datetime(6)', 'name' => 'varchar(1) NOT NULL',
+            'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         // Test ok values - update instances
 
         $object = new Customer();
         $object->age = 14123412341;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column age data type expected: smallint.6. but received: bigint/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column age data type expected: smallint.6. NOT NULL but received: bigint/');
 
         $object = new Customer();
         $object->age = 14123412341345345345345345345;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column age data type expected: smallint.6. but received: double/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column age data type expected: smallint.6. NOT NULL but received: double/');
 
         $object = new Customer();
         $object->name = 'customer';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column name data type expected: varchar.1. but received: varchar.8./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column name data type expected: varchar.1. NOT NULL but received: varchar.8./');
 
         $this->sut->isColumnResizedWhenValueisBigger = true;
         $this->assertSame(4, $this->sut->save($object));
         $this->assertSame(4, $object->dbId);
         $this->assertSame('customer', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
-            'creationdate' => 'datetime(6)', 'modificationdate' => 'datetime(6)', 'deleted' => 'datetime(6)', 'name' => 'varchar(8)',
-            'commercialname' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
+            'creationdate' => 'datetime(6) NOT NULL', 'modificationdate' => 'datetime(6) NOT NULL', 'deleted' => 'datetime(6)', 'name' => 'varchar(8) NOT NULL',
+            'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $object->name = 'customer updated';
         $this->assertSame(4, $object->dbId);
         $this->assertSame(4, $this->sut->save($object));
         $this->assertSame('customer updated', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
-            'creationdate' => 'datetime(6)', 'modificationdate' => 'datetime(6)', 'deleted' => 'datetime(6)', 'name' => 'varchar(16)',
-            'commercialname' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
+            'creationdate' => 'datetime(6) NOT NULL', 'modificationdate' => 'datetime(6) NOT NULL', 'deleted' => 'datetime(6)', 'name' => 'varchar(16) NOT NULL',
+            'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $object->name = 'customer updated with a much longer text that should resize the name column to a bigger varchar size';
         $this->assertSame(4, $object->dbId);
         $this->assertSame(4, $this->sut->save($object));
         $this->assertSame('customer updated with a much longer text that should resize the name column to a bigger varchar size', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
-            'creationdate' => 'datetime(6)', 'modificationdate' => 'datetime(6)', 'deleted' => 'datetime(6)', 'name' => 'varchar(100)',
-            'commercialname' => 'varchar(1)', 'age' => 'smallint(6)', 'debt' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
+            'creationdate' => 'datetime(6) NOT NULL', 'modificationdate' => 'datetime(6) NOT NULL', 'deleted' => 'datetime(6)', 'name' => 'varchar(100) NOT NULL',
+            'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $object->debt = 10;
         $this->assertSame(4, $object->dbId);
@@ -477,31 +475,31 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         $object = new Customer();
         $object->name = 12345;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column name data type expected: varchar.100. but received: mediumint/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column name data type expected: varchar.100. NOT NULL but received: mediumint/');
 
         $object = new Customer();
         $object->name = new stdClass();
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not detect type from property name: Could not detect type from object/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not detect property name type: Could not detect type from object/');
 
         $object = new Customer();
         $object->age = 'string instead of int';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column age data type expected: smallint.6. but received: varchar.21./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column age data type expected: smallint.6. NOT NULL but received: varchar.21./');
 
         $object = new Customer();
         $object->age = 1.12;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column age data type expected: smallint.6. but received: double/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column age data type expected: smallint.6. NOT NULL but received: double/');
 
         $object = new Customer();
         $object->debt = 'notadouble';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column debt data type expected: double but received: varchar.10./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column debt data type expected: double NOT NULL but received: varchar.10./');
 
         AssertUtils::throwsException(function() { $this->sut->save(new DataBaseManager()); }, '/Argument 1 passed to.*save.. must be an instance of.*DataBaseObject, instance of.*DataBaseManager given/');
 
         // Try to save database objects that contains invalid methods or properties
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongMethods()); }, '/Only __construct method is allowed for DataBaseObjects but found: methodThatCantBeHere/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongPropThatStartsWithUnderscore()); }, '/Properties starting with _ are forbidden, but found: _name/');
-        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNullNonTypedProperty()); }, '/Could not detect type from property age: Could not detect type from NULL/');
-        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongEmptyNonTypedArrayProperty()); }, '/Could not detect type from property emails: Could not detect type from array/');
+        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNullNonTypedProperty()); }, '/Could not detect property age type: Could not detect type from NULL/');
+        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongEmptyNonTypedArrayProperty()); }, '/Could not detect property emails type: Could not detect type from array/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNonExistantTypedProperty()); }, '/Cannot define type for nonexistant cause it does not exist on class/');
 
         // Add an unexpected column to the customer table and make sure saving fails
@@ -512,6 +510,68 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
     }
 
+
+    /**
+     * testSaveNullAndNotNullValues
+     *
+     * @return void
+     */
+    public function testSaveNullAndNotNullValues(){
+
+        $objectTableName = $this->sut->tablesPrefix.'customer';
+        $typedObjectTableName = $this->sut->tablesPrefix.'customertyped';
+
+        // Null values can't be detected on objects that have no specific types defined
+        $object = new Customer();
+        $object->name = null;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not detect property name type: Could not detect type from NULL/');
+
+        $object = new Customer();
+        $this->assertSame(1, $this->sut->save($object));
+        $this->assertSame('', $this->db->tableGetColumnValues($objectTableName, 'name')[0]);
+
+        // We cannot save a null value even if the customer table is already created. Null values are not accepted by properties without a specific type definition
+        $object = new Customer();
+        $object->name = null;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not detect property name type: Could not detect type from NULL/');
+
+        $object = new Customer();
+        $object->age = null;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not detect property age type: Could not detect type from NULL/');
+
+        $object = new CustomerTyped();
+        $object->name = null;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/NULL value is not accepted by name property/');
+
+        $object = new CustomerTyped();
+        $object->commercialName = null;
+        $this->assertSame(1, $this->sut->save($object));
+        $this->assertSame(null, $this->db->tableGetColumnValues($typedObjectTableName, 'commercialname')[0]);
+
+        $object = new CustomerTyped();
+        $object->birthDate = null;
+        $this->assertSame(2, $this->sut->save($object));
+        $this->assertSame('', $this->db->tableGetColumnValues($typedObjectTableName, 'commercialname')[1]);
+        $this->assertSame(null, $this->db->tableGetColumnValues($typedObjectTableName, 'birthdate')[1]);
+
+        $object = new CustomerTyped();
+        $object->emails = null;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/NULL value is not accepted by emails property/');
+        $object->emails = [null];
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/NULL value is not accepted inside array: emails/');
+        $object->emails = ['a', 'b', null];
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/NULL value is not accepted inside array: emails/');
+
+        $object = new CustomerTyped();
+        $object->boolArray = null;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/NULL value is not accepted by boolArray property/');
+        $object->boolArray = [null];
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/NULL value is not accepted inside array: boolArray/');
+        $object->boolArray = ['a', 'b', null];
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/NULL value is not accepted inside array: boolArray/');
+    }
+
+
     /**
      * testSave_datetime_values_are_as_expected
      *
@@ -519,7 +579,7 @@ class DataBaseObjectsManagerTest extends TestCase {
      */
     public function testSave_datetime_values_are_as_expected(){
 
-        $objectTableName = $this->sut->tablesPrefix.StringUtils::formatCase('Customer', StringUtils::FORMAT_LOWER_SNAKE_CASE);
+        $objectTableName = $this->sut->tablesPrefix.'customer';
 
         // Test that creation and modification dates are correct
         $object = new Customer();
@@ -643,7 +703,7 @@ class DataBaseObjectsManagerTest extends TestCase {
      */
     public function testSave_and_update_simple_object_with_array_typed_properties(){
 
-        $objectTableName = $this->sut->tablesPrefix.strtolower('CustomerWithArrayProps');
+        $objectTableName = $this->sut->tablesPrefix.'customerwitharrayprops';
         $this->assertSame(0, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
         $object = new CustomerWithArrayProps();
@@ -656,23 +716,23 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         $this->assertSame(14, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
-            'creationdate' => 'datetime(6)', 'modificationdate' => 'datetime(6)', 'deleted' => 'datetime(6)', 'name' => 'varchar(40)',
-            'age' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
+            'creationdate' => 'datetime(6) NOT NULL', 'modificationdate' => 'datetime(6) NOT NULL', 'deleted' => 'datetime(6)', 'name' => 'varchar(40) NOT NULL',
+            'age' => 'smallint(6) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'value' => 'varchar(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_emails'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'value' => 'varchar(6) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_emails'));
         $this->assertSame(['1', '1', '1'], $this->db->tableGetColumnValues($objectTableName.'_emails', 'dbid'));
         $this->assertSame(['email1', 'email2', 'email3'], $this->db->tableGetColumnValues($objectTableName.'_emails', 'value'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'value' => 'tinyint(1)'], $this->db->tableGetColumnDataTypes($objectTableName.'_boolarray'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'value' => 'tinyint(1) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_boolarray'));
         $this->assertSame(['1', '1'], $this->db->tableGetColumnValues($objectTableName.'_boolarray', 'dbid'));
         $this->assertSame(['1', '0'], $this->db->tableGetColumnValues($objectTableName.'_boolarray', 'value'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'value' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_intarray'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'value' => 'smallint(6) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_intarray'));
         $this->assertSame(['1', '1', '1', '1'], $this->db->tableGetColumnValues($objectTableName.'_intarray', 'dbid'));
         $this->assertSame(['10', '20', '30', '40'], $this->db->tableGetColumnValues($objectTableName.'_intarray', 'value'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'value' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName.'_doublearray'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'value' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_doublearray'));
         $this->assertSame(['1', '1', '1'], $this->db->tableGetColumnValues($objectTableName.'_doublearray', 'dbid'));
         $this->assertSame(['10', '100.454', '0.254676'], $this->db->tableGetColumnValues($objectTableName.'_doublearray', 'value'));
 
@@ -685,19 +745,19 @@ class DataBaseObjectsManagerTest extends TestCase {
         $object->doubleArray = [9.999];
         $this->assertSame(1, $this->sut->save($object));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'value' => 'varchar(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_emails'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'value' => 'varchar(6) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_emails'));
         $this->assertSame(['1', '1'], $this->db->tableGetColumnValues($objectTableName.'_emails', 'dbid'));
         $this->assertSame(['new1', 'new2'], $this->db->tableGetColumnValues($objectTableName.'_emails', 'value'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'value' => 'tinyint(1)'], $this->db->tableGetColumnDataTypes($objectTableName.'_boolarray'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'value' => 'tinyint(1) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_boolarray'));
         $this->assertSame(['1', '1'], $this->db->tableGetColumnValues($objectTableName.'_boolarray', 'dbid'));
         $this->assertSame(['0', '1'], $this->db->tableGetColumnValues($objectTableName.'_boolarray', 'value'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'value' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_intarray'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'value' => 'smallint(6) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_intarray'));
         $this->assertSame(['1', '1', '1', '1'], $this->db->tableGetColumnValues($objectTableName.'_intarray', 'dbid'));
         $this->assertSame(['40', '30', '20', '10'], $this->db->tableGetColumnValues($objectTableName.'_intarray', 'value'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'value' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName.'_doublearray'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'value' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_doublearray'));
         $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_doublearray', 'dbid'));
         $this->assertSame(['9.999'], $this->db->tableGetColumnValues($objectTableName.'_doublearray', 'value'));
 
@@ -705,7 +765,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $object->boolArray = [];
         $object->intArray = [];
         $object->doubleArray = [];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_emails column value data type expected: varchar.6. but received: int/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_emails column value data type expected: varchar.6. NOT NULL but received: int/');
 
         $object = new CustomerWithArrayProps();
         $this->assertSame(2, $this->sut->save($object));
@@ -718,26 +778,26 @@ class DataBaseObjectsManagerTest extends TestCase {
         // Test wrong values
 
         $object->emails = ['this value is too long for the created table'];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_emails column value data type expected: varchar.6. but received: varchar.44./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_emails column value data type expected: varchar.6. NOT NULL but received: varchar.44./');
 
         $object->emails = ['ok', 'this value is too long for the created table'];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_emails column value data type expected: varchar.6. but received: varchar.44./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_emails column value data type expected: varchar.6. NOT NULL but received: varchar.44./');
 
         $object = new CustomerWithArrayProps();
         $object->intArray = ['string'];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_intarray column value data type expected: smallint.6. but received: varchar.6./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_intarray column value data type expected: smallint.6. NOT NULL but received: varchar.6./');
 
         $object = new CustomerWithArrayProps();
         $object->intArray = [111, 452435234523452345];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_intarray column value data type expected: smallint.6. but received: bigint/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_intarray column value data type expected: smallint.6. NOT NULL but received: bigint/');
 
         $object = new CustomerWithArrayProps();
         $object->boolArray = [111];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_boolarray column value data type expected: tinyint.1. but received: smallint/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_boolarray column value data type expected: tinyint.1. NOT NULL but received: smallint/');
 
         $object = new CustomerWithArrayProps();
         $object->name = ['storing an array into a non array prop'];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Table does not exist: td_customerwitharrayprops_name/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not get column data types: Table .*td_customerwitharrayprops_name. doesn.t exist/');
 
         $object = new CustomerWithArrayProps();
         $object->name = 'this customer has array typed properties';
@@ -745,7 +805,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $object->boolArray = [true, 123];
         $object->intArray = [10, 20, 30, 40];
         $object->doubleArray = [10.0, 100.454, 0.254676];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not detect type from property boolArray: All array elements must be the same type/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not detect property boolArray type: All array elements must be the same type/');
 
         $object = new CustomerWithArrayProps();
         $object->name = '';
@@ -753,7 +813,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $object->boolArray = [true];
         $object->intArray = [10];
         $object->doubleArray = [0.254676];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not detect type from property emails: All array elements must be the same type/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not detect property emails type: All array elements must be the same type/');
     }
 
 
@@ -764,10 +824,10 @@ class DataBaseObjectsManagerTest extends TestCase {
      */
     public function testSave_Strong_typed_Object(){
 
-        $objectTableName = $this->sut->tablesPrefix.strtolower('CustomerTyped');
+        $objectTableName = $this->sut->tablesPrefix.'customertyped';
 
         // Test empty values
-        // TODO - Test what happens with null and not null values on properties
+        // Not necessary
 
         // Test ok values
         $object = new CustomerTyped();
@@ -776,14 +836,14 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         $this->assertSame(10, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
-            'creationdate' => 'datetime(6)', 'modificationdate' => 'datetime(6)', 'deleted' => 'datetime(6)', 'name' => 'varchar(20)',
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
+            'creationdate' => 'datetime(6) NOT NULL', 'modificationdate' => 'datetime(6) NOT NULL', 'deleted' => 'datetime(6)', 'name' => 'varchar(20) NOT NULL',
             'commercialname' => 'varchar(25)', 'birthdate' => 'datetime', 'milisecondsdate' => 'datetime(3)', 'microsecondsdate' => 'datetime(6)', 'age' => 'smallint(6)',
             'onedigitint' => 'smallint(6)', 'sixdigitint' => 'mediumint(9)', 'twelvedigitint' => 'bigint(20)', 'doublevalue' => 'double',
             'setup' => 'tinyint(1)'
             ], $this->db->tableGetColumnDataTypes($objectTableName));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'value' => 'varchar(75)'], $this->db->tableGetColumnDataTypes($objectTableName.'_emails'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'value' => 'varchar(75)'], $this->db->tableGetColumnDataTypes($objectTableName.'_emails'));
         $this->assertSame([], $this->db->tableGetColumnValues($objectTableName.'_emails', 'dbid'));
         $this->assertSame([], $this->db->tableGetColumnValues($objectTableName.'_emails', 'value'));
 
@@ -806,13 +866,13 @@ class DataBaseObjectsManagerTest extends TestCase {
         $object->doubleArray = [1, 2, 3, 4];
         $this->assertSame(1, $this->sut->save($object));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'value' => 'varchar(75)'], $this->db->tableGetColumnDataTypes($objectTableName.'_emails'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'value' => 'varchar(75)'], $this->db->tableGetColumnDataTypes($objectTableName.'_emails'));
         $this->assertSame(['mail1', 'mail2'], $this->db->tableGetColumnValues($objectTableName.'_emails', 'value'));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'value' => 'tinyint(1)'], $this->db->tableGetColumnDataTypes($objectTableName.'_boolarray'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'value' => 'tinyint(1) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_boolarray'));
         $this->assertSame(['1', '1'], $this->db->tableGetColumnValues($objectTableName.'_boolarray', 'value'));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'value' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_intarray'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'value' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_intarray'));
         $this->assertSame(['1', '2', '3', '4'], $this->db->tableGetColumnValues($objectTableName.'_intarray', 'value'));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned', 'value' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName.'_doublearray'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'value' => 'double'], $this->db->tableGetColumnDataTypes($objectTableName.'_doublearray'));
         $this->assertSame(['1', '2', '3', '4'], $this->db->tableGetColumnValues($objectTableName.'_doublearray', 'value'));
 
         $object = new ObjectWithTypingDisabled();
@@ -1019,23 +1079,23 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         // Test ok values
         $object = new Customer();
-        $this->assertSame('varchar(1)', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
-        $this->assertSame('varchar(1)', $this->sut->getSQLTypeFromObjectProperty($object, 'commercialName'));
-        $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
+        $this->assertSame('varchar(1) NOT NULL', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
+        $this->assertSame('varchar(1) NOT NULL', $this->sut->getSQLTypeFromObjectProperty($object, 'commercialName'));
+        $this->assertSame('smallint NOT NULL', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
 
         $object->name = 'customer name';
         $object->commercialName = 'commercial name';
         $object->age = 12456;
-        $this->assertSame('varchar(13)', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
-        $this->assertSame('varchar(15)', $this->sut->getSQLTypeFromObjectProperty($object, 'commercialName'));
-        $this->assertSame('mediumint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
+        $this->assertSame('varchar(13) NOT NULL', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
+        $this->assertSame('varchar(15) NOT NULL', $this->sut->getSQLTypeFromObjectProperty($object, 'commercialName'));
+        $this->assertSame('mediumint NOT NULL', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
         $object->age = 1234;
-        $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
+        $this->assertSame('smallint NOT NULL', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
         $object->age = 1122212121;
-        $this->assertSame('bigint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
+        $this->assertSame('bigint NOT NULL', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
 
         $object = new CustomerTyped();
-        $this->assertSame('varchar(20)', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
+        $this->assertSame('varchar(20) NOT NULL', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
         $this->assertSame('varchar(25)', $this->sut->getSQLTypeFromObjectProperty($object, 'commercialName'));
         $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
         $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'oneDigitInt'));
@@ -1044,7 +1104,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame('double', $this->sut->getSQLTypeFromObjectProperty($object, 'doubleValue'));
         $this->assertSame('tinyint(1)', $this->sut->getSQLTypeFromObjectProperty($object, 'setup'));
         $this->assertSame('varchar(75)', $this->sut->getSQLTypeFromObjectProperty($object, 'emails'));
-        $this->assertSame('tinyint(1)', $this->sut->getSQLTypeFromObjectProperty($object, 'boolArray'));
+        $this->assertSame('tinyint(1) NOT NULL', $this->sut->getSQLTypeFromObjectProperty($object, 'boolArray'));
         $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'intArray'));
         $this->assertSame('double', $this->sut->getSQLTypeFromObjectProperty($object, 'doubleArray'));
 
@@ -1053,7 +1113,7 @@ class DataBaseObjectsManagerTest extends TestCase {
         $object->name = 1231231;
         $object->commercialName = new stdClass();
         $object->age = 'stringinsteadofint';
-        $this->assertSame('varchar(20)', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
+        $this->assertSame('varchar(20) NOT NULL', $this->sut->getSQLTypeFromObjectProperty($object, 'name'));
         $this->assertSame('smallint', $this->sut->getSQLTypeFromObjectProperty($object, 'age'));
         $this->assertSame('varchar(25)', $this->sut->getSQLTypeFromObjectProperty($object, 'commercialName'));
 

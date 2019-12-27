@@ -266,7 +266,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
         }
 
         // TODO - PENDING:
-        // TODO - save multilanguage objects
+        // TODO - save multilanguage properties
         //      1 decide if sepparate class or the same is used
         //      2 localized properties must have a special type definition
         // TODO - save a property with a complex type
@@ -408,22 +408,24 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $type = $this->_getTypeFromObjectProperty($object, $property);
 
+        $isNullable = !in_array(self::NOT_NULL, $type, true);
+
         switch ($type[0]) {
 
             case self::BOOL:
-                return $this->_db->getSQLTypeFromValue(true);
+                return $this->_db->getSQLTypeFromValue(true, $isNullable);
 
             case self::INT:
-                return $this->_db->getSQLTypeFromValue(pow(10, $type[1]) - 1);
+                return $this->_db->getSQLTypeFromValue(pow(10, $type[1]) - 1, $isNullable);
 
             case self::DOUBLE:
-                return $this->_db->getSQLTypeFromValue(1.0);
+                return $this->_db->getSQLTypeFromValue(1.0, $isNullable);
 
             case self::DATETIME:
-                return $this->_db->getSQLDateTimeType(true, $type[1]);
+                return $this->_db->getSQLDateTimeType($isNullable, $type[1]);
 
             default:
-                return $this->_db->getSQLTypeFromValue(str_repeat(' ', $type[1]));
+                return $this->_db->getSQLTypeFromValue(str_repeat(' ', $type[1]), $isNullable);
         }
     }
 
@@ -495,7 +497,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         } catch (Throwable $e) {
 
-            throw new UnexpectedValueException('Could not detect type from property '.$property.': '.$e->getMessage());
+            throw new UnexpectedValueException('Could not detect property '.$property.' type: '.$e->getMessage());
         }
     }
 
@@ -585,22 +587,22 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         if(is_bool($value)){
 
-            return [self::BOOL, 1];
+            return [self::BOOL, 1, self::NOT_NULL];
         }
 
         if(is_int($value)){
 
-            return [self::INT, strlen((string)abs($value))];
+            return [self::INT, strlen((string)abs($value)), self::NOT_NULL];
         }
 
         if(is_double($value)){
 
-            return [self::DOUBLE,strlen((string)abs($value))];
+            return [self::DOUBLE,strlen((string)abs($value)), self::NOT_NULL];
         }
 
         if(is_string($value)){
 
-            return [self::STRING, strlen($value)];
+            return [self::STRING, strlen($value), self::NOT_NULL];
         }
 
         if(is_array($value) && count($value) > 0){
@@ -624,7 +626,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 }
             }
 
-            return array_merge($this->_getTypeFromValue($value[$biggestValueIndex]), [self::ARRAY]);
+            return array_merge($this->_getTypeFromValue($value[$biggestValueIndex]), [self::ARRAY, self::NOT_NULL]);
         }
 
         throw new UnexpectedValueException('Could not detect type from '.gettype($value));
@@ -821,7 +823,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             }
 
             // Increase the size of the table column so it can fit the object value
-            $this->_db->query('ALTER TABLE '.$tableName.' MODIFY COLUMN '.$tableColumnName.' '.$valueType);
+            $this->_db->query('ALTER TABLE '.$tableName.' MODIFY COLUMN '.$tableColumnName.' '.str_replace('('.$tableColumnTypeSize.')', '('.$valueTypeSize.')', $tableColumnType));
         }
     }
 
@@ -901,11 +903,17 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 continue;
             }
 
+            if(is_array($object->{$classProperty}) && in_array(null, $object->{$classProperty}, true)){
+
+                throw new UnexpectedValueException('NULL value is not accepted inside array: '.$classProperty);
+            }
+
             $propertyExpectedType = $this->_getTypeFromObjectProperty($object, $classProperty);
 
             if($object->{$classProperty} === null){
 
-                if(in_array(self::NOT_NULL, $propertyExpectedType, true)){
+                if(in_array(self::NOT_NULL, $propertyExpectedType, true) ||
+                   in_array(self::ARRAY, $propertyExpectedType, true)){
 
                     throw new UnexpectedValueException('NULL value is not accepted by '.$classProperty.' property');
                 }

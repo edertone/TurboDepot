@@ -809,24 +809,19 @@ class DataBaseManager extends BaseStrictClass {
      *
      * @throws UnexpectedValueException If column data types could not be obtained
      *
-     * @return array Associative array where each key is the table column name and each value the table column
-     *         data type and precision (like varchar(20), bigint(20), etc...). Array is sorted in the same way as the columns are in the table.
+     * @return array Associative array where each key is the table column name and each value the table column data type
+     *         (like varchar(20), bigint(20) unsigned, varchar(3) NOT NULL, ...). Array is sorted in the same way as columns are in the table.
      */
     public function tableGetColumnDataTypes($tableName){
 
         $result = [];
 
         if($this->_engine === self::MYSQL &&
-           ($types = $this->query("SELECT COLUMN_TYPE, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '".$tableName."'")) !== false){
+           ($types = $this->query("SHOW FIELDS FROM `".$tableName."`")) !== false){
 
             foreach ($types as $type) {
 
-                $result[$type['COLUMN_NAME']] = strtolower($type['COLUMN_TYPE']);
-            }
-
-            if(count($result) === 0 && !$this->tableExists($tableName)){
-
-                throw new UnexpectedValueException('Table does not exist: '.$tableName);
+                $result[$type['Field']] = strtolower($type['Type']).($type['Null'] === 'NO' ? ' NOT NULL' : '');
             }
 
             return $result;

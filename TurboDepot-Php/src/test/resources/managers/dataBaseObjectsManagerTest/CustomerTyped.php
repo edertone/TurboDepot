@@ -16,7 +16,7 @@ class CustomerTyped extends DataBaseObject{
 
     public function __construct(){
 
-        $this->_types['name'] = [20, DataBaseObjectsManager::STRING];
+        $this->_types['name'] = [20, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING];
         $this->_types['commercialName'] = [DataBaseObjectsManager::STRING, 25];
         $this->_types['birthDate'] = [DataBaseObjectsManager::DATETIME, 0];
         $this->_types['miliSecondsDate'] = [3, DataBaseObjectsManager::DATETIME];
@@ -28,7 +28,7 @@ class CustomerTyped extends DataBaseObject{
         $this->_types['doubleValue'] = [DataBaseObjectsManager::DOUBLE];
         $this->_types['setup'] = [DataBaseObjectsManager::BOOL];
         $this->_types['emails'] = [75, DataBaseObjectsManager::ARRAY, DataBaseObjectsManager::STRING];
-        $this->_types['boolArray'] = [DataBaseObjectsManager::BOOL, DataBaseObjectsManager::ARRAY];
+        $this->_types['boolArray'] = [DataBaseObjectsManager::BOOL, DataBaseObjectsManager::ARRAY, DataBaseObjectsManager::NOT_NULL];
         $this->_types['intArray'] = [DataBaseObjectsManager::INT, DataBaseObjectsManager::ARRAY, 3];
         $this->_types['doubleArray'] = [DataBaseObjectsManager::DOUBLE, DataBaseObjectsManager::ARRAY];
     }
