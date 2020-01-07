@@ -129,6 +129,13 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
+     * TODO
+     * @var string
+     */
+    public $isMissingLocaleAddedToTable = false;
+
+
+    /**
      * This flag specifies what to do when saving an object that contains a property with a value that is bigger than how it is defined at the database table.
      *
      * If set to true, any column that has smaller type size defined will be increased to fit the new value.
@@ -273,6 +280,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
         // TODO - save an array of complex types
         // TODO - save pictures and binary files linked to the object
         // TODO - implement performance tests for massive amounts of data save and list
+        // TODO - verify that all unit test methods are sorted in the same order as this class methods
     }
 
 
@@ -349,11 +357,24 @@ class DataBaseObjectsManager extends BaseStrictClass{
     public function convertObjectToTableData(DataBaseObject $object){
 
         $tableData = [];
+        $arrayTypedProps = $this->_getArrayTypedProperties($object);
+        $multiLanguageProps = $this->_getMultiLanguageTypedProperties($object);
 
         foreach (get_object_vars($object) as $property => $value) {
 
+            // Multi language properties are ignored from the tabledata structure
+            if(in_array($property, $multiLanguageProps, true)){
+
+                continue;
+            }
+
             // Array typed properties are ignored from the tabledata structure
-            if(!is_array($object->{$property})){
+            if(!in_array($property, $arrayTypedProps, true)){
+
+                if(is_array($object->{$property})){
+
+                    throw new UnexpectedValueException('unexpected array value for property: '.$property);
+                }
 
                 $tableData[strtolower($property)] = $value;
             }
@@ -539,6 +560,12 @@ class DataBaseObjectsManager extends BaseStrictClass{
                     break;
 
                 case self::MULTI_LANGUAGE:
+
+                    if(in_array(self::ARRAY, $array, true)){
+
+                        throw new UnexpectedValueException('ARRAY type is not allowed on multi language properties: '.$property);
+                    }
+
                     $isMultiLanguage = true;
                     break;
 
@@ -674,6 +701,31 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
+     * Obtain a list with all the properties that are typed as multi language for the provided object
+     *
+     * @param DataBaseObject $object A valid database object instance
+     *
+     * @return string[] An array with all the property names for those that are defined to store multi language values
+     */
+    private function _getMultiLanguageTypedProperties(DataBaseObject $object){
+
+        $result = [];
+
+        foreach(array_keys(get_object_vars($object)) as $property){
+
+            // Note that we ignore all arrays cause they are not allowed for multi language properties
+            if(!is_array($object->{$property}) &&
+               in_array(self::MULTI_LANGUAGE, $this->_getTypeFromObjectProperty($object, $property), true)){
+
+                $result[] = $property;
+            }
+        }
+
+        return $result;
+    }
+
+
+    /**
      * Aux method to create the table that represents the provided object on database
      *
      * @param DataBaseObject $object A valid database object instance
@@ -702,16 +754,40 @@ class DataBaseObjectsManager extends BaseStrictClass{
         $this->_db->tableCreate($tableName, $columnsToCreate, ['dbid'], [['uuid']], [['sortindex']]);
 
         // Create all the tables that store array properties
+        $dbIdForeignColumn = 'dbid '.$this->_db->getSQLTypeFromValue(999999999999999, false, true);
+
         foreach ($this->_getArrayTypedProperties($object) as $property) {
 
             $columnName = strtolower($property);
 
-            $this->_db->tableCreate($tableName.'_'.$columnName, [
-                'dbid '.$this->_db->getSQLTypeFromValue(999999999999999, false, true),
+            $this->_db->tableCreate($tableName.'_'.$columnName, [$dbIdForeignColumn,
                 'value '.$this->getSQLTypeFromObjectProperty($object, $properties[$columnName])
             ]);
 
             $this->_db->tableAddForeignKey($tableName.'_'.$columnName, $tableName.'_'.$columnName.'_dbid_fk', ['dbid'], $tableName, ['dbid']);
+        }
+
+        // Create all the tables that store multi language properties
+        $multiLanguageProperties = $this->_getMultiLanguageTypedProperties($object);
+
+        if(count($multiLanguageProperties) > 0){
+
+            $objectLocales = $object->getLocales();
+
+            foreach ($multiLanguageProperties as $property) {
+
+                $columnName = strtolower($property);
+                $columnType = $this->getSQLTypeFromObjectProperty($object, $properties[$columnName]);
+                $columnsToCreate = [$dbIdForeignColumn];
+
+                foreach ($objectLocales as $objectLocale) {
+
+                    $columnsToCreate[] = ($objectLocale === '' ? '_' : $objectLocale).' '.$columnType;
+                }
+
+                $this->_db->tableCreate($tableName.'_'.$columnName, $columnsToCreate);
+                $this->_db->tableAddForeignKey($tableName.'_'.$columnName, $tableName.'_'.$columnName.'_dbid_fk', ['dbid'], $tableName, ['dbid']);
+            }
         }
 
         return $tableData;
@@ -746,6 +822,40 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 foreach ($object->{$property} as $value) {
 
                     $this->_checkColumnFitsType($arrayPropTableName, 'value', $tableColumnType, $this->_db->getSQLTypeFromValue($value));
+                }
+            }
+        }
+
+        // Verify that multi language properties can be stored on their respective database tables
+        foreach ($this->_getMultiLanguageTypedProperties($object) as $property) {
+
+            $multiLanPropTableName = $tableName.'_'.strtolower($property);
+
+            if(!$this->_db->tableExists($multiLanPropTableName)){
+
+                // TODO - compare what is the behaviour when table is missing on array props and unify both behaviours: Or exception is thrown or table is created
+                throw new UnexpectedValueException('Multi language property '.$property.' table does not exist on database');
+            }
+
+            $tableDataTypes = $this->_db->tableGetColumnDataTypes($multiLanPropTableName);
+
+            foreach ($object->getLocales() as $locale) {
+
+                $locale = $locale === '' ? '_' : $locale;
+
+                if(!isset($tableDataTypes[$locale])){
+
+                    if(!$this->isMissingLocaleAddedToTable){
+
+                        throw new UnexpectedValueException('Locale '.$locale.' is not found on '.$property.' property table');
+                    }
+
+                    $this->_db->tableAddColumn($multiLanPropTableName, $locale, $this->getSQLTypeFromObjectProperty($object, $property));
+
+                }else{
+
+                    // TODO!! - review this
+                    // $this->_checkColumnFitsType($multiLanPropTableName, $locale, $tableDataTypes[$locale], $this->_db->getSQLTypeFromValue($object->{$property}));
                 }
             }
         }
@@ -877,14 +987,14 @@ class DataBaseObjectsManager extends BaseStrictClass{
         }
 
         // Database objects must not have any unexpected method defined, cause they are only data containers
-        if(($classMethods = (new ReflectionClass(get_class($object)))->getMethods()) > 0){
+        if(($classMethods = (new ReflectionClass($class))->getMethods()) > 0){
 
             foreach($classMethods as $classMethod){
 
                 // setup() and BaseStrictClass methods are the only ones that are allowed
-                if(!in_array($classMethod->name, ['__construct', '__set', '__get'], true)){
+                if(!in_array($classMethod->name, ['__construct', '__set', '__get', 'setLocales', 'isMultiLanguage', 'getLocales'], true)){
 
-                    throw new UnexpectedValueException('Only __construct method is allowed for DataBaseObjects but found: '.$classMethod->name);
+                    throw new UnexpectedValueException('Method is not allowed for DataBaseObject class '.$class.': '.$classMethod->name);
                 }
             }
         }
@@ -912,8 +1022,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             if($object->{$classProperty} === null){
 
-                if(in_array(self::NOT_NULL, $propertyExpectedType, true) ||
-                   in_array(self::ARRAY, $propertyExpectedType, true)){
+                if(in_array(self::NOT_NULL, $propertyExpectedType, true) || in_array(self::ARRAY, $propertyExpectedType, true)){
 
                     throw new UnexpectedValueException('NULL value is not accepted by '.$classProperty.' property');
                 }
