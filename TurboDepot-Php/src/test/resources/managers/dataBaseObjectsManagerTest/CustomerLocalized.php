@@ -13,7 +13,7 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 class CustomerLocalized extends DataBaseObject{
 
 
-    public function __construct(array $locales){
+    protected function setup(){
 
         $this->_types['name'] = [DataBaseObjectsManager::STRING, 250];
         $this->_types['nameLocalized'] = [DataBaseObjectsManager::MULTI_LANGUAGE, DataBaseObjectsManager::STRING, 20];
@@ -24,8 +24,6 @@ class CustomerLocalized extends DataBaseObject{
         $this->_types['ageLocalized'] = [DataBaseObjectsManager::INT, 2, DataBaseObjectsManager::MULTI_LANGUAGE];
         $this->_types['setup'] = [DataBaseObjectsManager::BOOL];
         $this->_types['setupLocalized'] = [DataBaseObjectsManager::BOOL, DataBaseObjectsManager::MULTI_LANGUAGE];
-
-        parent::__construct($locales);
     }
 
 

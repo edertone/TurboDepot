@@ -10,7 +10,7 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 class ObjectWithWrongDateTypeSize extends DataBaseObject{
 
 
-    public function __construct(){
+    protected function setup(){
 
         $this->_types['date'] = [DataBaseObjectsManager::DATETIME, 10];
     }

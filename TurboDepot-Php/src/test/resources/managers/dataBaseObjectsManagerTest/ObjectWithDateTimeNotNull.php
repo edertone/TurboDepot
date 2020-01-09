@@ -13,7 +13,7 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 class ObjectWithDateTimeNotNull extends DataBaseObject{
 
 
-    public function __construct(){
+    protected function setup(){
 
         $this->_types['date'] = [DataBaseObjectsManager::DATETIME, DataBaseObjectsManager::NOT_NULL, 0];
     }

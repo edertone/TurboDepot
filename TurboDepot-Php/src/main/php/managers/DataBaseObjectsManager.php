@@ -251,11 +251,13 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
                 $this->_db->tableAddRows($tableName, [$tableData]);
                 $object->dbId = $this->_insertArrayPropsToDb($object, $tableName, $this->_db->getLastInsertId());
+                $this->_insertMultiLanguagePropsToDb($object, $tableName, $object->dbId);
 
             }else{
 
                 $this->_db->tableUpdateRow($tableName, ['dbid' => $object->dbId], $tableData);
                 $this->_insertArrayPropsToDb($object, $tableName, $object->dbId, true);
+                $this->_insertMultiLanguagePropsToDb($object, $tableName, $object->dbId, true);
             }
 
             $this->_db->transactionCommit();
@@ -316,6 +318,43 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
                 $this->_db->tableAddRows($tableName.'_'.$column, $rowsToAdd);
             }
+        }
+
+        return $dbId;
+    }
+
+
+    /**
+     * Auxiliary method to store all the multi language typed properties values to database
+     *
+     * @param DataBaseObject $object An instance to save or update
+     * @param string $tableName The name for the object table
+     * @param int $dbId The object dbId to which the array values will be linked
+     * @param boolean $deleteBeforeInsert TODO - multilan properties must be updated instead of deleted and inserted !??!?!?!
+     *
+     * @return int The object dbId
+     */
+    private function _insertMultiLanguagePropsToDb(DataBaseObject $object, string $tableName, int $dbId, $deleteBeforeInsert = false){
+
+        foreach ($this->_getMultiLanguageTypedProperties($object) as $property) {
+
+            $column = strtolower($property);
+
+            if($deleteBeforeInsert){
+
+                $this->_db->tableDeleteRows($tableName.'_'.$column, ['dbid' => $object->dbId]);
+            }
+
+            $rowToAdd = ['dbid' => $dbId];
+
+            foreach ($object->getLocales() as $locale) {
+
+                $locale = $locale === '' ? '_' : $locale;
+
+                $rowToAdd[$locale] = $object->{$property};
+            }
+
+            $this->_db->tableAddRows($tableName.'_'.$column, [$rowToAdd]);
         }
 
         return $dbId;
@@ -992,7 +1031,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             foreach($classMethods as $classMethod){
 
                 // setup() and BaseStrictClass methods are the only ones that are allowed
-                if(!in_array($classMethod->name, ['__construct', '__set', '__get', 'setLocales', 'isMultiLanguage', 'getLocales'], true)){
+                if(!in_array($classMethod->name, ['__construct', '__set', '__get', 'setup', 'setLocales', 'isMultiLanguage', 'getLocales'], true)){
 
                     throw new UnexpectedValueException('Method is not allowed for DataBaseObject class '.$class.': '.$classMethod->name);
                 }

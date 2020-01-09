@@ -8,6 +8,12 @@ use org\turbodepot\src\main\php\model\DataBaseObject;
 
 class ObjectWithWrongMethods extends DataBaseObject{
 
+
+    protected function setup(){
+
+    }
+
+
     public function methodThatCantBeHere(){
 
         return 1;

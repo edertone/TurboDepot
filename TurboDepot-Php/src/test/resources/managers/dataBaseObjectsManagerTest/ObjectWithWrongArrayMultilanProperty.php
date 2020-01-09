@@ -10,7 +10,7 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 class ObjectWithWrongArrayMultilanProperty extends DataBaseObject{
 
 
-    public function __construct(){
+    protected function setup(){
 
         // This object must fail when saving cause arrays are not allowed on multilanguage properties
         $this->_types['arrayMul'] = [DataBaseObjectsManager::ARRAY, DataBaseObjectsManager::STRING, 10, DataBaseObjectsManager::MULTI_LANGUAGE];

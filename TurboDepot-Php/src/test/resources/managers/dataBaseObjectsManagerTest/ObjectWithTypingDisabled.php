@@ -10,7 +10,7 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 class ObjectWithTypingDisabled extends DataBaseObject{
 
 
-    public function __construct(){
+    protected function setup(){
 
         $this->_isTypingMandatory = false;
 

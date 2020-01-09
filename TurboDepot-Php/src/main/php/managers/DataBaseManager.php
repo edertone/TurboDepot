@@ -860,7 +860,8 @@ class DataBaseManager extends BaseStrictClass {
      * @param string $columnName Name for the table column we want to list
      * @param string $removeDuplicates If set to true, all the duplicate values will be removed from the resulting list
      *
-     * @return array A list with all the values that can be found on the specified table and column.
+     * @return array A list with all the values that can be found on the specified table and column. Note that all values are returned in a string format,
+     *         except the null value which is returned as null.
      */
     public function tableGetColumnValues($tableName, $columnName, $removeDuplicates = false){
 

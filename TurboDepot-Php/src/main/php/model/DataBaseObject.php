@@ -17,7 +17,7 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 
 
 /**
- * Base class for all the objects that are manipulated by the DataBaseObjectsManager class.
+ * DataBaseObject
  */
 abstract class DataBaseObject extends BaseStrictClass{
 
@@ -87,7 +87,17 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * This method is always called before any other thing at thedatabase object constructor.
+
+     * It must be declared to define the database object configuration and type values. If nothing is specified here, all setup parameters will be the default ones.
+     *
+     * @return void
+     */
+    abstract protected function setup();
+
+
+    /**
+     * @see DataBaseObject::setLocales()
      *
      * @var array
      */
@@ -102,20 +112,29 @@ abstract class DataBaseObject extends BaseStrictClass{
     private $_isMultiLanguage = null;
 
 
-    public function __construct(array $locales = []){
+    /**
+     * Base class for all the objects that are manipulated by the DataBaseObjectsManager class.
+     *
+     * @see DataBaseObject::setLocales()
+     *
+     * @param array $locales The list of locales that are used on localized properties by this instance, sorted by preference
+     */
+    public final function __construct(array $locales = []){
 
-        // TODO - convert constructor method to final and use a setup() method to configure db objects the same way as WebServiceManager class does.
-        // This is important to prevent database objects from overriding the constructor method without having the locales parameter
+        $this->setup();
 
         $this->setLocales($locales);
     }
 
 
     /**
-     * TODO
-     * @param array $locales
-     * @throws UnexpectedValueException
-     * @return unknown
+     * Specifies the list of strings containing the locales that are used by this class, sorted by preference.
+     * Each string must be formatted as a standard locale code with language and country joined by an underscore, like: en_US, fr_FR. The only accepted
+     * exceptions is the '' empty locale, which can be used to define localized values when we don't know what locale to use.
+     *
+     * @param array $locales The list of locales sorted by preference
+     *
+     * @return void
      */
     public final function setLocales(array $locales){
 
@@ -154,8 +173,9 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
-     * TODO
-     * @return boolean
+     * Check if this DatabaseObject is using multi language properties or not
+     *
+     * @return boolean True if this instance is localized, false if not
      */
     public final function isMultiLanguage(){
 
@@ -177,9 +197,11 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
-     * TODO
-     * @throws UnexpectedValueException
-     * @return array
+     * Get the list of strings containing the locales that are used by this class, sorted by preference.
+     *
+     * @see DataBaseObject::setLocales()
+     *
+     * @return array The list of locales.
      */
     public final function getLocales(){
 

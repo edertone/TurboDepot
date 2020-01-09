@@ -14,7 +14,7 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 class CustomerTyped extends DataBaseObject{
 
 
-    public function __construct(){
+    protected function setup(){
 
         $this->_types['name'] = [20, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING];
         $this->_types['commercialName'] = [DataBaseObjectsManager::STRING, 25];
