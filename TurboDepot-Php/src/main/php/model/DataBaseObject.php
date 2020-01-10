@@ -11,6 +11,8 @@
 
 namespace org\turbodepot\src\main\php\model;
 
+use ReflectionProperty;
+use ReflectionObject;
 use UnexpectedValueException;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
 use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
@@ -123,6 +125,24 @@ abstract class DataBaseObject extends BaseStrictClass{
 
         $this->setup();
 
+        // When instance is constructed, all received locales are set to the class default property values.
+        // Note that first locale contains the same values as the instance current properties
+        if(count($locales) > 0){
+
+            foreach ($locales as $locale) {
+
+                if($locale !== '' && preg_match('/[a-z][a-z]_[A-Z][A-Z]/', $locale) === 0){
+
+                    throw new UnexpectedValueException('Invalid locale specified: '.$locale);
+                }
+
+                foreach((new ReflectionObject($this))->getProperties(ReflectionProperty::IS_PUBLIC) as $classProperty){
+
+                    $this->_locales[$locale][$classProperty->name] = $this->{$classProperty->name};
+                }
+            }
+        }
+
         $this->setLocales($locales);
     }
 
@@ -138,6 +158,10 @@ abstract class DataBaseObject extends BaseStrictClass{
      */
     public final function setLocales(array $locales){
 
+        $localesCount = count($locales);
+        $instanceLocales = array_keys($this->_locales);
+        $instanceLocalesCount = count($this->_locales);
+
         if($this->isMultiLanguage()){
 
             if($locales === []){
@@ -151,22 +175,26 @@ abstract class DataBaseObject extends BaseStrictClass{
         }
 
         // Duplicate values are not allowed on the locales array
-        if(count(array_unique($locales)) < count($locales)){
+        if(count(array_unique($locales)) < $localesCount){
 
             throw new UnexpectedValueException('Duplicate elements found on locales list');
         }
 
-        $this->_locales = [];
+        $sortedLocales = [];
 
-        foreach ($locales as $locale) {
+        for ($i = 0; $i < $localesCount; $i++) {
 
-            if($locale !== '' && preg_match('/[a-z][a-z]_[A-Z][A-Z]/', $locale) === 0){
+            // Adding or removing locales from the current active list is not allowed. All the available locales for this instance are defined only
+            // when the instance is created. The only accepted operation with setLocales() is changing their order
+            if($instanceLocalesCount !== $localesCount || !in_array($locales[$i], $instanceLocales, true)){
 
-                throw new UnexpectedValueException('Invalid locale specified: '.$locale);
+                throw new UnexpectedValueException('Locales cannot be added or removed from an already created instance, only sorted.');
             }
 
-            $this->_locales[$locale] = [];
+            $sortedLocales[$locales[$i]] = $this->_locales[$locales[$i]];
         }
+
+        $this->_locales = $sortedLocales;
 
         return $locales;
     }

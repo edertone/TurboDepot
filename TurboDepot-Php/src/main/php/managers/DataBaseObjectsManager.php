@@ -349,15 +349,58 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             foreach ($object->getLocales() as $locale) {
 
-                $locale = $locale === '' ? '_' : $locale;
-
-                $rowToAdd[$locale] = $object->{$property};
+                $rowToAdd[$locale === '' ? '_' : $locale] = $this->_getMultiLanguagePropertyValue($object, $property, $locale);
             }
 
             $this->_db->tableAddRows($tableName.'_'.$column, [$rowToAdd]);
         }
 
         return $dbId;
+    }
+
+
+    /**
+     * Get an object multi language property value for the specified locale
+     *
+     * @param DataBaseObject $object The object for which we want to obtain the property value
+     * @param string $property The name for the property
+     * @param string $locale The language we want to get for the localized property
+     *
+     * @return mixed The value for the specified multi language property for the specified locale
+     */
+    private function _getMultiLanguagePropertyValue(DataBaseObject $object, string $property, string $locale){
+
+        $reflectionObject = new ReflectionObject($object);
+        $objectDefinedLocales = $reflectionObject->getParentClass()->getProperty('_locales');
+        $objectDefinedLocales->setAccessible(true);
+        $localesData = $objectDefinedLocales->getValue($object);
+
+        $returnValue = $object->{$property};
+        $locales = $object->getLocales();
+        $isNotNull = in_array(self::NOT_NULL, $this->_getTypeFromObjectProperty($object, $property), true);
+
+        for ($i = 0, $l = count($locales); $i < $l; $i++) {
+
+            $localizedValue = $object->{$property};
+
+            if($i > 0){
+
+                $localizedValue = $localesData[$locales[$i]][$property];
+
+                if($locale === $locales[$i]){
+
+                    $returnValue = $localizedValue;
+                }
+            }
+
+            // Multi language properties which have been defined as not null cannot have null values
+            if($isNotNull && $localizedValue === null){
+
+                throw new UnexpectedValueException($property.' is set as not null but there\'s a null value for locale: '.$locales[$i]);
+            }
+        }
+
+        return $returnValue;
     }
 
 
@@ -602,7 +645,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
                     if(in_array(self::ARRAY, $array, true)){
 
-                        throw new UnexpectedValueException('ARRAY type is not allowed on multi language properties: '.$property);
+                        throw new UnexpectedValueException('ARRAY type is not supported by multi language properties: '.$property);
                     }
 
                     $isMultiLanguage = true;
