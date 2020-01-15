@@ -11,8 +11,6 @@
 
 namespace org\turbodepot\src\main\php\model;
 
-use ReflectionProperty;
-use ReflectionObject;
 use UnexpectedValueException;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
 use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
@@ -125,7 +123,7 @@ abstract class DataBaseObject extends BaseStrictClass{
 
         $this->setup();
 
-        // When instance is constructed, all received locales are set to the class default property values.
+        // When instance is constructed, all received locales are set to the class default multilanguage property values.
         // Note that first locale contains the same values as the instance current properties
         if(count($locales) > 0){
 
@@ -136,9 +134,12 @@ abstract class DataBaseObject extends BaseStrictClass{
                     throw new UnexpectedValueException('Invalid locale specified: '.$locale);
                 }
 
-                foreach((new ReflectionObject($this))->getProperties(ReflectionProperty::IS_PUBLIC) as $classProperty){
+                foreach ($this->_types as $property => $typedef) {
 
-                    $this->_locales[$locale][$classProperty->name] = $this->{$classProperty->name};
+                    if(in_array(DataBaseObjectsManager::MULTI_LANGUAGE, $typedef, true)){
+
+                        $this->_locales[$locale][$property] = $this->{$property};
+                    }
                 }
             }
         }
@@ -192,6 +193,24 @@ abstract class DataBaseObject extends BaseStrictClass{
             }
 
             $sortedLocales[$locales[$i]] = $this->_locales[$locales[$i]];
+
+            // Set all the multilanguage properties values to the new first locale on the list
+            if($i === 0){
+
+                // Update the current property values to the first locale of the list
+                $firstCurrentLocale = array_keys($this->_locales)[0];
+
+                foreach (array_keys($this->_locales[$firstCurrentLocale]) as $property) {
+
+                    $this->_locales[$firstCurrentLocale][$property] = $this->{$property};
+                }
+
+                // Replace the current propery values with the new locale that will be first on the list
+                foreach ($sortedLocales[$locales[$i]] as $property => $value) {
+
+                    $this->{$property} = $value;
+                }
+            }
         }
 
         $this->_locales = $sortedLocales;

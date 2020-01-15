@@ -73,7 +73,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * TODO - implement
+     * Flag that is used to specify that a data type is stored with multiple language values
      */
     const MULTI_LANGUAGE = 'MULTI_LANGUAGE';
 
@@ -126,13 +126,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * @var boolean
      */
     public $isTableAlteredWhenColumnsChange = false;
-
-
-    /**
-     * TODO
-     * @var string
-     */
-    public $isMissingLocaleAddedToTable = false;
 
 
     /**
@@ -276,8 +269,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         // TODO - PENDING:
         // TODO - save multilanguage properties
-        //      1 decide if sepparate class or the same is used
-        //      2 localized properties must have a special type definition
         // TODO - save a property with a complex type
         // TODO - save an array of complex types
         // TODO - save pictures and binary files linked to the object
@@ -926,11 +917,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 $locale = $locale === '' ? '_' : $locale;
 
                 if(!isset($tableDataTypes[$locale])){
-
-                    if(!$this->isMissingLocaleAddedToTable){
-
-                        throw new UnexpectedValueException('Locale '.$locale.' is not found on '.$property.' property table');
-                    }
 
                     $this->_db->tableAddColumn($multiLanPropTableName, $locale, $this->getSQLTypeFromObjectProperty($object, $property));
 

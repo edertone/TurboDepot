@@ -1083,9 +1083,6 @@ class DataBaseObjectsManagerTest extends TestCase {
 
         // Test saving a second empty instance to the database with a different locale than the previous empty locale one.
         $object = new CustomerLocalized(['en_US']);
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Locale en_US is not found on nameLocalized property table/');
-
-        $this->sut->isMissingLocaleAddedToTable = true;
         $this->assertSame(2, $this->sut->save($object));
 
         $this->assertSame($objectMainTableTypes, $this->db->tableGetColumnDataTypes($objectTableName));
@@ -1113,7 +1110,6 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame(['1', '2'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'dbid'));
         $this->assertSame(['0', null], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', '_'));
         $this->assertSame([null, '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'en_US'));
-        // TODO - Review that dbid foreign keys are correctly assigned on all the multi locale property tables
 
         // Test saving a third empty instance to the database with a list of the 2 previously saved locales plus a new one
         $object = new CustomerLocalized(['en_US', '', 'es_ES']);
@@ -1151,23 +1147,18 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame([null, null, '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'es_ES'));
 
 
-        // TODO - ULTRA VERY IMPORTANT - Once a database object is created, it won't be allowed to add new locales to the locales list, only change the order of the current ones.
-        //        If we want to obtain more locales that are stored on database for that db object class, we will need to create a new instance or load it from db with the
-        //        locales that we want.
-        // TODO - test that changing the locales order on an instance correctly sets the instance properties to the specified first locale values
-        //        VERY IMPORTANT: Make sure that the first locale values are correct after changing order cause the current properties are duplicated on the array and they may become unsynchronized
+        // TODO - implement MULTILANGUAGE_CASCADE to tag properties that must get next locale value when the default class or empty one is found
         // TODO - test that setting a null value on any of a NOT NULL localized property locales throws an exception
-        // TODO - Test saving a fifth instance to the database with a list of 5 new locales - It should be saved without problem (isMissingLocaleAddedToTable = true)
         // TODO - Test saving db object instances with real data
         // TODO - Create a new test case : Test what should happen when saving a db object with a string property, then modify that property to be an array property and save it again
         // TODO - Create a new test case : Test what should happen when saving a db object with a string property, then modify that property to be a multi language property and save it again
         // TODO - test saving with single locale and modifying the values and saving again
         // TODO - test saving with 2 locales and modifying the values and saving again
-        // TODO - test saving with single locale, modify the locale to another one, set some values to properties, and save with the new locale
         // TODO - perform several tests to make sure that multiple locales information is correctly stored in memory of each db object instance at the  $_locales private prop
         //      - The first and active locale for the db object instances must be directly set to the object properties, and all the other loaded data stored on the $_locales prop
-        // TODO - It's been finally decided to not destroy locale columns from multi locale props tables, cause they are not annoying even if not used
+        // TODO - It's been finally decided to not destroy locale columns from multi locale props tables, cause they are not annoying even if not used. Test that this happens as expected
         // TODO - test saving several objects, several instances of the same object, different locales, modifying the same object on already saved locale values, adding different locales, etc..
+        // TODO - what happens when we create an object with an A non localized prop, save it to db, and then alter the class to make the A prop a multilanguage one, and then save again?
 
         // Test wrong values
         $object = new CustomerLocalized(['en_US']);
@@ -1191,6 +1182,182 @@ class DataBaseObjectsManagerTest extends TestCase {
         AssertUtils::throwsException(function() { new CustomerLocalized(['es_ES', 'a']); }, '/Invalid locale specified: a/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongArrayMultilanProperty()); }, '/Class is multi language and expects a list of locales/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongArrayMultilanProperty([''])); }, '/ARRAY type is not supported by multi language properties: arrayMul/');
+    }
+
+
+    /**
+     * testSave_Multi_Language_Change_Locales_Order
+     *
+     * @return void
+     */
+    public function testSave_Multi_Language_Change_Locales_Order(){
+
+        $object = new CustomerLocalized(['en_US', 'es_ES', 'fr_FR', 'en_GB']);
+        $object->age = 32;
+        $object->ageLocalized = 1;
+        $object->name = 'james';
+        $object->nameLocalized = 'james';
+        $object->setup = true;
+        $object->setupLocalized = true;
+
+        // Set the es_ES as the first locale and check that default values are found on object props
+        $object->setLocales(['es_ES', 'en_US', 'fr_FR', 'en_GB']);
+        $this->assertSame(32, $object->age);
+        $this->assertSame(0, $object->ageLocalized);
+        $this->assertSame('james', $object->name);
+        $this->assertSame(null, $object->nameLocalized);
+        $this->assertSame(true, $object->setup);
+        $this->assertSame(false, $object->setupLocalized);
+
+        // Change values for the es locale and check that moving to fr resets the multilan properties to their defaults
+        $object->ageLocalized = 2;
+        $object->nameLocalized = 'jaime';
+        $object->setupLocalized = false;
+        $object->setLocales(['fr_FR', 'es_ES', 'en_US', 'en_GB']);
+        $this->assertSame(32, $object->age);
+        $this->assertSame(0, $object->ageLocalized);
+        $this->assertSame('james', $object->name);
+        $this->assertSame(null, $object->nameLocalized);
+        $this->assertSame(true, $object->setup);
+        $this->assertSame(false, $object->setupLocalized);
+
+        // Switch back to the en_US locale and test that values are the previously assigned ones
+        $object->setLocales(['en_US', 'es_ES', 'fr_FR', 'en_GB']);
+        $this->assertSame(32, $object->age);
+        $this->assertSame(1, $object->ageLocalized);
+        $this->assertSame('james', $object->name);
+        $this->assertSame('james', $object->nameLocalized);
+        $this->assertSame(true, $object->setup);
+        $this->assertSame(true, $object->setupLocalized);
+
+        // Switch back to the es_ES locale and test that values are the previously assigned ones
+        $object->setLocales(['es_ES', 'en_US', 'fr_FR', 'en_GB']);
+        $this->assertSame(32, $object->age);
+        $this->assertSame(2, $object->ageLocalized);
+        $this->assertSame('james', $object->name);
+        $this->assertSame('jaime', $object->nameLocalized);
+        $this->assertSame(true, $object->setup);
+        $this->assertSame(false, $object->setupLocalized);
+
+        // Switch to en_GB and make sure the values are the default of the class ones
+        $object->setLocales(['en_GB', 'fr_FR', 'es_ES', 'en_US']);
+        $this->assertSame(32, $object->age);
+        $this->assertSame(0, $object->ageLocalized);
+        $this->assertSame('james', $object->name);
+        $this->assertSame(null, $object->nameLocalized);
+        $this->assertSame(true, $object->setup);
+        $this->assertSame(false, $object->setupLocalized);
+
+        // Set some values to the en_GB locale and also to the non localized props. Switch back to es and test values are ok
+        $object->age = 64;
+        $object->ageLocalized = 3;
+        $object->name = 'john';
+        $object->nameLocalized = 'en_GB';
+        $object->setup = false;
+        $object->setupLocalized = false;
+        $object->setLocales(['es_ES', 'en_US', 'fr_FR', 'en_GB']);
+        $this->assertSame(64, $object->age);
+        $this->assertSame(2, $object->ageLocalized);
+        $this->assertSame('john', $object->name);
+        $this->assertSame('jaime', $object->nameLocalized);
+        $this->assertSame(false, $object->setup);
+        $this->assertSame(false, $object->setupLocalized);
+
+        // Switch back to the en_US locale and test that values are correct
+        $object->setLocales(['en_US', 'es_ES', 'fr_FR', 'en_GB']);
+        $this->assertSame(64, $object->age);
+        $this->assertSame(1, $object->ageLocalized);
+        $this->assertSame('john', $object->name);
+        $this->assertSame('james', $object->nameLocalized);
+        $this->assertSame(false, $object->setup);
+        $this->assertSame(true, $object->setupLocalized);
+
+        // Save the object and make sure tables are ok
+        $objectTableName = $this->sut->tablesPrefix.'customerlocalized';
+
+        $this->assertSame(1, $this->sut->save($object));
+        $this->assertTrue($this->sut->getDataBaseManager()->tableExists($objectTableName));
+        $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_age'));
+        $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_name'));
+        $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_setup'));
+
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'smallint(6)', 'es_ES' => 'smallint(6)', 'fr_FR' => 'smallint(6)', 'en_GB' => 'smallint(6)'],
+            $this->db->tableGetColumnDataTypes($objectTableName.'_ageLocalized'));
+
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'varchar(20)', 'es_ES' => 'varchar(20)', 'fr_FR' => 'varchar(20)', 'en_GB' => 'varchar(20)'],
+            $this->db->tableGetColumnDataTypes($objectTableName.'_nameLocalized'));
+
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'tinyint(1)', 'es_ES' => 'tinyint(1)', 'fr_FR' => 'tinyint(1)', 'en_GB' => 'tinyint(1)'],
+            $this->db->tableGetColumnDataTypes($objectTableName.'_setupLocalized'));
+
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'dbid'));
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'en_US'));
+        $this->assertSame(['2'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'es_ES'));
+        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'fr_FR'));
+        $this->assertSame(['3'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'en_GB'));
+
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'dbid'));
+        $this->assertSame(['james'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'en_US'));
+        $this->assertSame(['jaime'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'es_ES'));
+        $this->assertSame([null], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'fr_FR'));
+        $this->assertSame(['en_GB'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'en_GB'));
+
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'dbid'));
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'en_US'));
+        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'es_ES'));
+        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'fr_FR'));
+        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'en_GB'));
+
+        // Modify some localized values, save again and test that db values are OK
+        $object->setLocales(['en_US', 'es_ES', 'fr_FR', 'en_GB']);
+        $object->age = 99;
+        $object->ageLocalized = 6;
+        $object->name = 'johnedited';
+        $object->nameLocalized = 'en_USedited';
+        $object->setup = false;
+        $object->setupLocalized = true;
+
+        $object->setLocales(['es_ES', 'en_US', 'fr_FR', 'en_GB']);
+        $object->ageLocalized = 7;
+        $object->nameLocalized = 'jaimeditado';
+        $object->setupLocalized = true;
+
+        $object->setLocales(['fr_FR', 'es_ES', 'en_US', 'en_GB']);
+        $object->ageLocalized = 8;
+        $object->nameLocalized = 'frenchname';
+
+        $this->assertSame(1, $this->sut->save($object));
+        $this->assertTrue($this->sut->getDataBaseManager()->tableExists($objectTableName));
+        $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_age'));
+        $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_name'));
+        $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_setup'));
+
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'smallint(6)', 'es_ES' => 'smallint(6)', 'fr_FR' => 'smallint(6)', 'en_GB' => 'smallint(6)'],
+            $this->db->tableGetColumnDataTypes($objectTableName.'_ageLocalized'));
+
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'varchar(20)', 'es_ES' => 'varchar(20)', 'fr_FR' => 'varchar(20)', 'en_GB' => 'varchar(20)'],
+            $this->db->tableGetColumnDataTypes($objectTableName.'_nameLocalized'));
+
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'tinyint(1)', 'es_ES' => 'tinyint(1)', 'fr_FR' => 'tinyint(1)', 'en_GB' => 'tinyint(1)'],
+            $this->db->tableGetColumnDataTypes($objectTableName.'_setupLocalized'));
+
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'dbid'));
+        $this->assertSame(['6'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'en_US'));
+        $this->assertSame(['7'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'es_ES'));
+        $this->assertSame(['8'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'fr_FR'));
+        $this->assertSame(['3'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'en_GB'));
+
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'dbid'));
+        $this->assertSame(['en_USedited'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'en_US'));
+        $this->assertSame(['jaimeditado'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'es_ES'));
+        $this->assertSame(['frenchname'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'fr_FR'));
+        $this->assertSame(['en_GB'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'en_GB'));
+
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'dbid'));
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'en_US'));
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'es_ES'));
+        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'fr_FR'));
+        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'en_GB'));
     }
 
 
