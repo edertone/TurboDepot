@@ -73,9 +73,21 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Flag that is used to specify that a data type is stored with multiple language values
+     * Flag that is used to specify on a data type that a property is stored with multiple language values.
+     *
+     * Properties that are multilanguage will contain the value that's specifically set for that language on that property.
      */
     const MULTI_LANGUAGE = 'MULTI_LANGUAGE';
+
+
+    /**
+     * Flag that is used to specify on a data type that a property is stored with multiple language values, and that a lookup will
+     * be performed on all the locales list to find the first non empty property localized value.
+     *
+     * Properties that are multilanguage cascade will contain the first non null value that is found on the current list of locales.
+     * TODO
+     */
+    const MULTI_LANGUAGE_CASCADE = 'MULTI_LANGUAGE_CASCADE';
 
 
     /**
@@ -366,32 +378,17 @@ class DataBaseObjectsManager extends BaseStrictClass{
         $objectDefinedLocales->setAccessible(true);
         $localesData = $objectDefinedLocales->getValue($object);
 
-        $returnValue = $object->{$property};
         $locales = $object->getLocales();
-        $isNotNull = in_array(self::NOT_NULL, $this->_getTypeFromObjectProperty($object, $property), true);
 
-        for ($i = 0, $l = count($locales); $i < $l; $i++) {
+        for ($i = 1, $l = count($locales); $i < $l; $i++) {
 
-            $localizedValue = $object->{$property};
+            if($locale === $locales[$i]){
 
-            if($i > 0){
-
-                $localizedValue = $localesData[$locales[$i]][$property];
-
-                if($locale === $locales[$i]){
-
-                    $returnValue = $localizedValue;
-                }
-            }
-
-            // Multi language properties which have been defined as not null cannot have null values
-            if($isNotNull && $localizedValue === null){
-
-                throw new UnexpectedValueException($property.' is set as not null but there\'s a null value for locale: '.$locales[$i]);
+                return $localesData[$locales[$i]][$property];
             }
         }
 
-        return $returnValue;
+        return $object->{$property};
     }
 
 
@@ -1068,6 +1065,10 @@ class DataBaseObjectsManager extends BaseStrictClass{
         }
 
         // Verify that all the object properties are valid regarding naming and type
+        $isMultiLanguageObject = $object->isMultiLanguage();
+        $objectLocales = $isMultiLanguageObject ? $object->getLocales() : [];
+        $objectMultiLanProperties = $this->_getMultiLanguageTypedProperties($object);
+
         foreach(array_keys(get_class_vars($class)) as $classProperty){
 
             // Properties that start with _ are forbidden, cause they are reserved for setup private properties
@@ -1087,38 +1088,55 @@ class DataBaseObjectsManager extends BaseStrictClass{
             }
 
             $propertyExpectedType = $this->_getTypeFromObjectProperty($object, $classProperty);
+            $propertyValuesToCheck = [$object->{$classProperty}];
+            $isMultilanProperty = in_array($classProperty, $objectMultiLanProperties, true);
 
-            if($object->{$classProperty} === null){
+            if($isMultilanProperty){
 
-                if(in_array(self::NOT_NULL, $propertyExpectedType, true) || in_array(self::ARRAY, $propertyExpectedType, true)){
+                $propertyValuesToCheck = [];
 
-                    throw new UnexpectedValueException('NULL value is not accepted by '.$classProperty.' property');
-                }
+                foreach ($objectLocales as $locale) {
 
-                continue;
-            }
-
-            $propertyValueType = $this->_getTypeFromValue($object->{$classProperty});
-
-            // Check that property type matches expected one (note that double types are able to store int values and datetime types string values)
-            // Property type must be valid based on the object defined restrictions and it must fit the expected precision
-            if($propertyExpectedType[0] !== $propertyValueType[0] &&
-               !($propertyExpectedType[0] === self::DOUBLE && $propertyValueType[0] === self::INT)){
-
-                if($propertyExpectedType[0] === self::DATETIME){
-
-                    $this->_validateDateTimeValue($object->{$classProperty}, $propertyExpectedType[1], $classProperty);
-
-                }else{
-
-                    throw new UnexpectedValueException($classProperty.' ('.print_r($object->{$classProperty}, true).') does not match '.$propertyExpectedType[0].'('.$propertyExpectedType[1].')');
+                    $propertyValuesToCheck[] = $this->_getMultiLanguagePropertyValue($object, $classProperty, $locale);
                 }
             }
 
-            // The property maximum allowed type size must be respected
-            if($propertyExpectedType[0] !== self::DATETIME && $propertyValueType[1] > $propertyExpectedType[1]){
+            for ($i = 0, $l = count($propertyValuesToCheck); $i < $l; $i++) {
 
-                throw new UnexpectedValueException($classProperty.' value size '.$propertyValueType[1].' exceeds '.$propertyExpectedType[1]);
+                $multilanErrorTag = $isMultilanProperty ? ' (locale '.$objectLocales[$i].')' : '';
+
+                if($propertyValuesToCheck[$i] === null){
+
+                    if(in_array(self::NOT_NULL, $propertyExpectedType, true) || in_array(self::ARRAY, $propertyExpectedType, true)){
+
+                        throw new UnexpectedValueException('NULL value is not accepted by '.$classProperty.' property'.$multilanErrorTag);
+                    }
+
+                    continue;
+                }
+
+                $propertyValueType = $this->_getTypeFromValue($propertyValuesToCheck[$i]);
+
+                // Check that property type matches expected one (note that double types are able to store int values and datetime types string values)
+                // Property type must be valid based on the object defined restrictions and it must fit the expected precision
+                if($propertyExpectedType[0] !== $propertyValueType[0] &&
+                   !($propertyExpectedType[0] === self::DOUBLE && $propertyValueType[0] === self::INT)){
+
+                    if($propertyExpectedType[0] === self::DATETIME){
+
+                        $this->_validateDateTimeValue($propertyValuesToCheck[$i], $propertyExpectedType[1], $classProperty, $multilanErrorTag);
+
+                    }else{
+
+                        throw new UnexpectedValueException($classProperty.' ('.print_r($propertyValuesToCheck[$i], true).') does not match '.$propertyExpectedType[0].'('.$propertyExpectedType[1].')'.$multilanErrorTag);
+                    }
+                }
+
+                // The property maximum allowed type size must be respected
+                if($propertyExpectedType[0] !== self::DATETIME && $propertyValueType[1] > $propertyExpectedType[1]){
+
+                    throw new UnexpectedValueException($classProperty.' value size '.$propertyValueType[1].' exceeds '.$propertyExpectedType[1].$multilanErrorTag);
+                }
             }
         }
     }
@@ -1130,30 +1148,31 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * @param string $dateValue The value to test
      * @param int $microseconds The number of digits that are accepted for the microseconds precision (0, 3 or 6)
      * @param string $classProperty The name for the property that stores the value so it can be shown by error messages
+     * @param string $extraErrorMsg An extra text that can be added at the end of the exception messages that are thrown when date is invalid
      *
      * @throws UnexpectedValueException If the provided datetime value does not meet requirements
      *
      * return void
      */
-    private function _validateDateTimeValue($dateValue, $microseconds, string $classProperty){
+    private function _validateDateTimeValue($dateValue, $microseconds, string $classProperty, string $extraErrorMsg = ''){
 
         if(!DateTimeObject::isValidDateTime($dateValue)){
 
-            throw new UnexpectedValueException($classProperty.' ('.print_r($dateValue, true).') is not a DATETIME('.$microseconds.')');
+            throw new UnexpectedValueException($classProperty.' ('.print_r($dateValue, true).') is not a DATETIME('.$microseconds.')'.$extraErrorMsg);
         }
 
         $microSeconds = [];
 
         if(preg_match('/(\.......|\....)?(\+00:00|-00:00|Z)$/', $dateValue, $microSeconds) === 0){
 
-            throw new UnexpectedValueException($classProperty.' ('.print_r($dateValue, true).') must have a UTC timezone');
+            throw new UnexpectedValueException($classProperty.' ('.print_r($dateValue, true).') must have a UTC timezone'.$extraErrorMsg);
         }
 
         $microLen = isset($microSeconds[1]) ? max(0, strlen($microSeconds[1]) - 1) : 0;
 
         if($microLen !== $microseconds){
 
-            throw new UnexpectedValueException($classProperty.' ('.print_r($dateValue, true).') does not match DATETIME('.$microseconds.')');
+            throw new UnexpectedValueException($classProperty.' ('.print_r($dateValue, true).') does not match DATETIME('.$microseconds.')'.$extraErrorMsg);
         }
     }
 
