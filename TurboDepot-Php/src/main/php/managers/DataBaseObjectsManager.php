@@ -112,7 +112,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * TODO - implement - this should be optional and may be specifically modified by each databaseobject if necessary
      * @var string
      */
-    public $isUuidEnabled = false;
+    public $isDbUUIDEnabled = false;
 
 
     /**
@@ -181,8 +181,8 @@ class DataBaseObjectsManager extends BaseStrictClass{
      *
      * @var array
      */
-    private $_baseObjectColumns = ['dbid' => [self::INT, 11], 'uuid' => [self::STRING, 36], 'sortindex' => [self::INT, 11],
-        'creationdate' => [self::DATETIME, 6], 'modificationdate' => [self::DATETIME, 6], 'deleted' => [self::DATETIME, 6]];
+    private $_baseObjectColumns = ['dbid' => [self::INT, 11], 'dbuuid' => [self::STRING, 36], 'dbsortindex' => [self::INT, 11],
+        'dbcreationdate' => [self::DATETIME, 6], 'dbmodificationdate' => [self::DATETIME, 6], 'dbdeleted' => [self::DATETIME, 6]];
 
 
     /**
@@ -247,12 +247,12 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 $this->_updateTablesToFitObject($object, $tableName) :
                 $this->_createObjectTables($object, $tableName);
 
-            $tableData['modificationdate'] = (new DateTime(null, new DateTimeZone('UTC')))->format($this->_sqlDateFormat);
+            $tableData['dbmodificationdate'] = (new DateTime(null, new DateTimeZone('UTC')))->format($this->_sqlDateFormat);
 
             // Store or update the object into the database
             if($object->dbId === null){
 
-                $tableData['creationdate'] = $tableData['modificationdate'];
+                $tableData['dbcreationdate'] = $tableData['dbmodificationdate'];
 
                 $this->_db->tableAddRows($tableName, [$tableData]);
                 $object->dbId = $this->_insertArrayPropsToDb($object, $tableName, $this->_db->getLastInsertId());
@@ -267,8 +267,8 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             $this->_db->transactionCommit();
 
-            $object->modificationDate = $tableData['modificationdate'].'+00:00';
-            $object->creationDate = str_replace('+00:00', '', $tableData['creationdate']).'+00:00';
+            $object->dbModificationDate = $tableData['dbmodificationdate'].'+00:00';
+            $object->dbCreationDate = str_replace('+00:00', '', $tableData['dbcreationdate']).'+00:00';
 
             return $object->dbId;
 
@@ -463,17 +463,17 @@ class DataBaseObjectsManager extends BaseStrictClass{
             case 'dbid':
                 return $this->_db->getSQLTypeFromValue(999999999999999, false, true, true);
 
-            case 'uuid':
+            case 'dbuuid':
                 return $this->_db->getSQLTypeFromValue('                                    ');
 
-            case 'sortindex':
+            case 'dbsortindex':
                 return $this->_db->getSQLTypeFromValue(999999999999999, true, true);
 
-            case 'deleted':
+            case 'dbdeleted':
                 return $this->_db->getSQLDateTimeType(true, 6);
 
-            case 'creationdate':
-            case 'modificationdate':
+            case 'dbcreationdate':
+            case 'dbmodificationdate':
                 return $this->_db->getSQLDateTimeType(false, 6);
         }
 
@@ -722,7 +722,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $arrayTypedProps = $this->_getArrayTypedProperties($object);
         $multiLanguageProps = $this->_getMultiLanguageTypedProperties($object);
-        $basicProperties = ['dbId', 'uuid', 'sortIndex', 'creationDate', 'modificationDate', 'deleted'];
+        $basicProperties = ['dbId', 'dbUUID', 'dbSortIndex', 'dbCreationDate', 'dbModificationDate', 'dbDeleted'];
 
         foreach (array_keys(get_object_vars($object)) as $property) {
 
@@ -820,7 +820,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             $columnsToCreate[] = strtolower($property).' '.$this->getSQLTypeFromObjectProperty($object, $property);
         }
 
-        $this->_db->tableCreate($tableName, $columnsToCreate, ['dbid'], [['uuid']], [['sortindex']]);
+        $this->_db->tableCreate($tableName, $columnsToCreate, ['dbid'], [['dbuuid']], [['dbsortindex']]);
 
         // Create all the tables that store array properties
         $dbIdForeignColumn = 'dbid '.$this->_db->getSQLTypeFromValue(999999999999999, false, true);
@@ -1020,32 +1020,32 @@ class DataBaseObjectsManager extends BaseStrictClass{
             throw new UnexpectedValueException('Invalid '.$className.' dbId: '.$object->dbId);
         }
 
-        if($object->uuid !== null && (!is_string($object->uuid) || strlen($object->uuid) !== 36)){
+        if($object->dbUUID !== null && (!is_string($object->dbUUID) || strlen($object->dbUUID) !== 36)){
 
-            throw new UnexpectedValueException('Invalid '.$className.' uuid: '.$object->uuid);
+            throw new UnexpectedValueException('Invalid '.$className.' dbUUID: '.$object->dbUUID);
         }
 
-        if($object->sortIndex !== null && (!is_integer($object->sortIndex) || $object->sortIndex < 0)){
+        if($object->dbSortIndex !== null && (!is_integer($object->dbSortIndex) || $object->dbSortIndex < 0)){
 
-            throw new UnexpectedValueException('Invalid '.$className.' sortIndex: '.$object->sortIndex);
+            throw new UnexpectedValueException('Invalid '.$className.' dbSortIndex: '.$object->dbSortIndex);
         }
 
-        if($object->creationDate !== null){
+        if($object->dbCreationDate !== null){
 
-            $this->_validateDateTimeValue($object->creationDate, 6, 'creationDate');
+            $this->_validateDateTimeValue($object->dbCreationDate, 6, 'dbCreationDate');
         }
 
-        if($object->modificationDate !== null){
+        if($object->dbModificationDate !== null){
 
-            $this->_validateDateTimeValue($object->modificationDate, 6, 'modificationDate');
+            $this->_validateDateTimeValue($object->dbModificationDate, 6, 'dbModificationDate');
         }
 
-        if($object->deleted !== null){
+        if($object->dbDeleted !== null){
 
-            $this->_validateDateTimeValue($object->deleted, 6, 'deleted');
+            $this->_validateDateTimeValue($object->dbDeleted, 6, 'dbDeleted');
         }
 
-        if($object->dbId === null && ($object->creationDate !== null || $object->modificationDate !== null)){
+        if($object->dbId === null && ($object->dbCreationDate !== null || $object->dbModificationDate !== null)){
 
             throw new UnexpectedValueException('Creation and modification date must be null if dbid is null');
         }

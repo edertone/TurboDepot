@@ -31,34 +31,33 @@ abstract class DataBaseObject extends BaseStrictClass{
     /**
      * Universal identifier value for this object in case it is enabled
      */
-    public $uuid = null;
+    public $dbUUID = null;
 
 
     /**
      * Numeric value that can be used as a custom sorting method for this class created objects
      */
-    public $sortIndex = null;
+    public $dbSortIndex = null;
 
 
     /**
      * Date when the object was created
-     * TODO - rename to dbCreationDate, and all the others too
      * TODO - convert creation, modification date into getters
      */
-    public $creationDate = null;
+    public $dbCreationDate = null;
 
 
     /**
      * Date when the object was last modified
      */
-    public $modificationDate = null;
+    public $dbModificationDate = null;
 
 
     /**
      * When an object is deleted, the date and time of deletion is stored on this property, meaning it's been moved to trash. To delete it totally,
      * we need to empty the trash (or disable the trash feature)
      */
-    public $deleted = null;
+    public $dbDeleted = null;
 
 
     /**
@@ -151,6 +150,30 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
+     * Check if this DatabaseObject is using multi language properties or not
+     *
+     * @return boolean True if this instance is localized, false if not
+     */
+    public final function isMultiLanguage(){
+
+        if($this->_isMultiLanguage === null){
+
+            $this->_isMultiLanguage = false;
+
+            foreach ($this->_types as $type) {
+
+                if(in_array(DataBaseObjectsManager::MULTI_LANGUAGE, $type, true)){
+
+                    return $this->_isMultiLanguage = true;
+                }
+            }
+        }
+
+        return $this->_isMultiLanguage;
+    }
+
+
+    /**
      * Get the list of strings containing the locales that are used by this class, sorted by preference.
      *
      * @see DataBaseObject::setLocales()
@@ -236,30 +259,6 @@ abstract class DataBaseObject extends BaseStrictClass{
         $this->_locales = $sortedLocales;
 
         return $locales;
-    }
-
-
-    /**
-     * Check if this DatabaseObject is using multi language properties or not
-     *
-     * @return boolean True if this instance is localized, false if not
-     */
-    public final function isMultiLanguage(){
-
-        if($this->_isMultiLanguage === null){
-
-            $this->_isMultiLanguage = false;
-
-            foreach ($this->_types as $type) {
-
-                if(in_array(DataBaseObjectsManager::MULTI_LANGUAGE, $type, true)){
-
-                    return $this->_isMultiLanguage = true;
-                }
-            }
-        }
-
-        return $this->_isMultiLanguage;
     }
 }
 

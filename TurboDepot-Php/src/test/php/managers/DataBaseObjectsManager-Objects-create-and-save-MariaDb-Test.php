@@ -321,22 +321,22 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(1, $this->sut->save($object));
         $this->assertSame(1, $object->dbId);
         $this->assertSame(1, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
-            'creationdate' => 'datetime(6) NOT NULL', 'modificationdate' => 'datetime(6) NOT NULL', 'deleted' => 'datetime(6)', 'name' => 'varchar(1) NOT NULL',
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
+            'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(1) NOT NULL',
             'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         // test that columns are in the correct order
-        $this->assertSame(['dbid', 'uuid', 'sortindex', 'creationdate', 'modificationdate', 'deleted', 'name', 'commercialname', 'age', 'debt'],
+        $this->assertSame(['dbid', 'dbuuid', 'dbsortindex', 'dbcreationdate', 'dbmodificationdate', 'dbdeleted', 'name', 'commercialname', 'age', 'debt'],
             $this->db->tableGetColumnNames($objectTableName));
 
         // Test that datetime values are stored with miliseconds information
         $this->assertRegExp('/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9][0-9][0-9]/',
-            $this->db->tableGetColumnValues($objectTableName, 'creationdate')[0]);
+            $this->db->tableGetColumnValues($objectTableName, 'dbcreationdate')[0]);
 
         $this->assertRegExp('/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9][0-9][0-9]/',
-            $this->db->tableGetColumnValues($objectTableName, 'modificationdate')[0]);
+            $this->db->tableGetColumnValues($objectTableName, 'dbmodificationdate')[0]);
 
-        $this->assertSame($this->db->tableGetColumnValues($objectTableName, 'creationdate')[0], $this->db->tableGetColumnValues($objectTableName, 'modificationdate')[0]);
+        $this->assertSame($this->db->tableGetColumnValues($objectTableName, 'dbcreationdate')[0], $this->db->tableGetColumnValues($objectTableName, 'dbmodificationdate')[0]);
 
         $object = new Customer();
         $this->assertSame(2, $this->sut->save($object));
@@ -347,8 +347,8 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(3, $this->sut->save($object));
         $this->assertSame(3, $object->dbId);
         $this->assertSame(3, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
-            'creationdate' => 'datetime(6) NOT NULL', 'modificationdate' => 'datetime(6) NOT NULL', 'deleted' => 'datetime(6)', 'name' => 'varchar(1) NOT NULL',
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
+            'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(1) NOT NULL',
             'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         // Test ok values - update instances
@@ -370,8 +370,8 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(4, $object->dbId);
         $this->assertSame('customer', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
-            'creationdate' => 'datetime(6) NOT NULL', 'modificationdate' => 'datetime(6) NOT NULL', 'deleted' => 'datetime(6)', 'name' => 'varchar(8) NOT NULL',
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
+            'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(8) NOT NULL',
             'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $object->name = 'customer updated';
@@ -379,8 +379,8 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(4, $this->sut->save($object));
         $this->assertSame('customer updated', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
-            'creationdate' => 'datetime(6) NOT NULL', 'modificationdate' => 'datetime(6) NOT NULL', 'deleted' => 'datetime(6)', 'name' => 'varchar(16) NOT NULL',
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
+            'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(16) NOT NULL',
             'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $object->name = 'customer updated with a much longer text that should resize the name column to a bigger varchar size';
@@ -388,8 +388,8 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(4, $this->sut->save($object));
         $this->assertSame('customer updated with a much longer text that should resize the name column to a bigger varchar size', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
-            'creationdate' => 'datetime(6) NOT NULL', 'modificationdate' => 'datetime(6) NOT NULL', 'deleted' => 'datetime(6)', 'name' => 'varchar(100) NOT NULL',
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
+            'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(100) NOT NULL',
             'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $object->debt = 10;
@@ -398,7 +398,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
 
         // test that columns are in the correct order
-        $this->assertSame(['dbid', 'uuid', 'sortindex', 'creationdate', 'modificationdate', 'deleted', 'name', 'commercialname', 'age', 'debt'],
+        $this->assertSame(['dbid', 'dbuuid', 'dbsortindex', 'dbcreationdate', 'dbmodificationdate', 'dbdeleted', 'name', 'commercialname', 'age', 'debt'],
             $this->db->tableGetColumnNames($objectTableName));
 
         // Test wrong values
@@ -420,59 +420,59 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame('string', $object->dbId);
 
         $object = new Customer();
-        $object->uuid = 123;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer uuid: 123/');
+        $object->dbUUID = 123;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer dbUUID: 123/');
 
         $object = new Customer();
-        $object->uuid = 'notanid';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer uuid: notanid/');
+        $object->dbUUID = 'notanid';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer dbUUID: notanid/');
 
         $object = new Customer();
-        $object->sortIndex = -1;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer sortIndex: -1/');
+        $object->dbSortIndex = -1;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer dbSortIndex: -1/');
 
         $object = new Customer();
-        $object->sortIndex = 'string';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer sortIndex: string/');
+        $object->dbSortIndex = 'string';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer dbSortIndex: string/');
 
         $object = new Customer();
-        $object->creationDate = 9234;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/creationDate .9234. is not a DATETIME.6.$/');
+        $object->dbCreationDate = 9234;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/dbCreationDate .9234. is not a DATETIME.6.$/');
 
         $object = new Customer();
-        $object->creationDate = 'not a date';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/creationDate .not a date. is not a DATETIME.6.$/');
+        $object->dbCreationDate = 'not a date';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/dbCreationDate .not a date. is not a DATETIME.6.$/');
 
         $object = new Customer();
-        $object->creationDate = '2019-11-16 10:41:38.123';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/creationDate .2019-11-16 10:41:38.123. must have a UTC timezone$/');
+        $object->dbCreationDate = '2019-11-16 10:41:38.123';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/dbCreationDate .2019-11-16 10:41:38.123. must have a UTC timezone$/');
 
         $object = new Customer();
-        $object->creationDate = '2019-11-16 10:41:38.123456Z';
+        $object->dbCreationDate = '2019-11-16 10:41:38.123456Z';
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Creation and modification date must be null if dbid is null/');
 
         $object = new Customer();
-        $object->modificationDate = '2019-11-16 10:41:38.123';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/modificationDate .2019-11-16 10:41:38.123. must have a UTC timezone$/');
+        $object->dbModificationDate = '2019-11-16 10:41:38.123';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/dbModificationDate .2019-11-16 10:41:38.123. must have a UTC timezone$/');
 
         $object = new Customer();
-        $object->modificationDate = '2019-11-16 10:41:38.123456Z';
+        $object->dbModificationDate = '2019-11-16 10:41:38.123456Z';
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Creation and modification date must be null if dbid is null/');
 
         $object = new Customer();
-        $object->modificationDate = 1;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/modificationDate .1. is not a DATETIME.6.$/');
+        $object->dbModificationDate = 1;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/dbModificationDate .1. is not a DATETIME.6.$/');
 
         $object = new Customer();
-        $object->modificationDate = 'hello';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/modificationDate .hello. is not a DATETIME.6.$/');
+        $object->dbModificationDate = 'hello';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/dbModificationDate .hello. is not a DATETIME.6.$/');
         $this->assertSame(null, $object->dbId);
-        $this->assertSame(null, $object->creationDate);
-        $this->assertSame('hello', $object->modificationDate);
+        $this->assertSame(null, $object->dbCreationDate);
+        $this->assertSame('hello', $object->dbModificationDate);
 
         $object = new Customer();
-        $object->deleted = 1;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/deleted .1. is not a DATETIME.6.$/');
+        $object->dbDeleted = 1;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/dbDeleted .1. is not a DATETIME.6.$/');
 
         $object = new Customer();
         $object->name = 12345;
@@ -505,7 +505,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         // Add an unexpected column to the customer table and make sure saving fails
         $this->assertTrue($this->db->tableAddColumn($objectTableName, 'unexpected', 'bigint'));
-        AssertUtils::throwsException(function() { $this->sut->save(new Customer()); }, '/td_customer columns .dbid,uuid,sortindex,creationdate,modificationdate,deleted,name,commercialname,age,debt,unexpected. are different from its related object/');
+        AssertUtils::throwsException(function() { $this->sut->save(new Customer()); }, '/td_customer columns .dbid,dbuuid,dbsortindex,dbcreationdate,dbmodificationdate,dbdeleted,name,commercialname,age,debt,unexpected. are different from its related object/');
 
         // All exceptions must have not created any database object
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
@@ -588,10 +588,10 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(1, $this->sut->save($object));
         $dateAfterCreation = (new DateTimeObject())->toString();
 
-        $objectCreationDate = $this->db->tableGetColumnValues($objectTableName, 'creationDate')[0];
-        $objectModificationDate = $this->db->tableGetColumnValues($objectTableName, 'modificationDate')[0];
-        $this->assertTrue((new DateTimeObject($objectCreationDate))->isEqualTo(new DateTimeObject($object->creationDate)));
-        $this->assertTrue((new DateTimeObject($objectModificationDate))->isEqualTo(new DateTimeObject($object->modificationDate)));
+        $objectCreationDate = $this->db->tableGetColumnValues($objectTableName, 'dbCreationDate')[0];
+        $objectModificationDate = $this->db->tableGetColumnValues($objectTableName, 'dbModificationDate')[0];
+        $this->assertTrue((new DateTimeObject($objectCreationDate))->isEqualTo(new DateTimeObject($object->dbCreationDate)));
+        $this->assertTrue((new DateTimeObject($objectModificationDate))->isEqualTo(new DateTimeObject($object->dbModificationDate)));
 
         $this->assertSame($objectCreationDate, $objectModificationDate);
         $this->assertContains(DateTimeObject::compare($dateBeforeCreation, $objectCreationDate), [0, 2], $dateBeforeCreation.' must be before '.$objectCreationDate);
@@ -604,10 +604,10 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(1, $this->sut->save($object));
         $dateAfterModification = (new DateTimeObject())->toString();
 
-        $objectCreationDate2 = $this->db->tableGetColumnValues($objectTableName, 'creationDate')[0];
-        $objectModificationDate = $this->db->tableGetColumnValues($objectTableName, 'modificationDate')[0];
-        $this->assertTrue((new DateTimeObject($objectCreationDate2))->isEqualTo(new DateTimeObject($object->creationDate)));
-        $this->assertTrue((new DateTimeObject($objectModificationDate))->isEqualTo(new DateTimeObject($object->modificationDate)));
+        $objectCreationDate2 = $this->db->tableGetColumnValues($objectTableName, 'dbCreationDate')[0];
+        $objectModificationDate = $this->db->tableGetColumnValues($objectTableName, 'dbModificationDate')[0];
+        $this->assertTrue((new DateTimeObject($objectCreationDate2))->isEqualTo(new DateTimeObject($object->dbCreationDate)));
+        $this->assertTrue((new DateTimeObject($objectModificationDate))->isEqualTo(new DateTimeObject($object->dbModificationDate)));
 
         $this->assertSame($objectCreationDate, $objectCreationDate2);
         $this->assertSame(2, DateTimeObject::compare($objectCreationDate2, $objectModificationDate), $objectCreationDate2.' must be before '.$objectModificationDate);
@@ -617,9 +617,9 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertContains(DateTimeObject::compare($dateAfterModification, $objectModificationDate), [0, 1], $dateAfterModification.' must be after '.$objectModificationDate);
 
         // Make sure all object dates are always UTC
-        $this->assertTrue((new DateTimeObject($object->creationDate))->isUTC());
-        $this->assertTrue((new DateTimeObject($object->modificationDate))->isUTC());
-        $this->assertNull($object->deleted);
+        $this->assertTrue((new DateTimeObject($object->dbCreationDate))->isUTC());
+        $this->assertTrue((new DateTimeObject($object->dbModificationDate))->isUTC());
+        $this->assertNull($object->dbDeleted);
 
         $objectTyped = new CustomerTyped();
         $objectTyped->birthDate = (new DateTimeObject())->toString('Y-M-D H:N:SOffset');
@@ -627,9 +627,9 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $objectTyped->microSecondsDate = (new DateTimeObject())->toString();
         $this->assertSame(1, $this->sut->save($objectTyped));
 
-        $this->assertTrue((new DateTimeObject($objectTyped->creationDate))->isUTC());
-        $this->assertTrue((new DateTimeObject($objectTyped->modificationDate))->isUTC());
-        $this->assertNull($objectTyped->deleted);
+        $this->assertTrue((new DateTimeObject($objectTyped->dbCreationDate))->isUTC());
+        $this->assertTrue((new DateTimeObject($objectTyped->dbModificationDate))->isUTC());
+        $this->assertNull($objectTyped->dbDeleted);
         $this->assertTrue((new DateTimeObject($objectTyped->birthDate))->isUTC());
         $this->assertTrue((new DateTimeObject($objectTyped->miliSecondsDate))->isUTC());
         $this->assertTrue((new DateTimeObject($objectTyped->microSecondsDate))->isUTC());
@@ -637,8 +637,8 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         // Test that non UTC values throw exceptions
         $nonUtcDate = (new DateTimeObject())->setTimeZoneOffset('+05:00');
 
-        $objectTyped->modificationDate = $nonUtcDate->toString('Y-M-DTH:N:SOffset');
-        AssertUtils::throwsException(function() use ($objectTyped) { $this->sut->save($objectTyped); }, '/modificationDate .....-..-.....:..:..\+05:00. must have a UTC timezone$/');
+        $objectTyped->dbModificationDate = $nonUtcDate->toString('Y-M-DTH:N:SOffset');
+        AssertUtils::throwsException(function() use ($objectTyped) { $this->sut->save($objectTyped); }, '/dbModificationDate .....-..-.....:..:..\+05:00. must have a UTC timezone$/');
 
         $objectTyped = new CustomerTyped();
         $objectTyped->birthDate = $nonUtcDate->toString('Y-M-DTH:N:SOffset');
@@ -717,8 +717,8 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $this->assertSame(14, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
-            'creationdate' => 'datetime(6) NOT NULL', 'modificationdate' => 'datetime(6) NOT NULL', 'deleted' => 'datetime(6)', 'name' => 'varchar(40) NOT NULL',
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
+            'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(40) NOT NULL',
             'age' => 'smallint(6) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'value' => 'varchar(6) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_emails'));
@@ -837,8 +837,8 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $this->assertSame(10, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
-            'creationdate' => 'datetime(6) NOT NULL', 'modificationdate' => 'datetime(6) NOT NULL', 'deleted' => 'datetime(6)', 'name' => 'varchar(20) NOT NULL',
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
+            'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(20) NOT NULL',
             'commercialname' => 'varchar(25)', 'birthdate' => 'datetime', 'milisecondsdate' => 'datetime(3)', 'microsecondsdate' => 'datetime(6)', 'age' => 'smallint(6)',
             'onedigitint' => 'smallint(6)', 'sixdigitint' => 'mediumint(9)', 'twelvedigitint' => 'bigint(20)', 'doublevalue' => 'double',
             'setup' => 'tinyint(1)'
@@ -1055,8 +1055,8 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object = new CustomerLocalized(['']);
         $this->assertSame(1, $this->sut->save($object));
 
-        $objectMainTableTypes = ['dbid' => 'bigint(20) unsigned NOT NULL', 'uuid' => 'varchar(36)', 'sortindex' => 'bigint(20) unsigned',
-            'creationdate' => 'datetime(6) NOT NULL', 'modificationdate' => 'datetime(6) NOT NULL', 'deleted' => 'datetime(6)',
+        $objectMainTableTypes = ['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
+            'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)',
             'name' => 'varchar(250)', 'birthdate' => 'datetime', 'age' => 'smallint(6)', 'setup' => 'tinyint(1)'];
 
         $this->assertSame($objectMainTableTypes, $this->db->tableGetColumnDataTypes($objectTableName));
