@@ -36,11 +36,11 @@ use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\Object
 
 
 /**
- * DataBaseObjectsManagerTest
+ * This suite of tests contains all the tests that are related with creating and saving objects to database
  *
  * @return void
  */
-class DataBaseObjectsManagerTest extends TestCase {
+class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
@@ -1145,17 +1145,12 @@ class DataBaseObjectsManagerTest extends TestCase {
         $this->assertSame([null, '0', '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'en_US'));
         $this->assertSame([null, null, '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'es_ES'));
 
-        // TODO - implement MULTILANGUAGE_CASCADE to tag properties that must get next locale value when the default class or empty one is found
-        // TODO - Test saving db object instances with real data
         // TODO - Create a new test case : Test what should happen when saving a db object with a string property, then modify that property to be an array property and save it again
         // TODO - Create a new test case : Test what should happen when saving a db object with a string property, then modify that property to be a multi language property and save it again
-        // TODO - test saving with single locale and modifying the values and saving again
-        // TODO - test saving with 2 locales and modifying the values and saving again
-        // TODO - perform several tests to make sure that multiple locales information is correctly stored in memory of each db object instance at the  $_locales private prop
-        //      - The first and active locale for the db object instances must be directly set to the object properties, and all the other loaded data stored on the $_locales prop
         // TODO - It's been finally decided to not destroy locale columns from multi locale props tables, cause they are not annoying even if not used. Test that this happens as expected
         // TODO - test saving several objects, several instances of the same object, different locales, modifying the same object on already saved locale values, adding different locales, etc..
         // TODO - what happens when we create an object with an A non localized prop, save it to db, and then alter the class to make the A prop a multilanguage one, and then save again?
+        // TODO - implement MULTILANGUAGE_CASCADE to tag properties that must get next locale value when the default class or empty one is found
 
         // Test wrong values
         $object = new CustomerLocalized(['en_US']);
@@ -1179,6 +1174,94 @@ class DataBaseObjectsManagerTest extends TestCase {
         AssertUtils::throwsException(function() { new CustomerLocalized(['es_ES', 'a']); }, '/Invalid locale specified: a/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongArrayMultilanProperty()); }, '/Class is multi language and expects a list of locales/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongArrayMultilanProperty([''])); }, '/ARRAY type is not supported by multi language properties: arrayMul/');
+    }
+
+
+    /**
+     * testSave_Objects_With_Multi_Language_Properties_and_real_data
+     *
+     * @return void
+     */
+    public function testSave_Objects_With_Multi_Language_Properties_and_real_data(){
+
+        $objectTableName = $this->sut->tablesPrefix.'customerlocalized';
+
+        $object = new CustomerLocalized(['en_US']);
+        $object->age = 25;
+        $object->ageLocalized = 20;
+        $object->birthDate = '1950-10-25 00:00:00+00:00';
+        $object->birthDateLocalized = '1950-10-20 00:00:00+00:00';
+        $object->name = 'William';
+        $object->nameLocalized = 'William USA';
+        $object->nameLocalizedNotNull = 'not null name USA';
+        $object->setup = true;
+        $object->setupLocalized = false;
+        $this->assertSame(1, $this->sut->save($object));
+
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
+        $this->assertSame(['William'], $this->db->tableGetColumnValues($objectTableName, 'name'));
+        $this->assertSame(['William USA'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_US'));
+
+        $object = new CustomerLocalized(['es_ES', 'en_US']);
+        $object->age = 25;
+        $object->ageLocalized = 20;
+        $object->birthDate = '1950-10-25 00:00:00+00:00';
+        $object->birthDateLocalized = '1950-10-20 00:00:00+00:00';
+        $object->name = 'Guillermo';
+        $object->nameLocalized = 'Guillermo ES';
+        $object->nameLocalizedNotNull = 'not null name ES';
+        $object->setup = true;
+        $object->setupLocalized = false;
+        $this->assertSame(2, $this->sut->save($object));
+
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'varchar(20)', 'es_ES' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
+        $this->assertSame(['William', 'Guillermo'], $this->db->tableGetColumnValues($objectTableName, 'name'));
+        $this->assertSame(['William USA', null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_US'));
+        $this->assertSame([null, 'Guillermo ES'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'es_ES'));
+
+        $object = new CustomerLocalized(['fr_FR']);
+        $object->age = 25;
+        $object->ageLocalized = 20;
+        $object->birthDate = '1950-10-25 00:00:00+00:00';
+        $object->birthDateLocalized = '1950-10-20 00:00:00+00:00';
+        $object->name = 'Wilanceau';
+        $object->nameLocalized = 'Wilanceau FR';
+        $object->nameLocalizedNotNull = 'not null name FR';
+        $object->setup = true;
+        $object->setupLocalized = false;
+        $this->assertSame(3, $this->sut->save($object));
+
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'varchar(20)', 'es_ES' => 'varchar(20)', 'fr_FR' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
+        $this->assertSame(['William', 'Guillermo', 'Wilanceau'], $this->db->tableGetColumnValues($objectTableName, 'name'));
+        $this->assertSame(['William USA', null, null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_US'));
+        $this->assertSame([null, 'Guillermo ES', null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'es_ES'));
+        $this->assertSame([null, null, 'Wilanceau FR'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'fr_FR'));
+    }
+
+
+    /**
+     * testSave_Object_With_Multi_Language_Properties_set_values_for_two_locales_back_to_first_one_and_save
+     *
+     * @return void
+     */
+    public function testSave_Object_With_Multi_Language_Properties_set_values_for_two_locales_back_to_first_one_and_save(){
+
+        $object = new CustomerLocalized(['en_US', 'es_ES']);
+        $object->nameLocalized = 'en name';
+        $object->setLocales(['es_ES', 'en_US']);
+        $object->nameLocalized = 'es name';
+        $object->setLocales(['en_US', 'es_ES']);
+        $object->nameLocalized = 'modified';
+
+        $objectTableName = $this->sut->tablesPrefix.'customerlocalized';
+
+        $this->assertSame(1, $this->sut->save($object));
+
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'varchar(20)', 'es_ES' => 'varchar(20)'],
+            $this->db->tableGetColumnDataTypes($objectTableName.'_nameLocalized'));
+
+        $this->assertSame(['modified'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_US'));
+        $this->assertSame(['es name'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'es_ES'));
     }
 
 

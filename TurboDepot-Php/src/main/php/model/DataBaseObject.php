@@ -42,6 +42,8 @@ abstract class DataBaseObject extends BaseStrictClass{
 
     /**
      * Date when the object was created
+     * TODO - rename to dbCreationDate, and all the others too
+     * TODO - convert creation, modification date into getters
      */
     public $creationDate = null;
 
@@ -149,6 +151,24 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
+     * Get the list of strings containing the locales that are used by this class, sorted by preference.
+     *
+     * @see DataBaseObject::setLocales()
+     *
+     * @return array The list of locales.
+     */
+    public final function getLocales(){
+
+        if($this->isMultiLanguage()){
+
+            return array_keys($this->_locales);
+        }
+
+        throw new UnexpectedValueException('Class is not multi language');
+    }
+
+
+    /**
      * Specifies the list of strings containing the locales that are used by this class, sorted by preference.
      * Each string must be formatted as a standard locale code with language and country joined by an underscore, like: en_US, fr_FR. The only accepted
      * exceptions is the '' empty locale, which can be used to define localized values when we don't know what locale to use.
@@ -240,24 +260,6 @@ abstract class DataBaseObject extends BaseStrictClass{
         }
 
         return $this->_isMultiLanguage;
-    }
-
-
-    /**
-     * Get the list of strings containing the locales that are used by this class, sorted by preference.
-     *
-     * @see DataBaseObject::setLocales()
-     *
-     * @return array The list of locales.
-     */
-    public final function getLocales(){
-
-        if($this->isMultiLanguage()){
-
-            return array_keys($this->_locales);
-        }
-
-        throw new UnexpectedValueException('Class is not multi language');
     }
 }
 

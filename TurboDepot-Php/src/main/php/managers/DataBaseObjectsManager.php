@@ -427,36 +427,16 @@ class DataBaseObjectsManager extends BaseStrictClass{
     public function convertObjectToTableData(DataBaseObject $object){
 
         $tableData = [];
-        $arrayTypedProps = $this->_getArrayTypedProperties($object);
-        $multiLanguageProps = $this->_getMultiLanguageTypedProperties($object);
 
-        foreach (get_object_vars($object) as $property => $value) {
+        foreach ($this->_getBasicProperties($object) as $property) {
 
-            // Multi language properties are ignored from the tabledata structure
-            if(in_array($property, $multiLanguageProps, true)){
+            if(is_array($object->{$property})){
 
-                continue;
+                throw new UnexpectedValueException('unexpected array value for property: '.$property);
             }
 
-            // Array typed properties are ignored from the tabledata structure
-            if(!in_array($property, $arrayTypedProps, true)){
-
-                if(is_array($object->{$property})){
-
-                    throw new UnexpectedValueException('unexpected array value for property: '.$property);
-                }
-
-                $tableData[strtolower($property)] = $value;
-            }
+            $tableData[strtolower($property)] = $object->{$property};
         }
-
-        // Move the base common properties to the begining of the array, so they get correctly sorted at the db table
-        $tableData = ['deleted' => $tableData['deleted']] + $tableData;
-        $tableData = ['modificationdate' => $tableData['modificationdate']] + $tableData;
-        $tableData = ['creationdate' => $tableData['creationdate']] + $tableData;
-        $tableData = ['sortindex' => $tableData['sortindex']] + $tableData;
-        $tableData = ['uuid' => $tableData['uuid']] + $tableData;
-        $tableData = ['dbid' => $tableData['dbid']] + $tableData;
 
         return $tableData;
     }
@@ -731,6 +711,34 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
+     * Obtain a list with all the properties that are typed asbasic types for the provided object.
+     * All the properties that require a specific db table to be stored like arrays, multilanguage and so will be excluded from this list.
+     *
+     * @param DataBaseObject $object A valid database object instance
+     *
+     * @return string[] An array with all the basic property names, sorted as they must be on the object database table.
+     */
+    private function _getBasicProperties(DataBaseObject $object){
+
+        $arrayTypedProps = $this->_getArrayTypedProperties($object);
+        $multiLanguageProps = $this->_getMultiLanguageTypedProperties($object);
+        $basicProperties = ['dbId', 'uuid', 'sortIndex', 'creationDate', 'modificationDate', 'deleted'];
+
+        foreach (array_keys(get_object_vars($object)) as $property) {
+
+            if(!in_array($property, $arrayTypedProps, true) &&
+               !in_array($property, $basicProperties, true) &&
+               !in_array($property, $multiLanguageProps, true)){
+
+                $basicProperties[] = $property;
+            }
+        }
+
+        return $basicProperties;
+    }
+
+
+    /**
      * Obtain a list with all the properties that are typed as arrays for the provided object
      *
      * @param DataBaseObject $object A valid database object instance
@@ -805,20 +813,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     private function _createObjectTables(DataBaseObject $object, string $tableName){
 
-        // Obtain the relation between column names and object properties
-        $properties = [];
-
-        foreach (array_keys(get_object_vars($object)) as $property) {
-
-            $properties[strtolower($property)] = $property;
-        }
-
         $columnsToCreate = [];
-        $tableData = $this->convertObjectToTableData($object);
 
-        foreach (array_keys($tableData) as $columnName) {
+        foreach ($this->_getBasicProperties($object) as $property) {
 
-            $columnsToCreate[] = $columnName.' '.$this->getSQLTypeFromObjectProperty($object, $properties[$columnName]);
+            $columnsToCreate[] = strtolower($property).' '.$this->getSQLTypeFromObjectProperty($object, $property);
         }
 
         $this->_db->tableCreate($tableName, $columnsToCreate, ['dbid'], [['uuid']], [['sortindex']]);
@@ -831,7 +830,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             $columnName = strtolower($property);
 
             $this->_db->tableCreate($tableName.'_'.$columnName, [$dbIdForeignColumn,
-                'value '.$this->getSQLTypeFromObjectProperty($object, $properties[$columnName])
+                'value '.$this->getSQLTypeFromObjectProperty($object, $property)
             ]);
 
             $this->_db->tableAddForeignKey($tableName.'_'.$columnName, $tableName.'_'.$columnName.'_dbid_fk', ['dbid'], $tableName, ['dbid']);
@@ -847,7 +846,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             foreach ($multiLanguageProperties as $property) {
 
                 $columnName = strtolower($property);
-                $columnType = $this->getSQLTypeFromObjectProperty($object, $properties[$columnName]);
+                $columnType = $this->getSQLTypeFromObjectProperty($object, $property);
                 $columnsToCreate = [$dbIdForeignColumn];
 
                 foreach ($objectLocales as $objectLocale) {
@@ -860,7 +859,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             }
         }
 
-        return $tableData;
+        return $this->convertObjectToTableData($object);
     }
 
 
