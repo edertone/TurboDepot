@@ -177,6 +177,14 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
+     * Contains the list of object base properties that must exist on all the created objects by default.
+     *
+     * @var array
+     */
+    private $_baseObjectProperties = ['dbId', 'dbUUID', 'dbSortIndex', 'dbCreationDate', 'dbModificationDate', 'dbDeleted'];
+
+
+    /**
      * Contains the list of table column names and class types that must exist on all the created objects by default.
      * These represent the DataBaseObject base properties that are common for all the objects.
      *
@@ -750,7 +758,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     private function _getAllProperties(DataBaseObject $object){
 
-        return array_merge($this->_getBasicProperties($object), $this->_getArrayTypedProperties($object), $this->_getMultiLanguageTypedProperties($object));
+        return array_unique(array_merge($this->_baseObjectProperties, array_keys(get_object_vars($object))));
     }
 
 
@@ -764,21 +772,19 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     private function _getBasicProperties(DataBaseObject $object){
 
+        $basicProperties = [];
         $arrayTypedProps = $this->_getArrayTypedProperties($object);
         $multiLanguageProps = $this->_getMultiLanguageTypedProperties($object);
-        $basicProperties = ['dbId', 'dbUUID', 'dbSortIndex', 'dbCreationDate', 'dbModificationDate', 'dbDeleted'];
 
         foreach (array_keys(get_object_vars($object)) as $property) {
 
-            if(!in_array($property, $arrayTypedProps, true) &&
-               !in_array($property, $basicProperties, true) &&
-               !in_array($property, $multiLanguageProps, true)){
+            if(!in_array($property, $arrayTypedProps, true) && !in_array($property, $multiLanguageProps, true)){
 
                 $basicProperties[] = $property;
             }
         }
 
-        return $basicProperties;
+        return array_unique(array_merge($this->_baseObjectProperties, $basicProperties));
     }
 
 
