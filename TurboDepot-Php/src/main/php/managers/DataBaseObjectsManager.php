@@ -1127,6 +1127,12 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 throw new UnexpectedValueException('Properties starting with _ are forbidden, but found: '.$classProperty);
             }
 
+            // Database private properties cannot be overriden
+            if($classProperty !== 'dbSortIndex' && in_array($classProperty, $this->_baseObjectProperties, true)){
+
+                throw new UnexpectedValueException('Overriding private db property is not allowed: '.$classProperty);
+            }
+
             if($object->{$classProperty} === []){
 
                 continue;

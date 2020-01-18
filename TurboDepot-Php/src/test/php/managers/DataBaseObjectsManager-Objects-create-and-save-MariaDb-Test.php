@@ -34,6 +34,9 @@ use org\turbocommons\src\main\php\model\DateTimeObject;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithDateTimeNotNull;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerLocalized;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongArrayMultilanProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongExtendedDbCreationDateProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongExtendedDbIdProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongExtendedDbDeletedProperty;
 
 
 /**
@@ -409,6 +412,10 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         // Test wrong values
         // Test exceptions
+
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save(new ObjectWithWrongExtendedDbCreationDateProperty()); }, '/Overriding private db property is not allowed: dbCreationDate/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save(new ObjectWithWrongExtendedDbIdProperty()); }, '/Overriding private db property is not allowed: dbId/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save(new ObjectWithWrongExtendedDbDeletedProperty()); }, '/Overriding private db property is not allowed: dbDeleted/');
 
         $object = new Customer();
         $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty('dbId');
@@ -1180,7 +1187,6 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame([null, '0', '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'en_US'));
         $this->assertSame([null, null, '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'es_ES'));
 
-        // TODO - what happens if we create properties whose names collide with the names of the private $db... object properties??
         // TODO - Create a new test case : Test what should happen when saving a db object with a string property, then modify that property to be an array property and save it again
         // TODO - Create a new test case : Test what should happen when saving a db object with a string property, then modify that property to be a multi language property and save it again
         // TODO - It's been finally decided to not destroy locale columns from multi locale props tables, cause they are not annoying even if not used. Test that this happens as expected
