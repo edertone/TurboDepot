@@ -23,15 +23,15 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
-     * The instance db identifier. Null value means the entity is not yet stored on db
+     * @see DataBaseObject::getDbId()
      */
-    public $dbId = null;
+    private $dbId = null;
 
 
     /**
-     * Universal identifier value for this object in case it is enabled
+     * @see DataBaseObject::getDbUUID()
      */
-    public $dbUUID = null;
+    private $dbUUID = null;
 
 
     /**
@@ -41,23 +41,21 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
-     * Date when the object was created
-     * TODO - convert creation, modification date into getters
+     * @see DataBaseObject::getDbCreationDate()
      */
-    public $dbCreationDate = null;
+    private $dbCreationDate = null;
 
 
     /**
-     * Date when the object was last modified
+     * @see DataBaseObject::getDbModificationDate()
      */
-    public $dbModificationDate = null;
+    private $dbModificationDate = null;
 
 
     /**
-     * When an object is deleted, the date and time of deletion is stored on this property, meaning it's been moved to trash. To delete it totally,
-     * we need to empty the trash (or disable the trash feature)
+     * @see DataBaseObject::getDbDeleted()
      */
-    public $dbDeleted = null;
+    private $dbDeleted = null;
 
 
     /**
@@ -88,16 +86,6 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
-     * This method is always called before any other thing at thedatabase object constructor.
-
-     * It must be declared to define the database object configuration and type values. If nothing is specified here, all setup parameters will be the default ones.
-     *
-     * @return void
-     */
-    abstract protected function setup();
-
-
-    /**
      * @see DataBaseObject::setLocales()
      *
      * @var array
@@ -111,6 +99,16 @@ abstract class DataBaseObject extends BaseStrictClass{
      * @var boolean
      */
     private $_isMultiLanguage = null;
+
+
+    /**
+     * This method is always called before any other thing at thedatabase object constructor.
+
+     * It must be declared to define the database object configuration and type values. If nothing is specified here, all setup parameters will be the default ones.
+     *
+     * @return void
+     */
+    abstract protected function setup();
 
 
     /**
@@ -146,6 +144,64 @@ abstract class DataBaseObject extends BaseStrictClass{
         }
 
         $this->setLocales($locales);
+    }
+
+
+    /**
+     * The instance db identifier. Null value means the entity is not yet stored on db
+     *
+     * @return null|int
+     */
+    public final function getDbId(){
+
+        return $this->dbId;
+    }
+
+
+    /**
+     * Universal identifier value for this object (in case UUIDs are enabled), or null if the object's still not saved to db
+     *
+     * @return null|string
+     */
+    public final function getDbUUID(){
+
+        return $this->dbUUID;
+    }
+
+
+    /**
+     * Date when the object was created, or null if the object's still not saved to db
+     *
+     * @return null|string
+     */
+    public final function getDbCreationDate(){
+
+        return $this->dbCreationDate;
+    }
+
+
+    /**
+     * Date when the object was last modified, or null if the object's still not saved to db
+     *
+     * @return null|string
+     */
+    public final function getDbModificationDate(){
+
+        return $this->dbModificationDate;
+    }
+
+
+    /**
+     * When an object is deleted, the date and time of deletion is stored on this property, meaning it's been moved to trash. To delete it totally,
+     * we need to empty the trash (or disable the trash feature).
+     *
+     * If the object is still not stored on database or it is stored but not deleted, this value will be null
+     *
+     * @return null|string
+     */
+    public final function getDbDeleted(){
+
+        return $this->dbDeleted;
     }
 
 

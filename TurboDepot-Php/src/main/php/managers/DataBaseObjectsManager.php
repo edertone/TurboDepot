@@ -85,9 +85,9 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * be performed on all the locales list to find the first non empty property localized value.
      *
      * Properties that are multilanguage cascade will contain the first non null value that is found on the current list of locales.
-     * TODO
      */
     const MULTI_LANGUAGE_CASCADE = 'MULTI_LANGUAGE_CASCADE';
+    // TODO
 
 
     /**
@@ -109,10 +109,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * TODO - implement - this should be optional and may be specifically modified by each databaseobject if necessary
+     * TODO
      * @var string
      */
     public $isDbUUIDEnabled = false;
+    // TODO - implement - this should be optional and may be specifically modified by each databaseobject if necessary
 
 
     /**
@@ -187,10 +188,10 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
     /**
      * Class that lets us store objects directly to database without having to care about sql queries
-     *
-     * TODO - more docs
      */
     public function __construct(){
+
+        // TODO - Implement constructor docs
 
         $this->_db = new DataBaseManager();
     }
@@ -250,27 +251,27 @@ class DataBaseObjectsManager extends BaseStrictClass{
             $tableData['dbmodificationdate'] = (new DateTime(null, new DateTimeZone('UTC')))->format($this->_sqlDateFormat);
 
             // Store or update the object into the database
-            if($object->dbId === null){
+            if($object->getDbId() === null){
 
                 $tableData['dbcreationdate'] = $tableData['dbmodificationdate'];
 
                 $this->_db->tableAddRows($tableName, [$tableData]);
-                $object->dbId = $this->_insertArrayPropsToDb($object, $tableName, $this->_db->getLastInsertId());
-                $this->_insertMultiLanguagePropsToDb($object, $tableName, $object->dbId);
+                $this->_setPrivatePropertyValue($object, 'dbId', $this->_insertArrayPropsToDb($object, $tableName, $this->_db->getLastInsertId()));
+                $this->_insertMultiLanguagePropsToDb($object, $tableName, $object->getDbId());
 
             }else{
 
-                $this->_db->tableUpdateRow($tableName, ['dbid' => $object->dbId], $tableData);
-                $this->_insertArrayPropsToDb($object, $tableName, $object->dbId, true);
-                $this->_insertMultiLanguagePropsToDb($object, $tableName, $object->dbId, true);
+                $this->_db->tableUpdateRow($tableName, ['dbid' => $object->getDbId()], $tableData);
+                $this->_insertArrayPropsToDb($object, $tableName, $object->getDbId(), true);
+                $this->_insertMultiLanguagePropsToDb($object, $tableName, $object->getDbId(), true);
             }
 
             $this->_db->transactionCommit();
 
-            $object->dbModificationDate = $tableData['dbmodificationdate'].'+00:00';
-            $object->dbCreationDate = str_replace('+00:00', '', $tableData['dbcreationdate']).'+00:00';
+            $this->_setPrivatePropertyValue($object, 'dbModificationDate', $tableData['dbmodificationdate'].'+00:00');
+            $this->_setPrivatePropertyValue($object, 'dbCreationDate', str_replace('+00:00', '', $tableData['dbcreationdate']).'+00:00');
 
-            return $object->dbId;
+            return $object->getDbId();
 
         } catch (Throwable $e) {
 
@@ -307,7 +308,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             if($deleteBeforeInsert){
 
-                $this->_db->tableDeleteRows($tableName.'_'.$column, ['dbid' => $object->dbId]);
+                $this->_db->tableDeleteRows($tableName.'_'.$column, ['dbid' => $object->getDbId()]);
             }
 
             if(($propertyCount = count($object->{$property})) > 0){
@@ -333,11 +334,13 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * @param DataBaseObject $object An instance to save or update
      * @param string $tableName The name for the object table
      * @param int $dbId The object dbId to which the array values will be linked
-     * @param boolean $deleteBeforeInsert TODO - multilan properties must be updated instead of deleted and inserted !??!?!?!
+     * @param boolean $deleteBeforeInsert TODO
      *
      * @return int The object dbId
      */
     private function _insertMultiLanguagePropsToDb(DataBaseObject $object, string $tableName, int $dbId, $deleteBeforeInsert = false){
+
+        // TODO - Regarding $deleteBeforeInsert: multilan properties must be updated instead of deleted and inserted !??!?!?!
 
         foreach ($this->_getMultiLanguageTypedProperties($object) as $property) {
 
@@ -345,7 +348,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             if($deleteBeforeInsert){
 
-                $this->_db->tableDeleteRows($tableName.'_'.$column, ['dbid' => $object->dbId]);
+                $this->_db->tableDeleteRows($tableName.'_'.$column, ['dbid' => $object->getDbId()]);
             }
 
             $rowToAdd = ['dbid' => $dbId];
@@ -363,6 +366,50 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
+     * Assign the provided value to a database object private property. It uses reflection to access the object private variables and allows
+     * us to modify properties that are not normally available to the regular users.
+     *
+     * @param DataBaseObject $object The instance that we want to modify
+     * @param string $property The name of the protected or private property that we want to modify
+     * @param string $value The value that we want to set to the private or protected property
+     */
+    private function _setPrivatePropertyValue(DataBaseObject $object, string $property, $value){
+
+        $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty($property);
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($object, $value);
+    }
+
+
+    /**
+     * Obtain the value for the provided object property using reflection. This means that we are also able to access the values
+     * of protected and private properties
+     *
+     * @param DataBaseObject $object The instance that we want to read
+     * @param string $property The name for the property that we want to read from the object instance
+     *
+     * @return mixed The property value
+     */
+    private function _getPropertyValue(DataBaseObject $object, string $property){
+
+        $reflectionObject = new ReflectionObject($object);
+
+        try {
+
+            $reflectionProperty = $reflectionObject->getProperty($property);
+
+        } catch (Throwable $e) {
+
+            $reflectionProperty = $reflectionObject->getParentClass()->getProperty($property);
+        }
+
+        $reflectionProperty->setAccessible(true);
+
+        return $reflectionProperty->getValue($object);
+    }
+
+
+    /**
      * Get an object multi language property value for the specified locale
      *
      * @param DataBaseObject $object The object for which we want to obtain the property value
@@ -373,12 +420,8 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     private function _getMultiLanguagePropertyValue(DataBaseObject $object, string $property, string $locale){
 
-        $reflectionObject = new ReflectionObject($object);
-        $objectDefinedLocales = $reflectionObject->getParentClass()->getProperty('_locales');
-        $objectDefinedLocales->setAccessible(true);
-        $localesData = $objectDefinedLocales->getValue($object);
-
         $locales = $object->getLocales();
+        $localesData = $this->_getPropertyValue($object, '_locales');
 
         for ($i = 1, $l = count($locales); $i < $l; $i++) {
 
@@ -430,12 +473,10 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         foreach ($this->_getBasicProperties($object) as $property) {
 
-            if(is_array($object->{$property})){
+            if(is_array($tableData[strtolower($property)] = $this->_getPropertyValue($object, $property))){
 
                 throw new UnexpectedValueException('unexpected array value for property: '.$property);
             }
-
-            $tableData[strtolower($property)] = $object->{$property};
         }
 
         return $tableData;
@@ -452,7 +493,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     public function getSQLTypeFromObjectProperty(DataBaseObject $object, $property){
 
-        if(!array_key_exists($property, get_object_vars($object))){
+        if(!in_array($property, $this->_getAllProperties($object))){
 
             throw new UnexpectedValueException('Undefined property: '.$property);
         }
@@ -519,10 +560,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         // Try to find a strongly defined type for the requested column on the provided object instance.
         // This will have preference over the type that is automatically detected from the table value.
-        $reflectionObject = new ReflectionObject($object);
-        $objectDefinedTypes = $reflectionObject->getProperty('_types');
-        $objectDefinedTypes->setAccessible(true);
-        $typesSetup = $objectDefinedTypes->getValue($object);
+        $typesSetup = $this->_getPropertyValue($object, '_types');
 
         if(isset($typesSetup[$property])){
 
@@ -533,16 +571,9 @@ class DataBaseObjectsManager extends BaseStrictClass{
         $colName = strtolower($property);
         $isBaseColumn = in_array($colName, array_keys($this->_baseObjectColumns), true);
 
-        if(count($typesSetup) > 0 && !$isBaseColumn){
+        if(count($typesSetup) > 0 && !$isBaseColumn && $this->_getPropertyValue($object, '_isTypingMandatory')){
 
-            $isTypingMandatory = $reflectionObject->getProperty('_isTypingMandatory');
-            $isTypingMandatory->setAccessible(true);
-            $isTypingMandatory = $isTypingMandatory->getValue($object);
-
-            if($isTypingMandatory){
-
-                throw new UnexpectedValueException($property.' has no defined type but typing is mandatory. Define a type or disable this restriction by setting _isTypingMandatory = false');
-            }
+            throw new UnexpectedValueException($property.' has no defined type but typing is mandatory. Define a type or disable this restriction by setting _isTypingMandatory = false');
         }
 
         // Check that all the defined types belong to object properties.
@@ -711,7 +742,20 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Obtain a list with all the properties that are typed asbasic types for the provided object.
+     * Obtain a list with all the properties from a provided object, including private, basic, array, multilanguage, etc...
+     *
+     * @param DataBaseObject $object A valid database object instance
+     *
+     * @return string[] An array with all the object property names
+     */
+    private function _getAllProperties(DataBaseObject $object){
+
+        return array_merge($this->_getBasicProperties($object), $this->_getArrayTypedProperties($object), $this->_getMultiLanguageTypedProperties($object));
+    }
+
+
+    /**
+     * Obtain a list with all the properties that are typed as basic types for the provided object.
      * All the properties that require a specific db table to be stored like arrays, multilanguage and so will be excluded from this list.
      *
      * @param DataBaseObject $object A valid database object instance
@@ -1015,14 +1059,14 @@ class DataBaseObjectsManager extends BaseStrictClass{
         $class = get_class($object);
         $className = StringUtils::getPathElement($class);
 
-        if($object->dbId !== null && (!is_integer($object->dbId) || $object->dbId < 1)){
+        if($object->getDbId() !== null && (!is_integer($object->getDbId()) || $object->getDbId() < 1)){
 
-            throw new UnexpectedValueException('Invalid '.$className.' dbId: '.$object->dbId);
+            throw new UnexpectedValueException('Invalid '.$className.' dbId: '.$object->getDbId());
         }
 
-        if($object->dbUUID !== null && (!is_string($object->dbUUID) || strlen($object->dbUUID) !== 36)){
+        if($object->getDbUUID() !== null && (!is_string($object->getDbUUID()) || strlen($object->getDbUUID()) !== 36)){
 
-            throw new UnexpectedValueException('Invalid '.$className.' dbUUID: '.$object->dbUUID);
+            throw new UnexpectedValueException('Invalid '.$className.' dbUUID: '.$object->getDbUUID());
         }
 
         if($object->dbSortIndex !== null && (!is_integer($object->dbSortIndex) || $object->dbSortIndex < 0)){
@@ -1030,22 +1074,22 @@ class DataBaseObjectsManager extends BaseStrictClass{
             throw new UnexpectedValueException('Invalid '.$className.' dbSortIndex: '.$object->dbSortIndex);
         }
 
-        if($object->dbCreationDate !== null){
+        if($object->getDbCreationDate() !== null){
 
-            $this->_validateDateTimeValue($object->dbCreationDate, 6, 'dbCreationDate');
+            $this->_validateDateTimeValue($object->getDbCreationDate(), 6, 'dbCreationDate');
         }
 
-        if($object->dbModificationDate !== null){
+        if($object->getDbModificationDate() !== null){
 
-            $this->_validateDateTimeValue($object->dbModificationDate, 6, 'dbModificationDate');
+            $this->_validateDateTimeValue($object->getDbModificationDate(), 6, 'dbModificationDate');
         }
 
-        if($object->dbDeleted !== null){
+        if($object->getDbDeleted() !== null){
 
-            $this->_validateDateTimeValue($object->dbDeleted, 6, 'dbDeleted');
+            $this->_validateDateTimeValue($object->getDbDeleted(), 6, 'dbDeleted');
         }
 
-        if($object->dbId === null && ($object->dbCreationDate !== null || $object->dbModificationDate !== null)){
+        if($object->getDbId() === null && ($object->getDbCreationDate() !== null || $object->getDbModificationDate() !== null)){
 
             throw new UnexpectedValueException('Creation and modification date must be null if dbid is null');
         }
@@ -1055,8 +1099,9 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             foreach($classMethods as $classMethod){
 
-                // setup() and BaseStrictClass methods are the only ones that are allowed
-                if(!in_array($classMethod->name, ['__construct', '__set', '__get', 'setup', 'setLocales', 'isMultiLanguage', 'getLocales'], true)){
+                // Custom methods are not allowed on database objects. Only properties can be created
+                if(!in_array($classMethod->name, ['__set', '__get', 'setup', '__construct', 'getDbId', 'getDbUUID', 'getDbCreationDate',
+                    'getDbModificationDate', 'getDbDeleted', 'isMultiLanguage', 'getLocales', 'setLocales'], true)){
 
                     throw new UnexpectedValueException('Method is not allowed for DataBaseObject class '.$class.': '.$classMethod->name);
                 }

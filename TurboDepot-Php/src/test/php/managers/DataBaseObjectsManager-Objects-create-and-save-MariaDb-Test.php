@@ -13,6 +13,7 @@ namespace org\turbodepot\src\test\php\managers;
 
 use PHPUnit\Framework\TestCase;
 use stdClass;
+use ReflectionObject;
 use org\turbodepot\src\main\php\managers\DataBaseManager;
 use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\Customer;
@@ -313,13 +314,18 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         AssertUtils::throwsException(function(){ $this->sut->save(''); }, '/must be an instance of .*DataBaseObject/');
         AssertUtils::throwsException(function(){ $this->sut->save(new stdClass()); }, '/must be an instance of .*DataBaseObject/');
 
+        $object = new Customer();
+        $this->assertSame(null, $object->getDbId());
+        $this->assertSame(null, $object->getDbCreationDate());
+        $this->assertSame(null, $object->getDbModificationDate());
+
         // Test ok values - new instances
         AssertUtils::throwsException(function() use ($objectTableName) { $this->db->tableCountRows($objectTableName); }, '/Could not count table rows: Table .*td_customer.* doesn\'t exist/');
         $this->assertRegExp('/Table .*customer\' doesn\'t exist/', $this->db->getLastError());
 
         $object = new Customer();
         $this->assertSame(1, $this->sut->save($object));
-        $this->assertSame(1, $object->dbId);
+        $this->assertSame(1, $object->getDbId());
         $this->assertSame(1, $this->db->tableCountRows($objectTableName));
         $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
             'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(1) NOT NULL',
@@ -340,12 +346,12 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $object = new Customer();
         $this->assertSame(2, $this->sut->save($object));
-        $this->assertSame(2, $object->dbId);
+        $this->assertSame(2, $object->getDbId());
         $this->assertSame(2, $this->db->tableCountRows($objectTableName));
 
         $object = new Customer();
         $this->assertSame(3, $this->sut->save($object));
-        $this->assertSame(3, $object->dbId);
+        $this->assertSame(3, $object->getDbId());
         $this->assertSame(3, $this->db->tableCountRows($objectTableName));
         $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
             'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(1) NOT NULL',
@@ -367,7 +373,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $this->sut->isColumnResizedWhenValueisBigger = true;
         $this->assertSame(4, $this->sut->save($object));
-        $this->assertSame(4, $object->dbId);
+        $this->assertSame(4, $object->getDbId());
         $this->assertSame('customer', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
         $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
@@ -375,7 +381,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
             'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $object->name = 'customer updated';
-        $this->assertSame(4, $object->dbId);
+        $this->assertSame(4, $object->getDbId());
         $this->assertSame(4, $this->sut->save($object));
         $this->assertSame('customer updated', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
@@ -384,7 +390,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
             'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $object->name = 'customer updated with a much longer text that should resize the name column to a bigger varchar size';
-        $this->assertSame(4, $object->dbId);
+        $this->assertSame(4, $object->getDbId());
         $this->assertSame(4, $this->sut->save($object));
         $this->assertSame('customer updated with a much longer text that should resize the name column to a bigger varchar size', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
@@ -393,7 +399,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
             'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         $object->debt = 10;
-        $this->assertSame(4, $object->dbId);
+        $this->assertSame(4, $object->getDbId());
         $this->assertSame(4, $this->sut->save($object));
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
 
@@ -405,26 +411,36 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         // Test exceptions
 
         $object = new Customer();
-        $object->dbId = -1;
+        $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty('dbId');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($object, -1);
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer dbId: -1/');
-        $this->assertSame(-1, $object->dbId);
+        $this->assertSame(-1, $object->getDbId());
 
         // Put a non existant id number
         $object = new Customer();
-        $object->dbId = 5000000;
+        $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty('dbId');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($object, 5000000);
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not update row on table td_customer for dbid=\'5000000\'/');
 
         $object = new Customer();
-        $object->dbId = 'string';
+        $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty('dbId');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($object, 'string');
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer dbId: string/');
-        $this->assertSame('string', $object->dbId);
+        $this->assertSame('string', $object->getDbId());
 
         $object = new Customer();
-        $object->dbUUID = 123;
+        $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty('dbUUID');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($object, 123);
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer dbUUID: 123/');
 
         $object = new Customer();
-        $object->dbUUID = 'notanid';
+        $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty('dbUUID');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($object, 'notanid');
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer dbUUID: notanid/');
 
         $object = new Customer();
@@ -436,42 +452,60 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer dbSortIndex: string/');
 
         $object = new Customer();
-        $object->dbCreationDate = 9234;
+        $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty('dbCreationDate');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($object, 9234);
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/dbCreationDate .9234. is not a DATETIME.6.$/');
 
         $object = new Customer();
-        $object->dbCreationDate = 'not a date';
+        $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty('dbCreationDate');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($object, 'not a date');
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/dbCreationDate .not a date. is not a DATETIME.6.$/');
 
         $object = new Customer();
-        $object->dbCreationDate = '2019-11-16 10:41:38.123';
+        $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty('dbCreationDate');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($object, '2019-11-16 10:41:38.123');
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/dbCreationDate .2019-11-16 10:41:38.123. must have a UTC timezone$/');
 
         $object = new Customer();
-        $object->dbCreationDate = '2019-11-16 10:41:38.123456Z';
+        $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty('dbCreationDate');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($object, '2019-11-16 10:41:38.123456Z');
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Creation and modification date must be null if dbid is null/');
 
         $object = new Customer();
-        $object->dbModificationDate = '2019-11-16 10:41:38.123';
+        $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty('dbModificationDate');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($object, '2019-11-16 10:41:38.123');
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/dbModificationDate .2019-11-16 10:41:38.123. must have a UTC timezone$/');
 
         $object = new Customer();
-        $object->dbModificationDate = '2019-11-16 10:41:38.123456Z';
+        $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty('dbModificationDate');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($object, '2019-11-16 10:41:38.123456Z');
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Creation and modification date must be null if dbid is null/');
 
         $object = new Customer();
-        $object->dbModificationDate = 1;
+        $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty('dbModificationDate');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($object, 1);
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/dbModificationDate .1. is not a DATETIME.6.$/');
 
         $object = new Customer();
-        $object->dbModificationDate = 'hello';
+        $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty('dbModificationDate');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($object, 'hello');
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/dbModificationDate .hello. is not a DATETIME.6.$/');
-        $this->assertSame(null, $object->dbId);
-        $this->assertSame(null, $object->dbCreationDate);
-        $this->assertSame('hello', $object->dbModificationDate);
+        $this->assertSame(null, $object->getDbId());
+        $this->assertSame(null, $object->getDbCreationDate());
+        $this->assertSame('hello', $object->getDbModificationDate());
 
         $object = new Customer();
-        $object->dbDeleted = 1;
+        $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty('dbDeleted');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($object, 1);
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/dbDeleted .1. is not a DATETIME.6.$/');
 
         $object = new Customer();
@@ -590,8 +624,8 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $objectCreationDate = $this->db->tableGetColumnValues($objectTableName, 'dbCreationDate')[0];
         $objectModificationDate = $this->db->tableGetColumnValues($objectTableName, 'dbModificationDate')[0];
-        $this->assertTrue((new DateTimeObject($objectCreationDate))->isEqualTo(new DateTimeObject($object->dbCreationDate)));
-        $this->assertTrue((new DateTimeObject($objectModificationDate))->isEqualTo(new DateTimeObject($object->dbModificationDate)));
+        $this->assertTrue((new DateTimeObject($objectCreationDate))->isEqualTo(new DateTimeObject($object->getDbCreationDate())));
+        $this->assertTrue((new DateTimeObject($objectModificationDate))->isEqualTo(new DateTimeObject($object->getDbModificationDate())));
 
         $this->assertSame($objectCreationDate, $objectModificationDate);
         $this->assertContains(DateTimeObject::compare($dateBeforeCreation, $objectCreationDate), [0, 2], $dateBeforeCreation.' must be before '.$objectCreationDate);
@@ -606,8 +640,8 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $objectCreationDate2 = $this->db->tableGetColumnValues($objectTableName, 'dbCreationDate')[0];
         $objectModificationDate = $this->db->tableGetColumnValues($objectTableName, 'dbModificationDate')[0];
-        $this->assertTrue((new DateTimeObject($objectCreationDate2))->isEqualTo(new DateTimeObject($object->dbCreationDate)));
-        $this->assertTrue((new DateTimeObject($objectModificationDate))->isEqualTo(new DateTimeObject($object->dbModificationDate)));
+        $this->assertTrue((new DateTimeObject($objectCreationDate2))->isEqualTo(new DateTimeObject($object->getDbCreationDate())));
+        $this->assertTrue((new DateTimeObject($objectModificationDate))->isEqualTo(new DateTimeObject($object->getDbModificationDate())));
 
         $this->assertSame($objectCreationDate, $objectCreationDate2);
         $this->assertSame(2, DateTimeObject::compare($objectCreationDate2, $objectModificationDate), $objectCreationDate2.' must be before '.$objectModificationDate);
@@ -617,9 +651,9 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertContains(DateTimeObject::compare($dateAfterModification, $objectModificationDate), [0, 1], $dateAfterModification.' must be after '.$objectModificationDate);
 
         // Make sure all object dates are always UTC
-        $this->assertTrue((new DateTimeObject($object->dbCreationDate))->isUTC());
-        $this->assertTrue((new DateTimeObject($object->dbModificationDate))->isUTC());
-        $this->assertNull($object->dbDeleted);
+        $this->assertTrue((new DateTimeObject($object->getDbCreationDate()))->isUTC());
+        $this->assertTrue((new DateTimeObject($object->getDbModificationDate()))->isUTC());
+        $this->assertNull($object->getDbDeleted());
 
         $objectTyped = new CustomerTyped();
         $objectTyped->birthDate = (new DateTimeObject())->toString('Y-M-D H:N:SOffset');
@@ -627,17 +661,18 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $objectTyped->microSecondsDate = (new DateTimeObject())->toString();
         $this->assertSame(1, $this->sut->save($objectTyped));
 
-        $this->assertTrue((new DateTimeObject($objectTyped->dbCreationDate))->isUTC());
-        $this->assertTrue((new DateTimeObject($objectTyped->dbModificationDate))->isUTC());
-        $this->assertNull($objectTyped->dbDeleted);
+        $this->assertTrue((new DateTimeObject($objectTyped->getDbCreationDate()))->isUTC());
+        $this->assertTrue((new DateTimeObject($objectTyped->getDbModificationDate()))->isUTC());
+        $this->assertNull($objectTyped->getDbDeleted());
         $this->assertTrue((new DateTimeObject($objectTyped->birthDate))->isUTC());
         $this->assertTrue((new DateTimeObject($objectTyped->miliSecondsDate))->isUTC());
         $this->assertTrue((new DateTimeObject($objectTyped->microSecondsDate))->isUTC());
 
         // Test that non UTC values throw exceptions
         $nonUtcDate = (new DateTimeObject())->setTimeZoneOffset('+05:00');
-
-        $objectTyped->dbModificationDate = $nonUtcDate->toString('Y-M-DTH:N:SOffset');
+        $reflectionProperty = (new ReflectionObject($objectTyped))->getParentClass()->getProperty('dbModificationDate');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($objectTyped, $nonUtcDate->toString('Y-M-DTH:N:SOffset'));
         AssertUtils::throwsException(function() use ($objectTyped) { $this->sut->save($objectTyped); }, '/dbModificationDate .....-..-.....:..:..\+05:00. must have a UTC timezone$/');
 
         $objectTyped = new CustomerTyped();
@@ -774,7 +809,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(2, $this->sut->save($object));
         $object->boolArray = [true, false, false];
         $this->assertSame(2, $this->sut->save($object));
-        $this->assertSame(2, $object->dbId);
+        $this->assertSame(2, $object->getDbId());
 
         // Test wrong values
 
@@ -1145,6 +1180,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame([null, '0', '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'en_US'));
         $this->assertSame([null, null, '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'es_ES'));
 
+        // TODO - what happens if we create properties whose names collide with the names of the private $db... object properties??
         // TODO - Create a new test case : Test what should happen when saving a db object with a string property, then modify that property to be an array property and save it again
         // TODO - Create a new test case : Test what should happen when saving a db object with a string property, then modify that property to be a multi language property and save it again
         // TODO - It's been finally decided to not destroy locale columns from multi locale props tables, cause they are not annoying even if not used. Test that this happens as expected
