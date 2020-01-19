@@ -44,6 +44,10 @@ class MarkDownBlogManagerTest extends TestCase {
 
         $this->filesManager = new FilesManager();
         $this->tempFolder = $this->filesManager->createTempDirectory('TurboSitePhp-MarkDownBlogManagerTest');
+
+        // Copy all the test blog files to the created temporary folder
+        $this->filesManager->copyDirectory(__DIR__.'/../../resources/managers/markdownBlogManager', $this->tempFolder);
+
         $this->sut = new MarkDownBlogManager($this->tempFolder);
     }
 
@@ -104,13 +108,26 @@ class MarkDownBlogManagerTest extends TestCase {
 
 
     /**
+     * testGetPost_metatitle_and_metadescription_are_correctly_computed
+     *
+     * @return void
+     */
+    public function testGetPost_metatitle_and_metadescription_are_correctly_computed(){
+
+        $post = $this->sut->getPost('2018-10-25', 'en', 'convert-string-to-camelcase-javascript-typescript-php');
+        $this->assertSame('Convert string to CamelCase, UpperCamelCase or LowerCamelCase in Javascript, typescript and Php', $post->title);
+        $this->assertSame('convert string to camelcase javascript typescript php', $post->metaTitle);
+        $this->assertSame('What is Camel Case Camel case conversion in TurboCommons library Convert a string to Camel Case in Php Convert a string to Camel Case in Javascrip ...',
+            $post->metaDescription);
+    }
+
+
+    /**
      * testGetLatestPosts
      *
      * @return void
      */
     public function testGetLatestPosts(){
-
-        $this->filesManager->copyDirectory(__DIR__.'/../../resources/managers/markdownBlogManager', $this->tempFolder);
 
         // Test empty values
         // TODO

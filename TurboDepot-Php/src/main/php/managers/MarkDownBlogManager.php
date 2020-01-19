@@ -252,16 +252,35 @@ class MarkDownBlogManager extends BaseStrictClass{
 
         $post->textAsHtml = $this->_parseDown->text($post->text);
 
-        // Get the post title from the markdown text
         $lines = StringUtils::getLines($post->text);
 
         foreach ($lines as $line) {
 
-            if(StringUtils::countStringOccurences($line, '#') > 0){
+            // Get the post title from the markdown text
+            if($post->title === ''){
 
-                $post->title = ltrim($line, ' #');
+                if(substr_count($line, '#') > 0){
 
+                    $post->title = ltrim($line, ' #');
+                }
+
+            }else if(substr_count($line, '#') > 0 && strlen($post->metaDescription .= ' '.ltrim($line, ' #')) >= 150){
+
+                $post->metaDescription = StringUtils::limitLen(trim($post->metaDescription), 150);
                 break;
+            }
+        }
+
+        // Calculate the metadata title
+        $post->metaTitle = $post->title;
+
+        if(strlen($post->metaTitle) > 80){
+
+            $post->metaTitle = StringUtils::removeWordsShorterThan($post->title);
+
+            if(strlen($post->metaTitle) > 80){
+
+                $post->metaTitle = implode(' ', $post->keywordsAsArray);
             }
         }
 
