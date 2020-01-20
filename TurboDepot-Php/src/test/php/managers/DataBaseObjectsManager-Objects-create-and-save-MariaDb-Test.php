@@ -1187,12 +1187,12 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame([null, '0', '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'en_US'));
         $this->assertSame([null, null, '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'es_ES'));
 
-        // TODO - Create a new test case : Test what should happen when saving a db object with a string property, then modify that property to be an array property and save it again
-        // TODO - Create a new test case : Test what should happen when saving a db object with a string property, then modify that property to be a multi language property and save it again
-        // TODO - It's been finally decided to not destroy locale columns from multi locale props tables, cause they are not annoying even if not used. Test that this happens as expected
-        // TODO - test saving several objects, several instances of the same object, different locales, modifying the same object on already saved locale values, adding different locales, etc..
-        // TODO - what happens when we create an object with an A non localized prop, save it to db, and then alter the class to make the A prop a multilanguage one, and then save again?
         // TODO - implement MULTILANGUAGE_CASCADE to tag properties that must get next locale value when the default class or empty one is found
+        // TODO - It's been finally decided to not destroy locale columns from multi locale props tables, cause they are not annoying even if not used. Test that this happens as expected
+        // TODO - test saving several objects, modifying the same object on already saved locale values, etc..
+        // TODO - what happens when we create an object with an A non localized prop, save it to db, and then alter the class to make the A prop a multilanguage one, and then save again?
+        // TODO - Create a new test case : Test what should happen when saving a db object with a string property, then modify that property to be a multi language property and save it again
+        // TODO - Create a new test case : Test what should happen when saving a db object with a string property, then modify that property to be an array property and save it again
 
         // Test wrong values
         $object = new CustomerLocalized(['en_US']);

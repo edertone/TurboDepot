@@ -799,28 +799,20 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $result = [];
 
-        foreach(array_keys(get_object_vars($object)) as $property){
+        $types = $this->_getPropertyValue($object, '_types');
 
-            try {
+        foreach(get_object_vars($object) as $property => $value){
 
-                if(in_array(self::ARRAY, $this->_getTypeFromObjectProperty($object, $property), true)){
+            if(isset($types[$property])){
+
+                if(in_array(self::ARRAY, $types[$property], true)){
 
                     $result[] = $property;
                 }
 
-            } catch (Throwable $e) {
+            }else if(is_array($value)){
 
-                // A property may still be an empty array which has an already created database table to detect its type, so
-                // we will check it here
-                if(is_array($object->{$property}) && count($object->{$property}) === 0 &&
-                   $this->_db->tableExists($this->getTableNameFromObject($object).'_'.strtolower($property))){
-
-                    $result[] = $property;
-
-                }else{
-
-                    throw $e;
-                }
+                $result[] = $property;
             }
         }
 
@@ -839,11 +831,10 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $result = [];
 
-        foreach(array_keys(get_object_vars($object)) as $property){
+        foreach($this->_getPropertyValue($object, '_types') as $property => $type){
 
             // Note that we ignore all arrays cause they are not allowed for multi language properties
-            if(!is_array($object->{$property}) &&
-               in_array(self::MULTI_LANGUAGE, $this->_getTypeFromObjectProperty($object, $property), true)){
+            if(in_array(self::MULTI_LANGUAGE, $type, true) && !is_array($object->{$property})){
 
                 $result[] = $property;
             }
