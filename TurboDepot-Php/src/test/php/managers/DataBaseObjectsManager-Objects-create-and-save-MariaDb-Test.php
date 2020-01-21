@@ -330,12 +330,12 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(1, $this->sut->save($object));
         $this->assertSame(1, $object->getDbId());
         $this->assertSame(1, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)',
             'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(1) NOT NULL',
             'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
         // test that columns are in the correct order
-        $this->assertSame(['dbid', 'dbuuid', 'dbsortindex', 'dbcreationdate', 'dbmodificationdate', 'dbdeleted', 'name', 'commercialname', 'age', 'debt'],
+        $this->assertSame(['dbid', 'dbuuid', 'dbcreationdate', 'dbmodificationdate', 'dbdeleted', 'name', 'commercialname', 'age', 'debt'],
             $this->db->tableGetColumnNames($objectTableName));
 
         // Test that datetime values are stored with miliseconds information
@@ -356,7 +356,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(3, $this->sut->save($object));
         $this->assertSame(3, $object->getDbId());
         $this->assertSame(3, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)',
             'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(1) NOT NULL',
             'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
@@ -379,7 +379,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(4, $object->getDbId());
         $this->assertSame('customer', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)',
             'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(8) NOT NULL',
             'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
@@ -388,7 +388,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(4, $this->sut->save($object));
         $this->assertSame('customer updated', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)',
             'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(16) NOT NULL',
             'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
@@ -397,7 +397,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(4, $this->sut->save($object));
         $this->assertSame('customer updated with a much longer text that should resize the name column to a bigger varchar size', $object->name);
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)',
             'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(100) NOT NULL',
             'commercialname' => 'varchar(1) NOT NULL', 'age' => 'smallint(6) NOT NULL', 'debt' => 'double NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
@@ -407,7 +407,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
 
         // test that columns are in the correct order
-        $this->assertSame(['dbid', 'dbuuid', 'dbsortindex', 'dbcreationdate', 'dbmodificationdate', 'dbdeleted', 'name', 'commercialname', 'age', 'debt'],
+        $this->assertSame(['dbid', 'dbuuid', 'dbcreationdate', 'dbmodificationdate', 'dbdeleted', 'name', 'commercialname', 'age', 'debt'],
             $this->db->tableGetColumnNames($objectTableName));
 
         // Test wrong values
@@ -449,14 +449,6 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $reflectionProperty->setAccessible(true);
         $reflectionProperty->setValue($object, 'notanid');
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer dbUUID: notanid/');
-
-        $object = new Customer();
-        $object->dbSortIndex = -1;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer dbSortIndex: -1/');
-
-        $object = new Customer();
-        $object->dbSortIndex = 'string';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Invalid Customer dbSortIndex: string/');
 
         $object = new Customer();
         $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty('dbCreationDate');
@@ -542,11 +534,11 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongPropThatStartsWithUnderscore()); }, '/Properties starting with _ are forbidden, but found: _name/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNullNonTypedProperty()); }, '/Could not detect property age type: Could not detect type from NULL/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongEmptyNonTypedArrayProperty()); }, '/Could not detect property emails type: Could not detect type from array/');
-        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNonExistantTypedProperty()); }, '/Cannot define type for nonexistant cause it does not exist on class/');
+        AssertUtils::throwsException(function() { new ObjectWithWrongNonExistantTypedProperty(); }, '/Cannot define type for nonexistant cause it does not exist on class/');
 
         // Add an unexpected column to the customer table and make sure saving fails
         $this->assertTrue($this->db->tableAddColumn($objectTableName, 'unexpected', 'bigint'));
-        AssertUtils::throwsException(function() { $this->sut->save(new Customer()); }, '/td_customer columns .dbid,dbuuid,dbsortindex,dbcreationdate,dbmodificationdate,dbdeleted,name,commercialname,age,debt,unexpected. are different from its related object/');
+        AssertUtils::throwsException(function() { $this->sut->save(new Customer()); }, '/td_customer columns .dbid,dbuuid,dbcreationdate,dbmodificationdate,dbdeleted,name,commercialname,age,debt,unexpected. are different from its related object/');
 
         // All exceptions must have not created any database object
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
@@ -759,7 +751,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $this->assertSame(14, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)',
             'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(40) NOT NULL',
             'age' => 'smallint(6) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName));
 
@@ -879,7 +871,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $this->assertSame(10, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)',
             'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(20) NOT NULL',
             'commercialname' => 'varchar(25)', 'birthdate' => 'datetime', 'milisecondsdate' => 'datetime(3)', 'microsecondsdate' => 'datetime(6)', 'age' => 'smallint(6)',
             'onedigitint' => 'smallint(6)', 'sixdigitint' => 'mediumint(9)', 'twelvedigitint' => 'bigint(20)', 'doublevalue' => 'double',
@@ -1097,7 +1089,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object = new CustomerLocalized(['']);
         $this->assertSame(1, $this->sut->save($object));
 
-        $objectMainTableTypes = ['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)', 'dbsortindex' => 'bigint(20) unsigned',
+        $objectMainTableTypes = ['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)',
             'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)',
             'name' => 'varchar(250)', 'birthdate' => 'datetime', 'age' => 'smallint(6)', 'setup' => 'tinyint(1)'];
 
@@ -1187,7 +1179,6 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame([null, '0', '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'en_US'));
         $this->assertSame([null, null, '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'es_ES'));
 
-        // TODO - implement MULTILANGUAGE_CASCADE to tag properties that must get next locale value when the default class or empty one is found
         // TODO - It's been finally decided to not destroy locale columns from multi locale props tables, cause they are not annoying even if not used. Test that this happens as expected
         // TODO - test saving several objects, modifying the same object on already saved locale values, etc..
         // TODO - what happens when we create an object with an A non localized prop, save it to db, and then alter the class to make the A prop a multilanguage one, and then save again?

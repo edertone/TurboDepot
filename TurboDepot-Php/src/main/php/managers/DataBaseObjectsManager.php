@@ -81,16 +81,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Flag that is used to specify on a data type that a property is stored with multiple language values, and that a lookup will
-     * be performed on all the locales list to find the first non empty property localized value.
-     *
-     * Properties that are multilanguage cascade will contain the first non null value that is found on the current list of locales.
-     */
-    const MULTI_LANGUAGE_CASCADE = 'MULTI_LANGUAGE_CASCADE';
-    // TODO
-
-
-    /**
      * Flag that is used to specify that a data type cannot be null
      */
     const NOT_NULL = 'NOT_NULL';
@@ -181,17 +171,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      *
      * @var array
      */
-    private $_baseObjectProperties = ['dbId', 'dbUUID', 'dbSortIndex', 'dbCreationDate', 'dbModificationDate', 'dbDeleted'];
-
-
-    /**
-     * Contains the list of table column names and class types that must exist on all the created objects by default.
-     * These represent the DataBaseObject base properties that are common for all the objects.
-     *
-     * @var array
-     */
-    private $_baseObjectColumns = ['dbid' => [self::INT, 11], 'dbuuid' => [self::STRING, 36], 'dbsortindex' => [self::INT, 11],
-        'dbcreationdate' => [self::DATETIME, 6], 'dbmodificationdate' => [self::DATETIME, 6], 'dbdeleted' => [self::DATETIME, 6]];
+    private $_baseObjectProperties = ['dbId', 'dbUUID', 'dbCreationDate', 'dbModificationDate', 'dbDeleted'];
 
 
     /**
@@ -515,9 +495,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
             case 'dbuuid':
                 return $this->_db->getSQLTypeFromValue('                                    ');
 
-            case 'dbsortindex':
-                return $this->_db->getSQLTypeFromValue(999999999999999, true, true);
-
             case 'dbdeleted':
                 return $this->_db->getSQLDateTimeType(true, 6);
 
@@ -576,29 +553,9 @@ class DataBaseObjectsManager extends BaseStrictClass{
         }
 
         // If types definition are mandatory, we will check here that all the object properties have a defined data type
-        $colName = strtolower($property);
-        $isBaseColumn = in_array($colName, array_keys($this->_baseObjectColumns), true);
-
-        if(count($typesSetup) > 0 && !$isBaseColumn && $this->_getPropertyValue($object, '_isTypingMandatory')){
+        if(count($typesSetup) > 0 && $this->_getPropertyValue($object, '_isTypingMandatory')){
 
             throw new UnexpectedValueException($property.' has no defined type but typing is mandatory. Define a type or disable this restriction by setting _isTypingMandatory = false');
-        }
-
-        // Check that all the defined types belong to object properties.
-        $objectProperties = array_keys(get_object_vars($object));
-
-        foreach (array_keys($typesSetup) as $propertyType) {
-
-            if(!in_array($propertyType, $objectProperties, true)){
-
-                throw new UnexpectedValueException('Cannot define type for '.$propertyType.' cause it does not exist on class');
-            }
-        }
-
-        // Check if the requested column is found at the base object columns
-        if($isBaseColumn){
-
-            return $this->_baseObjectColumns[$colName];
         }
 
         try {
@@ -861,7 +818,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             $columnsToCreate[] = strtolower($property).' '.$this->getSQLTypeFromObjectProperty($object, $property);
         }
 
-        $this->_db->tableCreate($tableName, $columnsToCreate, ['dbid'], [['dbuuid']], [['dbsortindex']]);
+        $this->_db->tableCreate($tableName, $columnsToCreate, ['dbid'], [['dbuuid']]);
 
         // Create all the tables that store array properties
         $dbIdForeignColumn = 'dbid '.$this->_db->getSQLTypeFromValue(999999999999999, false, true);
@@ -980,7 +937,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
         }
 
         // Test that all columns have data types which can store the provided object data
-        $baseObjectColumnNames = array_keys($this->_baseObjectColumns);
+        $baseObjectColumnNames = array_map(function ($p) {return strtolower($p);}, $this->_baseObjectProperties);
 
         foreach ($tableColumnTypes as $tableColumnName => $tableColumnType) {
 
@@ -1066,11 +1023,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
             throw new UnexpectedValueException('Invalid '.$className.' dbUUID: '.$object->getDbUUID());
         }
 
-        if($object->dbSortIndex !== null && (!is_integer($object->dbSortIndex) || $object->dbSortIndex < 0)){
-
-            throw new UnexpectedValueException('Invalid '.$className.' dbSortIndex: '.$object->dbSortIndex);
-        }
-
         if($object->getDbCreationDate() !== null){
 
             $this->_validateDateTimeValue($object->getDbCreationDate(), 6, 'dbCreationDate');
@@ -1119,7 +1071,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             }
 
             // Database private properties cannot be overriden
-            if($classProperty !== 'dbSortIndex' && in_array($classProperty, $this->_baseObjectProperties, true)){
+            if(in_array($classProperty, $this->_baseObjectProperties, true)){
 
                 throw new UnexpectedValueException('Overriding private db property is not allowed: '.$classProperty);
             }

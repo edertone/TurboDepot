@@ -35,12 +35,6 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
-     * Numeric value that can be used as a custom sorting method for this class created objects
-     */
-    public $dbSortIndex = null;
-
-
-    /**
      * @see DataBaseObject::getDbCreationDate()
      */
     private $dbCreationDate = null;
@@ -122,23 +116,29 @@ abstract class DataBaseObject extends BaseStrictClass{
 
         $this->setup();
 
-        // When instance is constructed, all received locales are set to the class default multilanguage property values.
-        // Note that first locale contains the same values as the instance current properties
-        if(count($locales) > 0){
+        $localesCount = count($locales);
+        $classProperties = array_keys(get_object_vars($this));
 
-            foreach ($locales as $locale) {
+        foreach ($this->_types as $property => $typedef) {
 
-                if($locale !== '' && preg_match('/[a-z][a-z]_[A-Z][A-Z]/', $locale) === 0){
+            // Check that all the defined types belong to object properties.
+            if(!in_array($property, $classProperties, true)){
 
-                    throw new UnexpectedValueException('Invalid locale specified: '.$locale);
+                throw new UnexpectedValueException('Cannot define type for '.$property.' cause it does not exist on class');
+            }
+
+            // When instance is constructed, all received locales are set to the class default multilanguage property values.
+            // Note that first locale contains the same values as the instance current properties
+            for ($i = 0; $i < $localesCount; $i++) {
+
+                if($locales[$i] !== '' && preg_match('/[a-z][a-z]_[A-Z][A-Z]/', $locales[$i]) === 0){
+
+                    throw new UnexpectedValueException('Invalid locale specified: '.$locales[$i]);
                 }
 
-                foreach ($this->_types as $property => $typedef) {
+                if(in_array(DataBaseObjectsManager::MULTI_LANGUAGE, $typedef, true)){
 
-                    if(in_array(DataBaseObjectsManager::MULTI_LANGUAGE, $typedef, true)){
-
-                        $this->_locales[$locale][$property] = $this->{$property};
-                    }
+                    $this->_locales[$locales[$i]][$property] = $this->{$property};
                 }
             }
         }
