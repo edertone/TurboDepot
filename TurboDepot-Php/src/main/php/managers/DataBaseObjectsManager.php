@@ -103,32 +103,21 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * @var string
      */
     public $isDbUUIDEnabled = false;
-    // TODO - implement - this should be optional and may be specifically modified by each databaseobject if necessary
+    // TODO - implement - this should be optional and implementation must be studied with care
 
 
     /**
-     * This flag specifies what to do when saving an object which table does not exist on database.
+     * This flag specifies what to do when saving an object that does not have one or more properties which do exist on the equivalent db table.
      *
-     * If set to true (default), the table and all the columns to store the object will be automatically created from the object properties.
-     * If set to false, an exception will happen and we will need to manually alter the database by ourselves.
+     * WARNING / DANGER: Setting this flag to true may lead to permanent data loss if not used with care. So it is better to manually delete all the obsolete properties from database
+     * instead of letting this class perform it automatically.
      *
-     * @var boolean
-     */
-    public $isTableCreatedWhenMissing = true;
-
-
-    /**
-     * This flag specifies what to do when saving an object which table exists on database but has different column names, column number or column data types.
-     *
-     * If set to true, any difference that is found between the structure of the saved object and the related table or tables will be applied, effectively altering the tables.
-     * If set to false (default), an exception will happen and we will need to manually alter the database by ourselves.
-     *
-     * WARNING: Enabling this flag will keep the database tables up to date to the objects structure, but may lead to data loss in production
-     * environments, so use carefully
+     * If set to true (DANGER!), the database table that represents the object being saved will be modified by removing the column or property tables which do not exist on the object.
+     * If set to false (default and RECOMMENDED), an exception will happen when there's a missing property on the object and we will need to manually alter the database by ourselves.
      *
      * @var boolean
      */
-    public $isTableAlteredWhenColumnsChange = false;
+    public $isColumnDeletedWhenMissingOnObject = false;
 
 
     /**
@@ -175,6 +164,14 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
+     * Stores the column name and sql data type that can be used anywhere on this class to reference the dbId column on object tables.
+     * It is stored globally to improve performance instead of calculating it every time.
+     * @var string
+     */
+    private $_dbIdSQLColumnDefinition = '';
+
+
+    /**
      * Class that lets us store objects directly to database without having to care about sql queries
      */
     public function __construct(){
@@ -190,7 +187,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     public function connectMysql($host, $userName, $password, $dataBaseName = null){
 
-        return $this->_db->connectMysql($host, $userName, $password, $dataBaseName);
+        return $this->connectMariaDb($host, $userName, $password, $dataBaseName);
     }
 
 
@@ -199,7 +196,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     public function connectMariaDb($host, $userName, $password, $dataBaseName = null){
 
-        return $this->_db->connectMariaDb($host, $userName, $password, $dataBaseName);
+        $connection = $this->_db->connectMariaDb($host, $userName, $password, $dataBaseName);
+
+        $this->_dbIdSQLColumnDefinition = 'dbid '.$this->_db->getSQLTypeFromValue(999999999999999, false, true);
+
+        return $connection;
     }
 
 
@@ -821,13 +822,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
         $this->_db->tableCreate($tableName, $columnsToCreate, ['dbid'], [['dbuuid']]);
 
         // Create all the tables that store array properties
-        $dbIdForeignColumn = 'dbid '.$this->_db->getSQLTypeFromValue(999999999999999, false, true);
-
         foreach ($this->_getArrayTypedProperties($object) as $property) {
 
             $columnName = strtolower($property);
 
-            $this->_db->tableCreate($tableName.'_'.$columnName, [$dbIdForeignColumn,
+            $this->_db->tableCreate($tableName.'_'.$columnName, [$this->_dbIdSQLColumnDefinition,
                 'value '.$this->getSQLTypeFromObjectProperty($object, $property)
             ]);
 
@@ -835,26 +834,9 @@ class DataBaseObjectsManager extends BaseStrictClass{
         }
 
         // Create all the tables that store multi language properties
-        $multiLanguageProperties = $this->_getMultiLanguageTypedProperties($object);
+        foreach ($this->_getMultiLanguageTypedProperties($object) as $property) {
 
-        if(count($multiLanguageProperties) > 0){
-
-            $objectLocales = $object->getLocales();
-
-            foreach ($multiLanguageProperties as $property) {
-
-                $columnName = strtolower($property);
-                $columnType = $this->getSQLTypeFromObjectProperty($object, $property);
-                $columnsToCreate = [$dbIdForeignColumn];
-
-                foreach ($objectLocales as $objectLocale) {
-
-                    $columnsToCreate[] = ($objectLocale === '' ? '_' : $objectLocale).' '.$columnType;
-                }
-
-                $this->_db->tableCreate($tableName.'_'.$columnName, $columnsToCreate);
-                $this->_db->tableAddForeignKey($tableName.'_'.$columnName, $tableName.'_'.$columnName.'_dbid_fk', ['dbid'], $tableName, ['dbid']);
-            }
+            $this->_createMultiLanguagePropertyTable($object, $property, $tableName);
         }
 
         return $this->convertObjectToTableData($object);
@@ -862,12 +844,34 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * This method will check that the table columns and types are valid to store the provided object information,
-     * and depending on the configuration values it will update the table structure so the object can be correctly
-     * saved. The following checks are performed:
+     * Generate the full database table for the provided multilanguage property
      *
-     * 1. Test that the table has the same columns as the object data. If not, exception will be thrown unless $this->isTableAlteredWhenColumnsChange is true
-     * 2. Test that all the table columns have data types which can store the same object table column values. If not, exception will be thrown unless $this->isTableAlteredWhenColumnsChange is true
+     * @param DataBaseObject $object The database object for which we want to create the new multilanguage property table
+     * @param string $property The property for which we want to create the table
+     * @param string $tableName The name for the table that represents the database object on database
+     */
+    private function _createMultiLanguagePropertyTable(DataBaseObject $object, string $property, string $tableName){
+
+        $columnName = strtolower($property);
+        $columnType = $this->getSQLTypeFromObjectProperty($object, $property);
+        $columnsToCreate = [$this->_dbIdSQLColumnDefinition];
+
+        foreach ($object->getLocales() as $objectLocale) {
+
+            $columnsToCreate[] = ($objectLocale === '' ? '_' : $objectLocale).' '.$columnType;
+        }
+
+        $this->_db->tableCreate($tableName.'_'.$columnName, $columnsToCreate);
+        $this->_db->tableAddForeignKey($tableName.'_'.$columnName, $tableName.'_'.$columnName.'_dbid_fk', ['dbid'], $tableName, ['dbid']);
+    }
+
+
+    /**
+     * This method will check that the table columns and types are valid to store the provided object information, and depending on the configuration values it will
+     * update the table structure so the object can be correctly saved. The following checks are performed:
+     *
+     * 1. Test that the table has the same columns as the object data. If not, depending on configuration values, table may be altered or an exception thrown.
+     * 2. Test that all the table columns have data types which can store the same object table column values. If not, depending on configuration values, table may be altered or an exception thrown.
      *
      * @param DataBaseObject $object A valid database object instance
      * @param string $tableName The name for the table we want to inspect and alter if is allowed by current setup
@@ -900,55 +904,67 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             if(!$this->_db->tableExists($multiLanPropTableName)){
 
-                // TODO - compare what is the behaviour when table is missing on array props and unify both behaviours: Or exception is thrown or table is created
-                throw new UnexpectedValueException('Multi language property '.$property.' table does not exist on database');
-            }
+                $this->_createMultiLanguagePropertyTable($object, $property, $tableName);
 
-            $tableDataTypes = $this->_db->tableGetColumnDataTypes($multiLanPropTableName);
+            }else{
 
-            foreach ($object->getLocales() as $locale) {
+                $tableDataTypes = $this->_db->tableGetColumnDataTypes($multiLanPropTableName);
 
-                $locale = $locale === '' ? '_' : $locale;
+                foreach ($object->getLocales() as $locale) {
 
-                if(!isset($tableDataTypes[$locale])){
+                    $locale = $locale === '' ? '_' : $locale;
 
-                    $this->_db->tableAddColumn($multiLanPropTableName, $locale, $this->getSQLTypeFromObjectProperty($object, $property));
+                    if(!isset($tableDataTypes[$locale])){
 
-                }else{
+                        $this->_db->tableAddColumn($multiLanPropTableName, $locale, $this->getSQLTypeFromObjectProperty($object, $property));
 
-                    // TODO!! - review this
-                    // $this->_checkColumnFitsType($multiLanPropTableName, $locale, $tableDataTypes[$locale], $this->_db->getSQLTypeFromValue($object->{$property}));
+                    }else{
+
+                        // TODO!! - review this
+                        // $this->_checkColumnFitsType($multiLanPropTableName, $locale, $tableDataTypes[$locale], $this->_db->getSQLTypeFromValue($object->{$property}));
+                    }
                 }
             }
         }
 
-        $tableData = $this->convertObjectToTableData($object);
+        // Test that all columns have data types which can store the provided object data
+        $objectAsTable = $this->convertObjectToTableData($object);
+        $objectBaseColumnNames = array_map(function ($p) {return strtolower($p);}, $this->_baseObjectProperties);
         $tableColumnTypes = $this->_db->tableGetColumnDataTypes($tableName);
 
-        // Test that the table and object have the same columns
-        if(array_keys($tableData) !== array_keys($tableColumnTypes)){
+        // The base object properties are ignored because they are already tested by the _validateDataBaseObject method
+        $tableColumnnamesToCheck = array_diff(array_keys($tableColumnTypes), $objectBaseColumnNames);
+        $objectColumnNamesToCheck = array_diff(array_keys($objectAsTable), $objectBaseColumnNames);
+        $objectPropertiesToCheck = array_diff($this->_getBasicProperties($object), $this->_baseObjectProperties);
 
-            if(!$this->isTableAlteredWhenColumnsChange){
+        // Find all the object column names that do not exist on the database table and create them if missing
+        foreach ($objectPropertiesToCheck as $property) {
 
-                throw new UnexpectedValueException($tableName.' columns ('.implode(',', array_keys($tableColumnTypes)).') are different from its related object');
-            }
+            if(!in_array($columnName = strtolower($property), $tableColumnnamesToCheck)){
 
-            // TODO - update the table to contain the same columns as the object data, trying to destroy the less possible data
-        }
-
-        // Test that all columns have data types which can store the provided object data
-        $baseObjectColumnNames = array_map(function ($p) {return strtolower($p);}, $this->_baseObjectProperties);
-
-        foreach ($tableColumnTypes as $tableColumnName => $tableColumnType) {
-
-            // The base object properties are ignored because they are already tested by the _validateDataBaseObject method
-            if($tableData[$tableColumnName] !== null && !in_array($tableColumnName, $baseObjectColumnNames, true)){
-
-                $this->_checkColumnFitsType($tableName, $tableColumnName, $tableColumnType, $this->_db->getSQLTypeFromValue($tableData[$tableColumnName]));
+                $this->_db->tableAddColumn($tableName, $columnName, $this->getSQLTypeFromObjectProperty($object, $property));
             }
         }
 
-        return $tableData;
+        // Validate that all existing table columns are valid to save the new object values
+        foreach ($tableColumnnamesToCheck as $tableColumnName) {
+
+            if(isset($objectAsTable[$tableColumnName]) && $objectAsTable[$tableColumnName] !== null){
+
+                $this->_checkColumnFitsType($tableName, $tableColumnName, $tableColumnTypes[$tableColumnName], $this->_db->getSQLTypeFromValue($objectAsTable[$tableColumnName]));
+
+            }else if(!in_array($tableColumnName, $objectColumnNamesToCheck, true)){
+
+                if(!$this->isColumnDeletedWhenMissingOnObject){
+
+                    throw new UnexpectedValueException('<'.$tableColumnName.'> exists on <'.$tableName.'> table but not on object being saved');
+                }
+
+                // TODO - Remove the table column which is not found on the object being saved.
+            }
+        }
+
+        return $objectAsTable;
     }
 
 
@@ -973,12 +989,8 @@ class DataBaseObjectsManager extends BaseStrictClass{
            !$this->_db->isSQLNumericTypeCompatibleWith($tableColumnType, $valueType) &&
            !($isTableColumnDateType = $this->_db->isSQLDateTimeType($tableColumnType) && $this->_db->isSQLStringType($valueType))){
 
-            if(!$this->isTableAlteredWhenColumnsChange){
-
-                throw new UnexpectedValueException($tableName.' column '.$tableColumnName.' data type expected: '.$tableColumnType.' but received: '.$valueType);
-            }
-
-            // TODO - update the table column to accept the same data type as the object expects
+            // This case cannot be automatically handled without destroying data, so exception and user must manually modify the table column
+            throw new UnexpectedValueException($tableName.' column '.$tableColumnName.' data type expected: '.$tableColumnType.' but received: '.$valueType);
         }
 
         $valueTypeSize = $this->_db->getSQLTypeSize($valueType);

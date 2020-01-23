@@ -25,12 +25,12 @@ class CustomerTyped extends DataBaseObject{
         $this->_types['oneDigitInt'] = [DataBaseObjectsManager::INT, 1];
         $this->_types['sixDigitInt'] = [6, DataBaseObjectsManager::INT];
         $this->_types['twelveDigitInt'] = [DataBaseObjectsManager::INT, 12];
-        $this->_types['doubleValue'] = [DataBaseObjectsManager::DOUBLE];
+        $this->_types['doubleValue'] = [DataBaseObjectsManager::DOUBLE, 5];
         $this->_types['setup'] = [DataBaseObjectsManager::BOOL];
         $this->_types['emails'] = [75, DataBaseObjectsManager::ARRAY, DataBaseObjectsManager::STRING];
         $this->_types['boolArray'] = [DataBaseObjectsManager::BOOL, DataBaseObjectsManager::ARRAY, DataBaseObjectsManager::NOT_NULL];
         $this->_types['intArray'] = [DataBaseObjectsManager::INT, DataBaseObjectsManager::ARRAY, 3];
-        $this->_types['doubleArray'] = [DataBaseObjectsManager::DOUBLE, DataBaseObjectsManager::ARRAY];
+        $this->_types['doubleArray'] = [DataBaseObjectsManager::DOUBLE, 5, DataBaseObjectsManager::ARRAY];
     }
 
 

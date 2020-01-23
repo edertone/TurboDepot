@@ -12,31 +12,32 @@
 namespace org\turbodepot\src\test\php\managers;
 
 use PHPUnit\Framework\TestCase;
-use stdClass;
 use ReflectionObject;
+use stdClass;
+use org\turbocommons\src\main\php\model\DateTimeObject;
 use org\turbodepot\src\main\php\managers\DataBaseManager;
 use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\Customer;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerLocalized;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerTyped;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerWithArrayProps;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectToAlter;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithDateTimeNotNull;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithTypingDisabled;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongArrayMultilanProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongArrayTypeSize;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongDateTypeSize;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongEmptyNonTypedArrayProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongExtendedDbCreationDateProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongExtendedDbDeletedProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongExtendedDbIdProperty;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongMethods;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNonExistantTypedProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNotAllTypesDefined;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNullNonTypedProperty;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongPropThatStartsWithUnderscore;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongStringTypeSize;
 use org\turbotesting\src\main\php\utils\AssertUtils;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongDateTypeSize;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongArrayTypeSize;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNotAllTypesDefined;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithTypingDisabled;
-use org\turbocommons\src\main\php\model\DateTimeObject;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithDateTimeNotNull;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerLocalized;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongArrayMultilanProperty;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongExtendedDbCreationDateProperty;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongExtendedDbIdProperty;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongExtendedDbDeletedProperty;
 
 
 /**
@@ -124,6 +125,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object = new Customer();
         $this->assertSame(1, $this->sut->save($object));
         $this->assertTrue($this->db->tableExists($objectTableName));
+        $this->assertSame($this->sut->getTableNameFromObject($object), $objectTableName);
 
         $this->sut->tablesPrefix = 'new_';
 
@@ -131,15 +133,16 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(1, $this->sut->save($object));
         $this->assertTrue($this->db->tableExists($objectTableName));
         $this->assertTrue($this->db->tableExists($this->sut->tablesPrefix.'customer'));
+        $this->assertNotSame($this->sut->getTableNameFromObject($object), $objectTableName);
+        $this->assertSame($this->sut->getTableNameFromObject($object), $this->sut->tablesPrefix.'customer');
     }
 
 
     /**
-     * testIsTableCreatedWhenMissing
-     *
+     * test
      * @return void
      */
-    public function testIsTableCreatedWhenMissing(){
+    public function testIsColumnDeletedWhenMissingOnObject(){
 
         // Test empty values
         // TODO
@@ -158,31 +161,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * testIsTableAlteredWhenColumnsChange
-     *
-     * @return void
-     */
-    public function testIsTableAlteredWhenColumnsChange(){
-
-        // Test empty values
-        // TODO
-
-        // Test ok values
-        // TODO
-
-        // Test wrong values
-        // TODO
-
-        // Test exceptions
-        // TODO
-
-        $this->markTestIncomplete('This test has not been implemented yet.');
-    }
-
-
-    /**
-     * testIsColumnResizedWhenValueisBigger
-     *
+     * test
      * @return void
      */
     public function testIsColumnResizedWhenValueisBigger(){
@@ -303,13 +282,10 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * testSave
-     *
+     * test
      * @return void
      */
     public function testSave(){
-
-        $objectTableName = $this->sut->tablesPrefix.'customer';
 
         // Test empty values
         AssertUtils::throwsException(function(){ $this->sut->save(); }, '/Too few arguments to function/');
@@ -318,6 +294,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         AssertUtils::throwsException(function(){ $this->sut->save(new stdClass()); }, '/must be an instance of .*DataBaseObject/');
 
         $object = new Customer();
+        $objectTableName = $this->sut->getTableNameFromObject($object);
         $this->assertSame(null, $object->getDbId());
         $this->assertSame(null, $object->getDbCreationDate());
         $this->assertSame(null, $object->getDbModificationDate());
@@ -538,7 +515,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         // Add an unexpected column to the customer table and make sure saving fails
         $this->assertTrue($this->db->tableAddColumn($objectTableName, 'unexpected', 'bigint'));
-        AssertUtils::throwsException(function() { $this->sut->save(new Customer()); }, '/td_customer columns .dbid,dbuuid,dbcreationdate,dbmodificationdate,dbdeleted,name,commercialname,age,debt,unexpected. are different from its related object/');
+        AssertUtils::throwsException(function() { $this->sut->save(new Customer()); }, '/<unexpected> exists on <td_customer> table but not on object being saved/');
 
         // All exceptions must have not created any database object
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
@@ -546,17 +523,14 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * testSaveNullAndNotNullValues
-     *
+     * test
      * @return void
      */
-    public function testSaveNullAndNotNullValues(){
-
-        $objectTableName = $this->sut->tablesPrefix.'customer';
-        $typedObjectTableName = $this->sut->tablesPrefix.'customertyped';
+    public function testSave_null_and_not_null_values(){
 
         // Null values can't be detected on objects that have no specific types defined
         $object = new Customer();
+        $objectTableName = $this->sut->getTableNameFromObject($object);
         $object->name = null;
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not detect property name type: Could not detect type from NULL/');
 
@@ -578,6 +552,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/NULL value is not accepted by name property$/');
 
         $object = new CustomerTyped();
+        $typedObjectTableName = $this->sut->getTableNameFromObject($object);
         $object->commercialName = null;
         $this->assertSame(1, $this->sut->save($object));
         $this->assertSame(null, $this->db->tableGetColumnValues($typedObjectTableName, 'commercialname')[0]);
@@ -607,16 +582,14 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * testSave_datetime_values_are_as_expected
-     *
+     * test
      * @return void
      */
     public function testSave_datetime_values_are_as_expected(){
 
-        $objectTableName = $this->sut->tablesPrefix.'customer';
-
         // Test that creation and modification dates are correct
         $object = new Customer();
+        $objectTableName = $this->sut->getTableNameFromObject($object);
         $dateBeforeCreation = (new DateTimeObject())->toString();
         $this->assertSame(1, $this->sut->save($object));
         $dateAfterCreation = (new DateTimeObject())->toString();
@@ -738,10 +711,10 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
      */
     public function testSave_and_update_simple_object_with_array_typed_properties(){
 
-        $objectTableName = $this->sut->tablesPrefix.'customerwitharrayprops';
         $this->assertSame(0, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
         $object = new CustomerWithArrayProps();
+        $objectTableName = $this->sut->getTableNameFromObject($object);
         $object->name = 'this customer has array typed properties';
         $object->emails = ['email1', 'email2', 'email3'];
         $object->boolArray = [true, false];
@@ -859,13 +832,12 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
      */
     public function testSave_Strong_typed_Object(){
 
-        $objectTableName = $this->sut->tablesPrefix.'customertyped';
-
         // Test empty values
         // Not necessary
 
         // Test ok values
         $object = new CustomerTyped();
+        $objectTableName = $this->sut->getTableNameFromObject($object);
         $object->name = 'customer';
         $this->assertSame(1, $this->sut->save($object));
 
@@ -1027,7 +999,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $object = new CustomerTyped();
         $object->doubleValue = 'string';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/doubleValue .string. does not match DOUBLE.1.$/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/doubleValue .string. does not match DOUBLE.5.$/');
 
         $object = new CustomerTyped();
         $object->setup = 'notabool';
@@ -1059,7 +1031,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $object = new CustomerTyped();
         $object->doubleArray = ['string', 'string'];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/doubleArray.*string.*does not match DOUBLE.1./s');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/doubleArray.*string.*does not match DOUBLE.5./s');
 
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongStringTypeSize()); }, '/name is defined as STRING but size is invalid/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongDateTypeSize()); }, '/date DATETIME size must be 0, 3 or 6/');
@@ -1075,8 +1047,6 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
      */
     public function testSave_Object_With_Multi_Language_Properties(){
 
-        $objectTableName = $this->sut->tablesPrefix.'customerlocalized';
-
         // Test empty values
         AssertUtils::throwsException(function() { new CustomerLocalized(); }, '/Class is multi language and expects a list of locales/');
         AssertUtils::throwsException(function() { new CustomerLocalized(null); }, '/must be of the type array/');
@@ -1087,6 +1057,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         // Test saving the first empty instance to the database with only the empty locale defined
         $object = new CustomerLocalized(['']);
+        $objectTableName = $this->sut->getTableNameFromObject($object);
         $this->assertSame(1, $this->sut->save($object));
 
         $objectMainTableTypes = ['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)',
@@ -1217,9 +1188,8 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
      */
     public function testSave_Objects_With_Multi_Language_Properties_and_real_data(){
 
-        $objectTableName = $this->sut->tablesPrefix.'customerlocalized';
-
         $object = new CustomerLocalized(['en_US']);
+        $objectTableName = $this->sut->getTableNameFromObject($object);
         $object->age = 25;
         $object->ageLocalized = 20;
         $object->birthDate = '1950-10-25 00:00:00+00:00';
@@ -1273,6 +1243,182 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
+     * test
+     * @return void
+     */
+    public function testSave_update_object_by_adding_non_typed_prop_that_did_not_exist_previously(){
+
+        $object = new ObjectToAlter();
+        $objectTableName = $this->sut->getTableNameFromObject($object);
+        $object->name = 'Jason';
+        $object->city = 'New York';
+        $this->assertSame(1, $this->sut->save($object));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['city']));
+        $this->assertFalse(isset($this->db->tableGetColumnDataTypes($objectTableName)['extranontyped']));
+        $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_extranontyped'));
+
+        // It is expected that the new property that previously did not exist will be transparently added to the table
+        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\extraNonTypedProperty\ObjectToAlter();
+        $object->name = 'Peter';
+        $object->city = 'Chicago';
+        $object->extraNonTyped = 'extra non typed value';
+        $this->assertSame(2, $this->sut->save($object));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['city']));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['extranontyped']));
+        $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_extranontyped'));
+    }
+
+
+    /**
+     * test
+     * @return void
+     */
+    public function testSave_update_object_by_removing_non_typed_prop_that_did_exist_previously(){
+
+        $object = new ObjectToAlter();
+        $objectTableName = $this->sut->getTableNameFromObject($object);
+        $object->name = 'Jason';
+        $object->city = 'New York';
+        $this->assertSame(1, $this->sut->save($object));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['city']));
+
+        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\removedNonTypedProperty\ObjectToAlter();
+        $object->name = 'Peter';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<city> exists on <td_objecttoalter> table but not on object being saved/');
+    }
+
+
+    /**
+     * test
+     * @return void
+     */
+    public function testSave_update_object_by_renaming_non_typed_prop_that_did_exist_previously(){
+
+        // TODO
+    }
+
+
+    /**
+     * test
+     * @return void
+     */
+    public function testSave_update_object_by_adding_simple_typed_prop_that_did_not_exist_previously(){
+
+        // TODO
+    }
+
+
+    /**
+     * test
+     * @return void
+     */
+    public function testSave_update_object_by_removing_simple_typed_prop_that_did_exist_previously(){
+
+        $object = new ObjectToAlter();
+        $objectTableName = $this->sut->getTableNameFromObject($object);
+        $object->name = 'Jason';
+        $object->city = 'New York';
+        $this->assertSame(1, $this->sut->save($object));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['city']));
+
+        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\removedSimpleTypedProperty\ObjectToAlter();
+        $object->city = 'Chicago';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<name> exists on <td_objecttoalter> table but not on object being saved/');
+    }
+
+
+    /**
+     * test
+     * @return void
+     */
+    public function testSave_update_object_by_renaming_simple_typed_prop_that_did_exist_previously(){
+
+        // TODO
+    }
+
+
+    /**
+     * test
+     * @return void
+     */
+    public function testSave_Object_With_Multi_Language_Properties_update_object_by_adding_array_prop_that_did_not_exist_previously(){
+
+        // TODO
+    }
+
+
+    /**
+     * test
+     * @return void
+     */
+    public function testSave_Object_With_Multi_Language_Properties_update_object_by_removing_array_prop_that_did_exist_previously(){
+
+        // TODO - And what happens with the previously existing property table?? should it be removed also??? or what!
+    }
+
+
+    /**
+     * test
+     * @return void
+     */
+    public function testSave_Object_With_Multi_Language_Properties_update_object_by_renaming_array_prop_that_did_exist_previously(){
+
+        // TODO - And what happens with the previously existing property table?? should it be removed also??? or what!
+    }
+
+
+    /**
+     * test
+     * @return void
+     */
+    public function testSave_Object_With_Multi_Language_Properties_update_object_by_adding_multilan_prop_that_did_not_exist_previously(){
+
+        $object = new ObjectToAlter();
+        $objectTableName = $this->sut->getTableNameFromObject($object);
+        $object->name = 'Jason';
+        $object->city = 'New York';
+        $this->assertSame(1, $this->sut->save($object));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['city']));
+        $this->assertFalse(isset($this->db->tableGetColumnDataTypes($objectTableName)['namelocalized']));
+        $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_namelocalized'));
+
+        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\extraMultilanguageProperty\ObjectToAlter(['es_ES']);
+        $object->name = 'Peter';
+        $object->nameLocalized = 'Pedro';
+        $this->assertSame(2, $this->sut->save($object));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['city']));
+        $this->assertFalse(isset($this->db->tableGetColumnDataTypes($objectTableName)['namelocalized']));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'es_ES' => 'varchar(400)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
+    }
+
+
+    /**
+     * test
+     * @return void
+     */
+    public function testSave_Object_With_Multi_Language_Properties_update_object_by_removing_multilan_prop_that_did_exist_previously(){
+
+        // TODO - And what happens with the previously existing property table?? should it be removed also??? or what!
+    }
+
+
+    /**
+     * test
+     * @return void
+     */
+    public function testSave_Object_With_Multi_Language_Properties_update_object_by_renaming_multilan_prop_that_did_exist_previously(){
+
+        // TODO - And what happens with the previously existing property table?? should it be removed also??? or what!
+    }
+
+
+    /**
      * testSave_Object_With_Multi_Language_Properties_set_values_for_two_locales_back_to_first_one_and_save
      *
      * @return void
@@ -1280,13 +1426,12 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
     public function testSave_Object_With_Multi_Language_Properties_set_values_for_two_locales_back_to_first_one_and_save(){
 
         $object = new CustomerLocalized(['en_US', 'es_ES']);
+        $objectTableName = $this->sut->getTableNameFromObject($object);
         $object->nameLocalized = 'en name';
         $object->setLocales(['es_ES', 'en_US']);
         $object->nameLocalized = 'es name';
         $object->setLocales(['en_US', 'es_ES']);
         $object->nameLocalized = 'modified';
-
-        $objectTableName = $this->sut->tablesPrefix.'customerlocalized';
 
         $this->assertSame(1, $this->sut->save($object));
 
@@ -1438,8 +1583,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(true, $object->setupLocalized);
 
         // Save the object and make sure tables are ok
-        $objectTableName = $this->sut->tablesPrefix.'customerlocalized';
-
+        $objectTableName = $this->sut->getTableNameFromObject($object);
         $this->assertSame(1, $this->sut->save($object));
         $this->assertTrue($this->sut->getDataBaseManager()->tableExists($objectTableName));
         $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_age'));
@@ -1447,31 +1591,31 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_setup'));
 
         $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'smallint(6)', 'es_ES' => 'smallint(6)', 'fr_FR' => 'smallint(6)', 'en_GB' => 'smallint(6)'],
-            $this->db->tableGetColumnDataTypes($objectTableName.'_ageLocalized'));
+            $this->db->tableGetColumnDataTypes($objectTableName.'_agelocalized'));
 
         $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'varchar(20)', 'es_ES' => 'varchar(20)', 'fr_FR' => 'varchar(20)', 'en_GB' => 'varchar(20)'],
-            $this->db->tableGetColumnDataTypes($objectTableName.'_nameLocalized'));
+            $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
 
         $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'tinyint(1)', 'es_ES' => 'tinyint(1)', 'fr_FR' => 'tinyint(1)', 'en_GB' => 'tinyint(1)'],
-            $this->db->tableGetColumnDataTypes($objectTableName.'_setupLocalized'));
+            $this->db->tableGetColumnDataTypes($objectTableName.'_setuplocalized'));
 
-        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'dbid'));
-        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'en_US'));
-        $this->assertSame(['2'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'es_ES'));
-        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'fr_FR'));
-        $this->assertSame(['3'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'en_GB'));
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'dbid'));
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'en_US'));
+        $this->assertSame(['2'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'es_ES'));
+        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'fr_FR'));
+        $this->assertSame(['3'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'en_GB'));
 
-        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'dbid'));
-        $this->assertSame(['james'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'en_US'));
-        $this->assertSame(['jaime'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'es_ES'));
-        $this->assertSame([null], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'fr_FR'));
-        $this->assertSame(['en_GB'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'en_GB'));
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'dbid'));
+        $this->assertSame(['james'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_US'));
+        $this->assertSame(['jaime'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'es_ES'));
+        $this->assertSame([null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'fr_FR'));
+        $this->assertSame(['en_GB'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_GB'));
 
-        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'dbid'));
-        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'en_US'));
-        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'es_ES'));
-        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'fr_FR'));
-        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'en_GB'));
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'dbid'));
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'en_US'));
+        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'es_ES'));
+        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'fr_FR'));
+        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'en_GB'));
 
         // Modify some localized values, save again and test that db values are OK
         $object->setLocales(['en_US', 'es_ES', 'fr_FR', 'en_GB']);
@@ -1498,31 +1642,31 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_setup'));
 
         $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'smallint(6)', 'es_ES' => 'smallint(6)', 'fr_FR' => 'smallint(6)', 'en_GB' => 'smallint(6)'],
-            $this->db->tableGetColumnDataTypes($objectTableName.'_ageLocalized'));
+            $this->db->tableGetColumnDataTypes($objectTableName.'_agelocalized'));
 
         $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'varchar(20)', 'es_ES' => 'varchar(20)', 'fr_FR' => 'varchar(20)', 'en_GB' => 'varchar(20)'],
-            $this->db->tableGetColumnDataTypes($objectTableName.'_nameLocalized'));
+            $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
 
         $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'tinyint(1)', 'es_ES' => 'tinyint(1)', 'fr_FR' => 'tinyint(1)', 'en_GB' => 'tinyint(1)'],
-            $this->db->tableGetColumnDataTypes($objectTableName.'_setupLocalized'));
+            $this->db->tableGetColumnDataTypes($objectTableName.'_setuplocalized'));
 
-        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'dbid'));
-        $this->assertSame(['6'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'en_US'));
-        $this->assertSame(['7'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'es_ES'));
-        $this->assertSame(['8'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'fr_FR'));
-        $this->assertSame(['3'], $this->db->tableGetColumnValues($objectTableName.'_ageLocalized', 'en_GB'));
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'dbid'));
+        $this->assertSame(['6'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'en_US'));
+        $this->assertSame(['7'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'es_ES'));
+        $this->assertSame(['8'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'fr_FR'));
+        $this->assertSame(['3'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'en_GB'));
 
-        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'dbid'));
-        $this->assertSame(['en_USedited'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'en_US'));
-        $this->assertSame(['jaimeditado'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'es_ES'));
-        $this->assertSame(['frenchname'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'fr_FR'));
-        $this->assertSame(['en_GB'], $this->db->tableGetColumnValues($objectTableName.'_nameLocalized', 'en_GB'));
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'dbid'));
+        $this->assertSame(['en_USedited'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_US'));
+        $this->assertSame(['jaimeditado'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'es_ES'));
+        $this->assertSame(['frenchname'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'fr_FR'));
+        $this->assertSame(['en_GB'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_GB'));
 
-        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'dbid'));
-        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'en_US'));
-        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'es_ES'));
-        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'fr_FR'));
-        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_setupLocalized', 'en_GB'));
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'dbid'));
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'en_US'));
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'es_ES'));
+        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'fr_FR'));
+        $this->assertSame(['0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'en_GB'));
     }
 
 
