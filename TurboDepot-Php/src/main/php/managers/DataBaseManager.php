@@ -988,21 +988,37 @@ class DataBaseManager extends BaseStrictClass {
     /**
      * Delete the specified database table
      *
-     * @param string $tableName the name of the table to delete
+     * @param string $tableName The name of the table to delete
      *
-     * @return boolean True if the specified was successfuly deleted, false otherwise
+     * @return boolean True if the specified was successfuly deleted
      */
     public function tableDelete($tableName) {
 
-        $this->_validateTable($tableName);
-
-        if($this->_engine === self::MYSQL &&
-           $this->query('DROP TABLE '.$tableName) !== false){
+        if($this->query('DROP TABLE '.$tableName) !== false){
 
             return true;
         }
 
         throw new UnexpectedValueException('Could not delete table '.$tableName.': '.$this->_lastError);
+    }
+
+
+    /**
+     * Delete one or more columns from the specified table
+     *
+     * @param string $tableName The name of the table from which columns will be deleted
+     * @param array $columnNames List of names for the columns that will be deleted
+     *
+     * @return boolean True if all the specified columns were successfuly deleted
+     */
+    public function tableDeleteColumns(string $tableName, array $columnNames) {
+
+        if($this->query('ALTER TABLE '.$tableName.' DROP COLUMN '.implode(', DROP COLUMN', $columnNames)) !== false){
+
+            return true;
+        }
+
+        throw new UnexpectedValueException('Could not delete columns ('.implode(',', $columnNames).') from '.$tableName.': '.$this->_lastError);
     }
 
 

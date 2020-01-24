@@ -217,57 +217,19 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Saves an object to database by updating it if already exists (when dbId is not null) or by creating a new one (when dbId is null)
+     * Saves one or more objects to database by updating them if already exist (that means dbId of an object is not null) or by creating new
+     * objects on db (when object dbId is null)-
      *
-     * @param DataBaseObject $object An instance to save or update
+     * IMPORTANT: This method is fully transactional. That means if the object or any of the objects being passed to this method fail when being saved,
+     * none of them will be saved or updated. In other words, all passed objects on a single save() call must be successfully saved or updated, on none will.
      *
-     * @return int The dbId value for the object that's been saved
+     * @param DataBaseObject|array $objects A single DataBaseObject instance to save or update, or an array with a list of DataBaseObject instances Token
+     *        save or upate.
+     *
+     * @return int|array If a single DataBaseObject is passed, an int containing the dbId value for the object that's been saved. If an array of
+     *         DataBaseObjects are passed, this method will return an array with the dbId for each one of the passed objects, in the same order.
      */
-    public function save(DataBaseObject $object){
-
-        $this->_validateDataBaseObject($object);
-
-        $tableName = $this->getTableNameFromObject($object);
-
-        $this->_db->transactionBegin();
-
-        try {
-
-            $tableData = $this->_db->tableExists($tableName) ?
-                $this->_updateTablesToFitObject($object, $tableName) :
-                $this->_createObjectTables($object, $tableName);
-
-            $tableData['dbmodificationdate'] = (new DateTime(null, new DateTimeZone('UTC')))->format($this->_sqlDateFormat);
-
-            // Store or update the object into the database
-            if($object->getDbId() === null){
-
-                $tableData['dbcreationdate'] = $tableData['dbmodificationdate'];
-
-                $this->_db->tableAddRows($tableName, [$tableData]);
-                $this->_setPrivatePropertyValue($object, 'dbId', $this->_insertArrayPropsToDb($object, $tableName, $this->_db->getLastInsertId()));
-                $this->_insertMultiLanguagePropsToDb($object, $tableName, $object->getDbId());
-
-            }else{
-
-                $this->_db->tableUpdateRow($tableName, ['dbid' => $object->getDbId()], $tableData);
-                $this->_insertArrayPropsToDb($object, $tableName, $object->getDbId(), true);
-                $this->_insertMultiLanguagePropsToDb($object, $tableName, $object->getDbId(), true);
-            }
-
-            $this->_db->transactionCommit();
-
-            $this->_setPrivatePropertyValue($object, 'dbModificationDate', $tableData['dbmodificationdate'].'+00:00');
-            $this->_setPrivatePropertyValue($object, 'dbCreationDate', str_replace('+00:00', '', $tableData['dbcreationdate']).'+00:00');
-
-            return $object->getDbId();
-
-        } catch (Throwable $e) {
-
-            $this->_db->transactionRollback();
-
-            throw $e;
-        }
+    public function save($objects){
 
         // TODO - PENDING:
         // TODO - save multilanguage properties
@@ -276,6 +238,66 @@ class DataBaseObjectsManager extends BaseStrictClass{
         // TODO - save pictures and binary files linked to the object
         // TODO - implement performance tests for massive amounts of data save and list
         // TODO - verify that all unit test methods are sorted in the same order as this class methods
+
+        $resultsDbId = [];
+        $resultsCreationDate = [];
+        $resultsModificationDate = [];
+        $objectsToSave = is_array($objects) ? $objects : [$objects];
+        $objectsToSaveCount = count($objectsToSave);
+
+        $this->_db->transactionBegin();
+
+        try {
+
+            for ($i = 0, $object = $objectsToSave[$i]; $i < $objectsToSaveCount; $i++) {
+
+                $this->_validateDataBaseObject($object);
+
+                $tableName = $this->getTableNameFromObject($object);
+
+                $tableData = $this->_db->tableExists($tableName) ?
+                    $this->_updateTablesToFitObject($object, $tableName) : $this->_createObjectTables($object, $tableName);
+
+                $tableData['dbmodificationdate'] = (new DateTime(null, new DateTimeZone('UTC')))->format($this->_sqlDateFormat);
+
+                // Create or update the object into the database
+                if($tableData['dbid'] === null){
+
+                    $tableData['dbcreationdate'] = $tableData['dbmodificationdate'];
+                    $this->_db->tableAddRows($tableName, [$tableData]);
+                    $tableData['dbid'] = $this->_insertArrayPropsToDb($object, $tableName, $this->_db->getLastInsertId());
+                    $this->_insertMultiLanguagePropsToDb($object, $tableName, $tableData['dbid']);
+
+                }else{
+
+                    $this->_db->tableUpdateRow($tableName, ['dbid' => $tableData['dbid']], $tableData);
+                    $this->_insertArrayPropsToDb($object, $tableName, $tableData['dbid'], true);
+                    $this->_insertMultiLanguagePropsToDb($object, $tableName, $tableData['dbid'], true);
+                }
+
+                $resultsDbId[] = $tableData['dbid'];
+                $resultsCreationDate[] = str_replace('+00:00', '', $tableData['dbcreationdate']).'+00:00';
+                $resultsModificationDate[] = $tableData['dbmodificationdate'].'+00:00';
+            }
+
+        } catch (Throwable $e) {
+
+            $this->_db->transactionRollback();
+
+            throw $e;
+        }
+
+        $this->_db->transactionCommit();
+
+        // After transaction is ok, update all the objects with the values that have changed
+        for ($i = 0; $i < $objectsToSaveCount; $i++) {
+
+            $this->_setPrivatePropertyValue($objectsToSave[$i], 'dbId', $resultsDbId[$i]);
+            $this->_setPrivatePropertyValue($objectsToSave[$i], 'dbCreationDate', $resultsCreationDate[$i]);
+            $this->_setPrivatePropertyValue($objectsToSave[$i], 'dbModificationDate', $resultsModificationDate[$i]);
+        }
+
+        return is_array($objects) ? $resultsDbId : $resultsDbId[0];
     }
 
 
@@ -333,11 +355,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         foreach ($this->_getMultiLanguageTypedProperties($object) as $property) {
 
-            $column = strtolower($property);
+            $propertyTable = $tableName.'_'.strtolower($property);
 
             if($deleteBeforeInsert){
 
-                $this->_db->tableDeleteRows($tableName.'_'.$column, ['dbid' => $object->getDbId()]);
+                $this->_db->tableDeleteRows($propertyTable, ['dbid' => $object->getDbId()]);
             }
 
             $rowToAdd = ['dbid' => $dbId];
@@ -347,7 +369,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 $rowToAdd[$locale === '' ? '_' : $locale] = $this->_getMultiLanguagePropertyValue($object, $property, $locale);
             }
 
-            $this->_db->tableAddRows($tableName.'_'.$column, [$rowToAdd]);
+            $this->_db->tableAddRows($propertyTable, [$rowToAdd]);
         }
 
         return $dbId;
@@ -480,12 +502,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      *
      * @return string The name of the SQL type and precision that can be used to store the object property to database, like SMALLINT, VARCHAR(20), DOUBLE NOT NULL, etc..
      */
-    public function getSQLTypeFromObjectProperty(DataBaseObject $object, $property){
-
-        if(!in_array($property, $this->_getAllProperties($object))){
-
-            throw new UnexpectedValueException('Undefined property: '.$property);
-        }
+    public function getSQLTypeFromObjectProperty(DataBaseObject $object, string $property){
 
         // Check if the requested property is one of the base properties which types are already known
         switch (strtolower($property)) {
@@ -626,7 +643,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             throw new UnexpectedValueException($property.' is defined as '.(($isArray) ? 'an array of ' : '').$result[0].' but size is invalid');
         }
 
-        if($result[0] === self::DATETIME && !in_array($result[1], [0, 3, 6], true)){
+        if($result[0] === self::DATETIME && $result[1] !== 0  && $result[1] !== 3  && $result[1] !== 6){
 
             throw new UnexpectedValueException($property.' DATETIME size must be 0, 3 or 6');
         }
@@ -708,19 +725,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Obtain a list with all the properties from a provided object, including private, basic, array, multilanguage, etc...
-     *
-     * @param DataBaseObject $object A valid database object instance
-     *
-     * @return string[] An array with all the object property names
-     */
-    private function _getAllProperties(DataBaseObject $object){
-
-        return array_unique(array_merge($this->_baseObjectProperties, array_keys(get_object_vars($object))));
-    }
-
-
-    /**
      * Obtain a list with all the properties that are typed as basic types for the provided object.
      * All the properties that require a specific db table to be stored like arrays, multilanguage and so will be excluded from this list.
      *
@@ -731,12 +735,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
     private function _getBasicProperties(DataBaseObject $object){
 
         $basicProperties = [];
-        $arrayTypedProps = $this->_getArrayTypedProperties($object);
-        $multiLanguageProps = $this->_getMultiLanguageTypedProperties($object);
+        $excludedProps = array_merge($this->_getArrayTypedProperties($object), $this->_getMultiLanguageTypedProperties($object));
 
         foreach (array_keys(get_object_vars($object)) as $property) {
 
-            if(!in_array($property, $arrayTypedProps, true) && !in_array($property, $multiLanguageProps, true)){
+            if(!in_array($property, $excludedProps, true)){
 
                 $basicProperties[] = $property;
             }
@@ -756,10 +759,9 @@ class DataBaseObjectsManager extends BaseStrictClass{
     private function _getArrayTypedProperties(DataBaseObject $object){
 
         $result = [];
-
         $types = $this->_getPropertyValue($object, '_types');
 
-        foreach(get_object_vars($object) as $property => $value){
+        foreach(array_diff(array_keys(get_object_vars($object)), $this->_baseObjectProperties) as $property){
 
             if(isset($types[$property])){
 
@@ -768,7 +770,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
                     $result[] = $property;
                 }
 
-            }else if(is_array($value)){
+            }else if(is_array($object->{$property})){
 
                 $result[] = $property;
             }

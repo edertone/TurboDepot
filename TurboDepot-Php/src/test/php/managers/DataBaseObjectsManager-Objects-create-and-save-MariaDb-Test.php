@@ -113,9 +113,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * testTablesPrefix
-     *
-     * @return void
+     * test
      */
     public function testTablesPrefix(){
 
@@ -140,7 +138,6 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
     /**
      * test
-     * @return void
      */
     public function testIsColumnDeletedWhenMissingOnObject(){
 
@@ -162,7 +159,6 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
     /**
      * test
-     * @return void
      */
     public function testIsColumnResizedWhenValueisBigger(){
 
@@ -183,9 +179,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * testIsTrashEnabled
-     *
-     * @return void
+     * test
      */
     public function testIsTrashEnabled(){
 
@@ -206,9 +200,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * testConstruct
-     *
-     * @return void
+     * test
      */
     public function testConstruct(){
 
@@ -221,9 +213,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * testConnectMysql
-     *
-     * @return void
+     * test
      */
     public function testConnectMysql(){
 
@@ -244,9 +234,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * testConnectMariaDb
-     *
-     * @return void
+     * test
      */
     public function testConnectMariaDb(){
 
@@ -267,9 +255,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * testGetDataBaseManager
-     *
-     * @return void
+     * test
      */
     public function testGetDataBaseManager(){
 
@@ -283,7 +269,6 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
     /**
      * test
-     * @return void
      */
     public function testSave(){
 
@@ -504,7 +489,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object->debt = 'notadouble';
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column debt data type expected: double NOT NULL but received: varchar.10./');
 
-        AssertUtils::throwsException(function() { $this->sut->save(new DataBaseManager()); }, '/Argument 1 passed to.*save.. must be an instance of.*DataBaseObject, instance of.*DataBaseManager given/');
+        AssertUtils::throwsException(function() { $this->sut->save(new DataBaseManager()); }, '/Argument 1 passed to.* must be an instance of.*DataBaseObject, instance of.*DataBaseManager given/');
 
         // Try to save database objects that contains invalid methods or properties
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongMethods()); }, '/Method is not allowed for DataBaseObject class org.*ObjectWithWrongMethods: methodThatCantBeHere/');
@@ -524,7 +509,15 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
     /**
      * test
-     * @return void
+     */
+    public function testSave_multiple_objects_on_a_single_transaction(){
+
+        // TODO
+    }
+
+
+    /**
+     * test
      */
     public function testSave_null_and_not_null_values(){
 
@@ -583,7 +576,6 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
     /**
      * test
-     * @return void
      */
     public function testSave_datetime_values_are_as_expected(){
 
@@ -681,9 +673,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-    * testSave_simple_object_performs_no_more_than_2_db_queries
-    *
-    * @return void
+    * test
     */
     public function testSave_simple_object_performs_no_more_than_2_db_queries(){
 
@@ -705,9 +695,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * testSave_and_update_simple_object_with_array_typed_properties
-     *
-     * @return void
+     * test
      */
     public function testSave_and_update_simple_object_with_array_typed_properties(){
 
@@ -826,9 +814,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * testSave_Strong_typed_Object
-     *
-     * @return void
+     * test
      */
     public function testSave_Strong_typed_Object(){
 
@@ -1041,9 +1027,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * testSave_Object_With_Multi_Language_Properties
-     *
-     * @return void
+     * test
      */
     public function testSave_Object_With_Multi_Language_Properties(){
 
@@ -1182,9 +1166,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * testSave_Objects_With_Multi_Language_Properties_and_real_data
-     *
-     * @return void
+     * test
      */
     public function testSave_Objects_With_Multi_Language_Properties_and_real_data(){
 
@@ -1244,7 +1226,6 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
     /**
      * test
-     * @return void
      */
     public function testSave_update_object_by_adding_non_typed_prop_that_did_not_exist_previously(){
 
@@ -1273,7 +1254,6 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
     /**
      * test
-     * @return void
      */
     public function testSave_update_object_by_removing_non_typed_prop_that_did_exist_previously(){
 
@@ -1288,32 +1268,70 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\removedNonTypedProperty\ObjectToAlter();
         $object->name = 'Peter';
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<city> exists on <td_objecttoalter> table but not on object being saved/');
+
+        // Delete the city column from table and check that object can be saved correctly
+        $this->db->tableDeleteColumns($objectTableName, ['city']);
+        $this->assertSame(2, $this->sut->save($object));
     }
 
 
     /**
      * test
-     * @return void
      */
     public function testSave_update_object_by_renaming_non_typed_prop_that_did_exist_previously(){
 
-        // TODO
+        $object = new ObjectToAlter();
+        $objectTableName = $this->sut->getTableNameFromObject($object);
+        $object->name = 'Jason';
+        $object->city = 'New York';
+        $this->assertSame(1, $this->sut->save($object));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['city']));
+
+        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\renamedNonTypedProperty\ObjectToAlter();
+        $object->name = 'Peter';
+        $object->cityRenamed = 'New York 2';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<city> exists on <td_objecttoalter> table but not on object being saved/');
+
+        // Delete the city column from table and check that object can be saved and cityrenamed column's been created
+        $this->db->tableDeleteColumns($objectTableName, ['city']);
+        $this->assertSame(2, $this->sut->save($object));
+        $this->assertFalse(isset($this->db->tableGetColumnDataTypes($objectTableName)['city']));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['cityrenamed']));
     }
 
 
     /**
      * test
-     * @return void
      */
     public function testSave_update_object_by_adding_simple_typed_prop_that_did_not_exist_previously(){
 
-        // TODO
+        $object = new ObjectToAlter();
+        $objectTableName = $this->sut->getTableNameFromObject($object);
+        $object->name = 'Jason';
+        $object->city = 'New York';
+        $this->assertSame(1, $this->sut->save($object));
+        $this->assertFalse(isset($this->db->tableGetColumnDataTypes($objectTableName)['extratyped']));
+        $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_extratyped'));
+
+        // It is expected that the new property that previously did not exist will be transparently added to the table
+        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\extraTypedProperty\ObjectToAlter();
+        $object->name = 'Peter';
+        $object->city = 'Chicago';
+        $object->extraTyped = 'extra typed value';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/extraTyped .extra typed value. does not match INT.10./');
+        $object->extraTyped = 345;
+        $this->assertSame(2, $this->sut->save($object));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['city']));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['extratyped']));
+        $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_extratyped'));
     }
 
 
     /**
      * test
-     * @return void
      */
     public function testSave_update_object_by_removing_simple_typed_prop_that_did_exist_previously(){
 
@@ -1333,17 +1351,33 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
     /**
      * test
-     * @return void
      */
     public function testSave_update_object_by_renaming_simple_typed_prop_that_did_exist_previously(){
 
-        // TODO
+        $object = new ObjectToAlter();
+        $objectTableName = $this->sut->getTableNameFromObject($object);
+        $object->name = 'Jason';
+        $object->city = 'New York';
+        $this->assertSame(1, $this->sut->save($object));
+
+        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\renamedTypedProperty\ObjectToAlter();
+        $object->nameRenamed = 'Renamed name';
+        $object->city = 'New York City 2';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<name> exists on <td_objecttoalter> table but not on object being saved/');
+
+        // Delete the name column from table and check that object can be saved and nameRenamed column's been created
+        $this->db->tableDeleteColumns($objectTableName, ['name']);
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_objecttoalter column city data type expected: varchar.8. NOT NULL but received: varchar.15./');
+        $this->sut->isColumnResizedWhenValueisBigger = true;
+        $this->assertSame(2, $this->sut->save($object));
+        $this->assertFalse(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['city']));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['namerenamed']));
     }
 
 
     /**
      * test
-     * @return void
      */
     public function testSave_Object_With_Multi_Language_Properties_update_object_by_adding_array_prop_that_did_not_exist_previously(){
 
@@ -1353,7 +1387,6 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
     /**
      * test
-     * @return void
      */
     public function testSave_Object_With_Multi_Language_Properties_update_object_by_removing_array_prop_that_did_exist_previously(){
 
@@ -1363,7 +1396,6 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
     /**
      * test
-     * @return void
      */
     public function testSave_Object_With_Multi_Language_Properties_update_object_by_renaming_array_prop_that_did_exist_previously(){
 
@@ -1373,7 +1405,6 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
     /**
      * test
-     * @return void
      */
     public function testSave_Object_With_Multi_Language_Properties_update_object_by_adding_multilan_prop_that_did_not_exist_previously(){
 
@@ -1400,7 +1431,6 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
     /**
      * test
-     * @return void
      */
     public function testSave_Object_With_Multi_Language_Properties_update_object_by_removing_multilan_prop_that_did_exist_previously(){
 
@@ -1410,7 +1440,6 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
     /**
      * test
-     * @return void
      */
     public function testSave_Object_With_Multi_Language_Properties_update_object_by_renaming_multilan_prop_that_did_exist_previously(){
 
@@ -1419,9 +1448,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * testSave_Object_With_Multi_Language_Properties_set_values_for_two_locales_back_to_first_one_and_save
-     *
-     * @return void
+     * test
      */
     public function testSave_Object_With_Multi_Language_Properties_set_values_for_two_locales_back_to_first_one_and_save(){
 
@@ -1444,9 +1471,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * test_Multi_Language_Object_invalid_values_on_multilan_properties
-     *
-     * @return void
+     * test
      */
     public function test_Multi_Language_Object_invalid_values_on_multilan_properties(){
 
@@ -1496,9 +1521,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * test_Multi_Language_Object_Change_Locales_Order
-     *
-     * @return void
+     * test
      */
     public function test_Multi_Language_Object_Change_Locales_Order(){
 
@@ -1671,9 +1694,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * test_Multi_Language_Object_setLocales
-     *
-     * @return void
+     * test
      */
     public function test_Multi_Language_Object_setLocales(){
 
@@ -1720,9 +1741,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * test_Multi_Language_Object_isMultiLanguage
-     *
-     * @return void
+     * test
      */
     public function test_Multi_Language_Object_isMultiLanguage(){
 
@@ -1741,9 +1760,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * test_Multi_Language_Object_getLocales
-     *
-     * @return void
+     * test
      */
     public function test_Multi_Language_Object_getLocales(){
 
@@ -1781,9 +1798,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-     * testGetTableNameFromObject
-     *
-     * @return void
+     * test
      */
     public function testGetTableNameFromObject(){
 
@@ -1804,10 +1819,8 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-    * testConvertObjectToTableData
-    *
-    * @return void
-    */
+     * test
+     */
     public function testConvertObjectToTableData(){
 
         // Test empty values
@@ -1827,16 +1840,14 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
 
     /**
-    * testGetSQLTypeFromObjectProperty
-    *
-    * @return void
-    */
+     * test
+     */
     public function testGetSQLTypeFromObjectProperty(){
 
         // Test empty values
         AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(null, null); }, '/Argument 1.*must be an instance of.*DataBaseObject, null given/');
-        AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(new Customer(), null); }, '/Undefined/');
-        AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(new Customer(), ''); }, '/Undefined/');
+        AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(new Customer(), null); }, '/Argument 2 .* must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(new Customer(), ''); }, '/Could not detect property  type: .* property  does not exist/');
 
         // Test ok values
         $object = new Customer();
@@ -1879,8 +1890,8 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame('varchar(25)', $this->sut->getSQLTypeFromObjectProperty($object, 'commercialName'));
 
         // Test exceptions
-        AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, 'nonexistantproperty'); }, '/Undefined property: nonexistantproperty/');
-        AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, ''); }, '/Undefined property:/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, 'nonexistantproperty'); }, '/nonexistantproperty has no defined type but typing is mandatory/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->getSQLTypeFromObjectProperty($object, ''); }, '/ has no defined type but typing is mandatory/');
         AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(new stdClass(), ''); }, '/Argument 1 passed to .*getSQLTypeFromObjectProperty.*must be an instance of.*DataBaseObject.*stdClass given/');
     }
 }
