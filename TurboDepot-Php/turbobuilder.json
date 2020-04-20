@@ -53,7 +53,7 @@
         },
         "styleSheets": {
             "onlyScss": true,
-            "noCssHardcodedColors": true
+            "cssHardcodedColorForbid": true
         },
         "php": {
             "namespaces" : {
@@ -66,7 +66,7 @@
     },
     "build": {
         "printTodoFiles": false,
-        "replaceVersion": {
+        "injectVersion": {
             "enabled": false,
             "wildCard": "@@--build-version--@@",
             "extensions": [

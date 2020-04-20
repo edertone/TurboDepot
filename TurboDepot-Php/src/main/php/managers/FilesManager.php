@@ -272,12 +272,13 @@ class FilesManager extends BaseStrictClass{
      * @param string $path Absolute or relative path where the search will be performed
      *
      * @param string $searchRegexp A regular expression that files or folders must match to be included
-     *        into the results. Here are some useful patterns:<br>
+     *        into the results (Note that search is dependant on the $searchMode parameter).
+     *        Here are some useful patterns:<br>
      *        '/.*\.txt$/i'   - Match all items which name ends with '.txt' (case insensitive)<br>
      *        '/^some.*./'   - Match all items which name starts with 'some'<br>
      *        '/text/'       - Match all items which name contains 'text'<br>
-     *        '/^file\.txt$/' - Match all items which name is exactly 'file.txt'
-     *        '/^.*\.(jpg|jpeg|png|gif)$/i' - Match all items which name ends with .jpg,.jpeg,.png or .gif (case insensitive)
+     *        '/^file\.txt$/' - Match all items which name is exactly 'file.txt'<br>
+     *        '/^.*\.(jpg|jpeg|png|gif)$/i' - Match all items which name ends with .jpg,.jpeg,.png or .gif (case insensitive)<br>
      *        '/^(?!.*\.(jpg|png|gif)$)/i' - Match all items that do NOT end with .jpg, .png or .gif (case insensitive)
      *
      * @param string $returnFormat Defines how will be returned the array of results. Three values are possible:<br>
@@ -295,6 +296,10 @@ class FilesManager extends BaseStrictClass{
      *
      * @param string $excludeRegexp A regular expression that will exclude all the results that match it anywhere on the item full path or name
      *
+     * @param string $searchMode Defines how $searchRegexp will be used to find matches:
+     *        - If set to 'name' The regexp will be tested only against the file or folder name<br>
+     *        - If set to 'absolute' The regexp will be tested against the full OS absolute path of the file or folder<br>
+     *
      * @return array A list formatted as defined in returnFormat, with all the elements that meet the search criteria
      */
     public function findDirectoryItems($path,
@@ -302,7 +307,8 @@ class FilesManager extends BaseStrictClass{
                                        string $returnFormat = 'relative',
                                        string $searchItemsType = 'both',
                                        int $depth = -1,
-                                       string $excludeRegexp = ''){
+                                       string $excludeRegexp = '',
+                                       string $searchMode = 'name'){
 
         $result = [];
         $path = $this->_composePath($path);
@@ -310,6 +316,7 @@ class FilesManager extends BaseStrictClass{
         foreach ($this->getDirectoryList($path) as $item){
 
             $itemPath = $path.DIRECTORY_SEPARATOR.$item;
+            $searchOn = $searchMode === 'absolute' ? $itemPath : $item;
 
             if(($excludeRegexp !== '' && preg_match($excludeRegexp, $itemPath)) ||
                ($searchItemsType === 'folders' && $this->isFile($itemPath))){
@@ -319,8 +326,7 @@ class FilesManager extends BaseStrictClass{
 
             $isItemADir = $this->isDirectory($itemPath);
 
-            if(preg_match($searchRegexp, $item) &&
-               !($searchItemsType === 'files' && $isItemADir)){
+            if(preg_match($searchRegexp, $searchOn) && !($searchItemsType === 'files' && $isItemADir)){
 
                 $result[] = $itemPath;
             }
@@ -328,7 +334,7 @@ class FilesManager extends BaseStrictClass{
             if($depth !== 0 && $isItemADir){
 
                 $result = array_merge($result,
-                    $this->findDirectoryItems($itemPath, $searchRegexp, 'absolute', $searchItemsType, $depth - 1, $excludeRegexp));
+                    $this->findDirectoryItems($itemPath, $searchRegexp, 'absolute', $searchItemsType, $depth - 1, $excludeRegexp, $searchMode));
             }
         }
 

@@ -17,6 +17,7 @@ use Throwable;
 use org\turbocommons\src\main\php\managers\ValidationManager;
 use org\turbocommons\src\main\php\utils\ArrayUtils;
 use org\turbodepot\src\main\php\managers\FilesManager;
+use org\turbotesting\src\main\php\utils\AssertUtils;
 use org\turbocommons\src\main\php\utils\NumericUtils;
 use org\turbocommons\src\main\php\utils\StringUtils;
 
@@ -785,33 +786,10 @@ class FilesManagerTest extends TestCase {
     public function testFindDirectoryItems(){
 
         // Test empty values
-        try {
-            $this->sut->findDirectoryItems(null);
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Too few arguments to function/', $e->getMessage());
-        }
-
-        try {
-            $this->sut->findDirectoryItems(0);
-            $this->exceptionMessage = '0 did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Too few arguments to function/', $e->getMessage());
-        }
-
-        try {
-            $this->sut->findDirectoryItems('');
-            $this->exceptionMessage = '"" did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Too few arguments to function/', $e->getMessage());
-        }
-
-        try {
-            $this->sut->findDirectoryItems('       ');
-            $this->exceptionMessage = '"       " did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Too few arguments to function/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->findDirectoryItems(null); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function(){ $this->sut->findDirectoryItems(0); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function(){ $this->sut->findDirectoryItems(''); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function(){ $this->sut->findDirectoryItems('       '); }, '/Too few arguments to function/');
 
         // Test ok values
         $this->assertTrue(ArrayUtils::isEqualTo($this->sut->findDirectoryItems($this->tempFolder, '/file/'), []));
@@ -1008,7 +986,24 @@ class FilesManagerTest extends TestCase {
 
         // Test some exclusion patterns
         $this->assertSame([], $this->sut->findDirectoryItems($this->tempFolder, '/^somefile-0-0-2.txt$/', 'absolute', 'both' , -1, '/folder-0-0/'));
-        $this->assertSame([], $this->sut->findDirectoryItems($this->tempFolder, '/^somefile-0-0-2.txt$/', 'absolute', 'both' , -1, '/-FilesManagerTest/'));
+        $this->assertSame([], $this->sut->findDirectoryItems($this->tempFolder, '/^somefile-0-0-2.txt$/', 'absolute', 'both' , -1, '/-FilesManagerTest/', 'name'));
+        $this->assertSame([], $this->sut->findDirectoryItems($this->tempFolder, '/^somefile-0-0-2.txt$/', 'absolute', 'both' , -1, '/-FilesManagerTest/', 'absolute'));
+
+        // test searchMode values
+        $this->assertSame(1, count($this->sut->findDirectoryItems($this->tempFolder, '/folder-0-1/', 'name', 'both', -1, '', 'name')));
+        $this->assertSame(18, count($this->sut->findDirectoryItems($this->tempFolder, '/folder-0-1/', 'name', 'both', -1, '', 'absolute')));
+        $this->assertSame(1, count($this->sut->findDirectoryItems($this->tempFolder, '/folder-0-2/', 'name', 'both', -1, '', 'name')));
+        $this->assertSame(12, count($this->sut->findDirectoryItems($this->tempFolder, '/folder-0-2/', 'name', 'both', -1, '', 'absolute')));
+        $this->assertSame(12, count($this->sut->findDirectoryItems($this->tempFolder, '/folder-0-1.folder-0-2/', 'name', 'both', -1, '', 'absolute')));
+        $this->assertSame(1, count($this->sut->findDirectoryItems($this->tempFolder, '/somefile-0-3-1\.txt/', 'name', 'both', -1, '', 'name')));
+        $this->assertSame(1, count($this->sut->findDirectoryItems($this->tempFolder, '/somefile-0-3-1\.txt/', 'name', 'both', -1, '', 'absolute')));
+        $this->assertSame(1, count($this->sut->findDirectoryItems($this->tempFolder, '/folder-2-0/', 'name', 'both', -1, '', 'name')));
+        $this->assertSame(24, count($this->sut->findDirectoryItems($this->tempFolder, '/folder-2-0/', 'name', 'both', -1, '', 'absolute')));
+        $this->assertSame(20, count($this->sut->findDirectoryItems($this->tempFolder, '/folder-2-0/', 'name', 'files', -1, '', 'absolute')));
+        $this->assertSame(4, count($this->sut->findDirectoryItems($this->tempFolder, '/folder-2-0/', 'name', 'folders', -1, '', 'absolute')));
+        $this->assertSame(1, count($this->sut->findDirectoryItems($this->tempFolder, '/folder-0-1(\/|\\\\)folder-0-2(\/|\\\\)folder-0-3/', 'name', 'folders', -1, '', 'absolute')));
+        $this->assertSame(5, count($this->sut->findDirectoryItems($this->tempFolder, '/folder-0-1(\/|\\\\)folder-0-2(\/|\\\\)folder-0-3/', 'name', 'files', -1, '', 'absolute')));
+        $this->assertSame(6, count($this->sut->findDirectoryItems($this->tempFolder, '/folder-0-1(\/|\\\\)folder-0-2(\/|\\\\)folder-0-3/', 'name', 'both', -1, '', 'absolute')));
 
         // Test wrong values
         // Not necessary

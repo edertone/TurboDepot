@@ -292,12 +292,13 @@ export class FilesManager{
      * @param path Absolute or relative path where the search will be performed
      *
      * @param searchRegexp A regular expression that files or folders must match to be included
-     *        into the results. Here are some useful patterns:<br>
+     *        into the results (Note that search is dependant on the $searchMode parameter).
+     *        Here are some useful patterns:<br>
      *        /.*\.txt$/i   - Match all items which name ends with '.txt' (case insensitive)<br>
      *        /^some.*./   - Match all items which name starts with 'some'<br>
      *        /text/       - Match all items which name contains 'text'<br>
-     *        /^file\.txt$/ - Match all items which name is exactly 'file.txt'
-     *        /^.*\.(jpg|jpeg|png|gif)$/i - Match all items which name ends with .jpg,.jpeg,.png or .gif (case insensitive)
+     *        /^file\.txt$/ - Match all items which name is exactly 'file.txt'<br>
+     *        /^.*\.(jpg|jpeg|png|gif)$/i - Match all items which name ends with .jpg,.jpeg,.png or .gif (case insensitive)<br>
      *        /^(?!.*\.(jpg|png|gif)$)/i - Match all items that do NOT end with .jpg, .png or .gif (case insensitive)
      *
      * @param returnFormat Defines how will be returned the array of results. Three values are possible:<br>
@@ -314,7 +315,11 @@ export class FilesManager{
      *        - If set to 2 the search will be performed on the root, first and second depth level of subfolders
      *
      * @param excludeRegexp A regular expression that will exclude all the results that match it anywhere on the item full path or name
-     * 
+     *
+     * @param searchMode Defines how searchRegexp will be used to find matches:
+     *        - If set to 'name' The regexp will be tested only against the file or folder name<br>
+     *        - If set to 'absolute' The regexp will be tested against the full OS absolute path of the file or folder<br>
+     *
      * @return A list formatted as defined in returnFormat, with all the elements that meet the search criteria
      */
     findDirectoryItems(path: string,
@@ -322,7 +327,8 @@ export class FilesManager{
                        returnFormat = 'relative',
                        searchItemsType = 'both',
                        depth = -1,
-                       excludeRegexp: string|RegExp = ''): string[]{
+                       excludeRegexp: string|RegExp = '',
+                       searchMode = 'name'): string[]{
 
         let result: string[] = [];
         path = this._composePath(path);
@@ -330,7 +336,8 @@ export class FilesManager{
         for (let item of this.getDirectoryList(path)) {
 
             let itemPath = path + this.dirSep() + item;
-            
+            let searchOn = searchMode === 'absolute' ? itemPath : item;
+
             if((excludeRegexp !== '' && (new RegExp(excludeRegexp)).test(itemPath)) ||
                (searchItemsType === 'folders' && this.isFile(itemPath))){
     
@@ -339,8 +346,7 @@ export class FilesManager{
             
             let isItemADir = this.isDirectory(itemPath);
             
-            if((new RegExp(searchRegexp)).test(item) &&
-               !(searchItemsType === 'files' && isItemADir)){
+            if((new RegExp(searchRegexp)).test(searchOn) && !(searchItemsType === 'files' && isItemADir)){
 
                 result.push(itemPath);
             }
@@ -348,7 +354,7 @@ export class FilesManager{
             if(depth !== 0 && isItemADir){
 
                 result = result.concat(
-                        this.findDirectoryItems(itemPath, searchRegexp, 'absolute', searchItemsType, depth - 1, excludeRegexp));
+                    this.findDirectoryItems(itemPath, searchRegexp, 'absolute', searchItemsType, depth - 1, excludeRegexp, searchMode));
             }
         }
 
