@@ -37,8 +37,8 @@
                 },
                 {
                     "path": "src/test",
-                    "maxPercentErrorLevel": 8,
-                    "maxPercentErrorDifference": 5,
+                    "maxPercentErrorLevel": 6,
+                    "maxPercentErrorDifference": 2,
                     "report": "html"
                 }
             ],
@@ -46,7 +46,7 @@
                 {
                     "path": "extras/copyright headers/TurboDepot-Php.txt",
                     "affectedPaths": ["src"],
-                    "includes": ["php"],
+                    "includes": [".php"],
                     "excludes": ["autoloader.php", "libs", "test/resources"]
                 }
             ]
@@ -65,16 +65,6 @@
         }
     },
     "build": {
-        "printTodoFiles": false,
-        "injectVersion": {
-            "enabled": false,
-            "wildCard": "@@--build-version--@@",
-            "extensions": [
-                "js",
-                "php",
-                "json"
-            ]
-        },
         "lib_php": {
             "createPhar": true
         }
