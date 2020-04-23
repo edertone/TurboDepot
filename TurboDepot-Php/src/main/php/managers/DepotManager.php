@@ -98,17 +98,18 @@ class DepotManager extends BaseStrictClass{
         $this->_filesManager = new FilesManager();
 
         // Load the provided setup data
+        if (is_string($setup) && is_file($setup)){
+
+            $setup = json_decode($this->_filesManager->readFile($setup));
+        }
+
         if(is_object($setup) && property_exists($setup, '$schema')){
 
             $this->_setup = $setup;
 
-        }else if (is_string($setup) && is_file($setup)){
-
-            $this->_setup = json_decode($this->_filesManager->readFile($setup));
-
         }else{
 
-            throw new UnexpectedValueException('DepotManager constructor expects a valid path to users setup or an stdclass instance with the setup data');
+            throw new UnexpectedValueException('constructor expects a valid path to turbodepot setup or an stdclass instance with the setup data');
         }
 
         // Search for the requested depot. If none specified, the first one will be used
@@ -123,12 +124,11 @@ class DepotManager extends BaseStrictClass{
                 if($depotName === $depotSetup->name){
 
                     $this->_loadedDepotSetup = $depotSetup;
+
+                    break;
                 }
             }
         }
-
-        // TODO - initialize the users manager class
-        // $this->usersManager = new UsersManager($setupPath);
     }
 
 
@@ -173,9 +173,9 @@ class DepotManager extends BaseStrictClass{
         if($this->_tmpFilesManager === null){
 
             // Initialize the tmp files manager to the folder that is defined on the depot setup
-            if(($tmpFilesSource = $this->_getSourceSetup($this->_loadedDepotSetup->tmpFiles->source)) === null){
+            if(($tmpFilesSource = $this->_getSourceSetup($this->_loadedDepotSetup->tmpFiles->source, ['fileSystem'])) === null){
 
-                throw new UnexpectedValueException('tmpFilesManager not available. Check it is correctly configured on turbodepot setup');
+                throw new UnexpectedValueException('Could not find a valid fileSystem source for tmpFilesManager on turbodepot setup');
             }
 
             $this->_tmpFilesManager = new TmpFilesManager($tmpFilesSource->path);
@@ -195,9 +195,9 @@ class DepotManager extends BaseStrictClass{
         if($this->_localizedFilesManager === null){
 
             // Initialize the localized files manager to the folder that is defined on the depot setup
-            if(($localizedFilesSource = $this->_getSourceSetup($this->_loadedDepotSetup->localizedFiles->source)) === null){
+            if(($localizedFilesSource = $this->_getSourceSetup($this->_loadedDepotSetup->localizedFiles->source, ['fileSystem'])) === null){
 
-                throw new UnexpectedValueException('localizedFilesManager not available. Check it is correctly configured on turbodepot setup');
+                throw new UnexpectedValueException('Could not find a valid fileSystem source for localizedFilesManager on turbodepot setup');
             }
 
             $this->_localizedFilesManager = new LocalizedFilesManager($localizedFilesSource->path,
@@ -219,9 +219,9 @@ class DepotManager extends BaseStrictClass{
         if($this->_logsManager === null){
 
             // Initialize the logs manager to the folder that is defined on the depot setup
-            if(($logsSource = $this->_getSourceSetup($this->_loadedDepotSetup->logs->source)) === null){
+            if(($logsSource = $this->_getSourceSetup($this->_loadedDepotSetup->logs->source, ['fileSystem'])) === null){
 
-                throw new UnexpectedValueException('logsManager not available. Check it is correctly configured on turbodepot setup');
+                throw new UnexpectedValueException('Could not find a valid fileSystem source for logsManager on turbodepot setup');
             }
 
             $this->_logsManager = new LogsManager($logsSource->path);
@@ -264,13 +264,25 @@ class DepotManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Obtain the users manager instance that is available through this depot manager.
+     *
+     * @return UsersManager
      */
     public function getUsersManager(){
 
         if($this->_usersManager === null){
 
-            throw new UnexpectedValueException('usersManager not available. Check it is correctly configured on turbodepot setup');
+            if(($usersSource = $this->_getSourceSetup($this->_loadedDepotSetup->users->source, ['mariadb'])) === null){
+
+                throw new UnexpectedValueException('Could not find a valid database source for usersManager on turbodepot setup');
+            }
+
+            $databaseObjectsManager = new DataBaseObjectsManager();
+
+            // Currently only mariadb is accepted. When more databases are allowed, we must check here to which db we are connecting
+            $databaseObjectsManager->connectMariaDb($usersSource->host, $usersSource->user, $usersSource->password, $usersSource->database);
+
+            $this->_usersManager = new UsersManager($databaseObjectsManager);
         }
 
         return $this->_usersManager;
@@ -281,16 +293,32 @@ class DepotManager extends BaseStrictClass{
      * Given a source name, this method will search for its setup data on all sources for the currently specified turbodepot setup
      *
      * @param string $name The name for a source on the turbodepot setup
+     * @param string $sourceType Specify here which kind of sources do we want to search : fileSystem, mariadb, etc.. If array is empty, all
+     *        source types will be searched
      *
      * @return /stdClass The setup data for the specified source or null if the source was not found
      */
-    private function _getSourceSetup(string $name){
+    private function _getSourceSetup(string $name, $sourceType = []){
 
-        foreach ($this->_setup->sources->fileSystem as $source) {
+        if($sourceType === [] || in_array('fileSystem',  $sourceType, true)){
 
-            if($source->name === $name){
+            foreach ($this->_setup->sources->fileSystem as $source) {
 
-                return $source;
+                if($source->name === $name){
+
+                    return $source;
+                }
+            }
+        }
+
+        if($sourceType === [] || in_array('mariadb',  $sourceType, true)){
+
+            foreach ($this->_setup->sources->mariadb as $source) {
+
+                if($source->name === $name){
+
+                    return $source;
+                }
             }
         }
 

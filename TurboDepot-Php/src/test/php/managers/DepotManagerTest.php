@@ -11,7 +11,6 @@
 
 namespace org\turbodepot\src\test\php\managers;
 
-use Throwable;
 use stdClass;
 use PHPUnit\Framework\TestCase;
 use org\turbodepot\src\main\php\managers\FilesManager;
@@ -45,8 +44,6 @@ class DepotManagerTest extends TestCase {
      */
     protected function setUp(){
 
-        $this->exceptionMessage = '';
-
         $this->filesManager = new FilesManager();
 
         // Create a temporary folder
@@ -70,11 +67,6 @@ class DepotManagerTest extends TestCase {
 
         // Delete temporary folder
         $this->filesManager->deleteDirectory($this->tempFolder);
-
-        if($this->exceptionMessage != ''){
-
-            $this->fail($this->exceptionMessage);
-        }
     }
 
 
@@ -97,10 +89,10 @@ class DepotManagerTest extends TestCase {
     public function testConstruct(){
 
         // Test empty values
-        AssertUtils::throwsException(function(){ $this->sut = new DepotManager(null, ''); }, '/expects a valid path to users setup or an stdclass/');
-        AssertUtils::throwsException(function(){ $this->sut = new DepotManager('', ''); }, '/expects a valid path to users setup or an stdclass/');
-        AssertUtils::throwsException(function(){ $this->sut = new DepotManager('              ', ''); }, '/expects a valid path to users setup or an stdclass/');
-        AssertUtils::throwsException(function(){ $this->sut = new DepotManager(new stdClass(), ''); }, '/expects a valid path to users setup or an stdclass/');
+        AssertUtils::throwsException(function(){ $this->sut = new DepotManager(null, ''); }, '/expects a valid path to turbodepot setup or an stdclass instance with the setup data/');
+        AssertUtils::throwsException(function(){ $this->sut = new DepotManager('', ''); }, '/expects a valid path to turbodepot setup or an stdclass instance with the setup data/');
+        AssertUtils::throwsException(function(){ $this->sut = new DepotManager('              ', ''); }, '/expects a valid path to turbodepot setup or an stdclass instance with the setup data/');
+        AssertUtils::throwsException(function(){ $this->sut = new DepotManager(new stdClass(), ''); }, '/expects a valid path to turbodepot setup or an stdclass instance with the setup data/');
 
         // Test ok values
         $this->assertSame('org\turbodepot\src\main\php\managers\DepotManager',
@@ -113,7 +105,10 @@ class DepotManagerTest extends TestCase {
         $this->assertSame('org\turbodepot\src\main\php\managers\DepotManager', get_class(new DepotManager($setup)));
 
         // Test wrong values
-        // Already tested
+        $this->assertTrue($this->filesManager->saveFile($this->tempFolder.DIRECTORY_SEPARATOR.'testfile.txt', 'somecontent'));
+
+        AssertUtils::throwsException(function(){ $this->sut = new DepotManager($this->tempFolder.DIRECTORY_SEPARATOR.'testfile.txt'); },
+            '/expects a valid path to turbodepot setup or an stdclass instance with the setup data/');
 
         // Test exceptions
         // Already tested
@@ -128,12 +123,7 @@ class DepotManagerTest extends TestCase {
     public function testGetStorageFolderManager(){
 
         // Test empty values
-        try {
-            $this->sut->getStorageFolderManager();
-            $this->exceptionMessage = 'getStorageFolderManager did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/storageFolderManager not available. Check it is correctly configured on turbodepot setup/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->getStorageFolderManager(); }, '/storageFolderManager not available. Check it is correctly configured on turbodepot setup/');
 
         // Test ok values
         $this->assertTrue($this->filesManager->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'custom', true));
@@ -152,12 +142,7 @@ class DepotManagerTest extends TestCase {
 
         $this->sut = new DepotManager($this->setup);
 
-        try {
-            $this->sut->getStorageFolderManager();
-            $this->exceptionMessage = 'nonexistantpath did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Could not find storage folder based on: nonexistantpath/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->getStorageFolderManager(); }, '/Could not find storage folder based on: nonexistantpath/');
     }
 
 
@@ -191,12 +176,7 @@ class DepotManagerTest extends TestCase {
     public function testGetTmpFilesManager(){
 
         // Test empty values
-        try {
-            $this->sut->getTmpFilesManager();
-            $this->exceptionMessage = 'getTmpFilesManager did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/tmpFilesManager not available. Check it is correctly configured on turbodepot setup/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->getTmpFilesManager(); }, '/Could not find a valid fileSystem source for tmpFilesManager on turbodepot setup/');
 
         // Test ok values
         $this->assertTrue($this->filesManager->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'tmp'));
@@ -227,12 +207,7 @@ class DepotManagerTest extends TestCase {
     public function testGetLocalizedFilesManager(){
 
         // Test empty values
-        try {
-            $this->sut->getLocalizedFilesManager();
-            $this->exceptionMessage = 'getLocalizedFilesManager did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/localizedFilesManager not available. Check it is correctly configured on turbodepot setup/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->getLocalizedFilesManager(); }, '/Could not find a valid fileSystem source for localizedFilesManager on turbodepot setup/');
 
         // Test ok values
         $this->assertTrue($this->filesManager->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'localized'));
@@ -270,12 +245,7 @@ class DepotManagerTest extends TestCase {
     public function testGetLogsManager(){
 
         // Test empty values
-        try {
-            $this->sut->getLogsManager();
-            $this->exceptionMessage = 'getLogsManager did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/logsManager not available. Check it is correctly configured on turbodepot setup/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->getLogsManager(); }, '/Could not find a valid fileSystem source for logsManager on turbodepot setup/');
 
         // Test ok values
         $this->setup->sources->fileSystem[] = new stdclass();
@@ -305,12 +275,7 @@ class DepotManagerTest extends TestCase {
 
         $this->sut = new DepotManager($this->setup);
 
-        try {
-            $this->sut->getLogsManager();
-            $this->exceptionMessage = '"" did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/LogsManager received an invalid rootPath: \/invalidPath/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->getLogsManager(); }, '/LogsManager received an invalid rootPath: \/invalidPath/');
     }
 
 
@@ -322,12 +287,7 @@ class DepotManagerTest extends TestCase {
     public function testGetGoogleDriveManager(){
 
         // Test empty values
-        try {
-            $this->sut->getGoogleDriveManager();
-            $this->exceptionMessage = 'getGoogleDriveManager did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/googleDriveManager not available. Check it is correctly configured on turbodepot setup/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->getGoogleDriveManager(); }, '/googleDriveManager not available. Check it is correctly configured on turbodepot setup/');
 
         // Test ok values
         // Can't be tested, cause a connection to google drive must be performed.
@@ -339,45 +299,25 @@ class DepotManagerTest extends TestCase {
         $this->setup->depots[0]->googleDrive->apiClientRoot = 'invalid path';
         $this->sut = new DepotManager($this->setup);
 
-        try {
-            $this->sut->getGoogleDriveManager();
-            $this->exceptionMessage = 'invalid path did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Specified googleApiPhpCLientRoot folder is not valid/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->getGoogleDriveManager(); }, '/Specified googleApiPhpCLientRoot folder is not valid/');
 
         // Set a valid api client root and check missing serviceAccountCredentials file
         $this->setup->depots[0]->googleDrive->apiClientRoot = __DIR__.'/../../resources/managers/depotManager/fake-api-root';
         $this->sut = new DepotManager($this->setup);
 
-        try {
-            $this->sut->getGoogleDriveManager();
-            $this->exceptionMessage = 'invalid serviceAccountCredentials did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Could not find serviceAccountCredentials file/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->getGoogleDriveManager(); }, '/Could not find serviceAccountCredentials file/');
 
         // Set a valid accountCredentialsPath and check that cache is not enabled
         $this->setup->depots[0]->googleDrive->accountCredentialsPath = __DIR__.'/../../resources/managers/depotManager/fake-service-account-credentials.json';
         $this->sut = new DepotManager($this->setup);
 
-        try {
-            $this->sut->getGoogleDriveManager()->getCacheZoneName();
-            $this->exceptionMessage = 'getCacheZoneName did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Cache is not enabled for this instance/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->getGoogleDriveManager()->getCacheZoneName(); }, '/Cache is not enabled for this instance/');
 
         // Set a valid cache setup and make sure it is correctly enabled
         $this->setup->depots[0]->googleDrive->cacheRootPath = $this->tempFolder;
         $this->sut = new DepotManager($this->setup);
 
-        try {
-            $this->sut->getGoogleDriveManager();
-            $this->exceptionMessage = 'empty zone did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/zone must be a non empty string/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->getGoogleDriveManager(); }, '/zone must be a non empty string/');
 
         $this->setup->depots[0]->googleDrive->cacheZone = 'test-zone';
         $this->sut = new DepotManager($this->setup);
@@ -394,18 +334,43 @@ class DepotManagerTest extends TestCase {
     public function testGetUsersManager(){
 
         // Test empty values
-        // TODO
+        AssertUtils::throwsException(function(){ $this->sut->getUsersManager(); }, '/Could not find a valid database source for usersManager on turbodepot setup/');
 
         // Test ok values
-        // TODO
+        $this->setup->sources->mariadb[] = new stdclass();
+
+        // TODO - should be interesting to extract test database connection info to a common file for all tests
+        $this->setup->sources->mariadb[0]->name = 'tmp_db_source';
+        $this->setup->sources->mariadb[0]->host = 'localhost';
+        $this->setup->sources->mariadb[0]->database = '';
+        $this->setup->sources->mariadb[0]->user = 'root';
+        $this->setup->sources->mariadb[0]->password = '';
+
+        $this->setup->depots[0]->users->source = 'tmp_db_source';
+
+        $this->sut = new DepotManager($this->setup);
+
+        $this->assertSame('org\turbodepot\src\main\php\managers\UsersManager',
+            get_class($this->sut->getUsersManager()));
+
+        // TODO - Test some basic operations with saving and reading some users
 
         // Test wrong values
-        // TODO
+        // Not necessary
 
         // Test exceptions
-        // TODO
 
-        $this->markTestIncomplete('This test has not been implemented yet.');
+        // Set an invalid database connection values and check it throws the expected exception
+        $this->setup->sources->mariadb[0]->user = 'invalid user';
+
+        $this->sut = new DepotManager($this->setup);
+
+        AssertUtils::throwsException(function(){ $this->sut->getUsersManager(); }, '/Access denied for user.*invalid user/');
+
+        $this->setup->depots[0]->users->source = 'invalid source';
+        $this->sut = new DepotManager($this->setup);
+
+        AssertUtils::throwsException(function(){ $this->sut->getUsersManager(); }, '/Could not find a valid database source for usersManager on turbodepot setup/');
     }
 
 

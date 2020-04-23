@@ -64,6 +64,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
      */
     protected function setUp(){
 
+        // TODO - should be interesting to extract test database connection info to a common file for all tests
         $this->dbHost = 'localhost';
         $this->dbUser = 'root';
         $this->dbPsw = '';
@@ -500,7 +501,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         // Add an unexpected column to the customer table and make sure saving fails
         $this->assertTrue($this->db->tableAddColumn($objectTableName, 'unexpected', 'bigint'));
-        AssertUtils::throwsException(function() { $this->sut->save(new Customer()); }, '/<unexpected> exists on <td_customer> table but not on object being saved/');
+        AssertUtils::throwsException(function() { $this->sut->save(new Customer()); }, '/<unexpected> exists on <td_customer> table and must exist as a basic property on object being saved/');
 
         // All exceptions must have not created any database object
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
@@ -793,7 +794,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $object = new CustomerWithArrayProps();
         $object->name = ['storing an array into a non array prop'];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Could not get column data types: Table .*td_customerwitharrayprops_name. doesn.t exist/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<name> exists on <td_customerwitharrayprops> table and must exist as a basic property on object being saved/');
 
         $object = new CustomerWithArrayProps();
         $object->name = 'this customer has array typed properties';
@@ -1267,7 +1268,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\removedNonTypedProperty\ObjectToAlter();
         $object->name = 'Peter';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<city> exists on <td_objecttoalter> table but not on object being saved/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<city> exists on <td_objecttoalter> table and must exist as a basic property on object being saved/');
 
         // Delete the city column from table and check that object can be saved correctly
         $this->db->tableDeleteColumns($objectTableName, ['city']);
@@ -1291,7 +1292,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\renamedNonTypedProperty\ObjectToAlter();
         $object->name = 'Peter';
         $object->cityRenamed = 'New York 2';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<city> exists on <td_objecttoalter> table but not on object being saved/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<city> exists on <td_objecttoalter> table and must exist as a basic property on object being saved/');
 
         // Delete the city column from table and check that object can be saved and cityrenamed column's been created
         $this->db->tableDeleteColumns($objectTableName, ['city']);
@@ -1345,7 +1346,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\removedSimpleTypedProperty\ObjectToAlter();
         $object->city = 'Chicago';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<name> exists on <td_objecttoalter> table but not on object being saved/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<name> exists on <td_objecttoalter> table and must exist as a basic property on object being saved/');
     }
 
 
@@ -1363,7 +1364,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\renamedTypedProperty\ObjectToAlter();
         $object->nameRenamed = 'Renamed name';
         $object->city = 'New York City 2';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<name> exists on <td_objecttoalter> table but not on object being saved/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<name> exists on <td_objecttoalter> table and must exist as a basic property on object being saved/');
 
         // Delete the name column from table and check that object can be saved and nameRenamed column's been created
         $this->db->tableDeleteColumns($objectTableName, ['name']);
@@ -1381,7 +1382,25 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
      */
     public function testSave_Object_With_Multi_Language_Properties_update_object_by_adding_array_prop_that_did_not_exist_previously(){
 
-        // TODO
+        $object = new ObjectToAlter();
+        $objectTableName = $this->sut->getTableNameFromObject($object);
+        $object->name = 'Jason';
+        $object->city = 'New York';
+        $this->assertSame(1, $this->sut->save($object));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['city']));
+        $this->assertFalse(isset($this->db->tableGetColumnDataTypes($objectTableName)['arrayProp']));
+        $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_arrayprop'));
+
+        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\extraArrayProperty\ObjectToAlter();
+        $object->name = 'Peter';
+        $object->city = 'Chicago';
+        $object->arrayProp = [1,2,3,4,5,6,7,8];
+        $this->assertSame(2, $this->sut->save($object));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));
+        $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['city']));
+        $this->assertFalse(isset($this->db->tableGetColumnDataTypes($objectTableName)['arrayProp']));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'value' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_arrayprop'));
     }
 
 
@@ -1391,6 +1410,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
     public function testSave_Object_With_Multi_Language_Properties_update_object_by_removing_array_prop_that_did_exist_previously(){
 
         // TODO - And what happens with the previously existing property table?? should it be removed also??? or what!
+        // It is complicated cause we cannot know if the table exists without performing a query
     }
 
 
@@ -1420,6 +1440,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\extraMultilanguageProperty\ObjectToAlter(['es_ES']);
         $object->name = 'Peter';
+        $object->city = 'Chicago';
         $object->nameLocalized = 'Pedro';
         $this->assertSame(2, $this->sut->save($object));
         $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));

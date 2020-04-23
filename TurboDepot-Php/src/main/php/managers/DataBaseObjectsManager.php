@@ -826,13 +826,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
         // Create all the tables that store array properties
         foreach ($this->_getArrayTypedProperties($object) as $property) {
 
-            $columnName = strtolower($property);
-
-            $this->_db->tableCreate($tableName.'_'.$columnName, [$this->_dbIdSQLColumnDefinition,
-                'value '.$this->getSQLTypeFromObjectProperty($object, $property)
-            ]);
-
-            $this->_db->tableAddForeignKey($tableName.'_'.$columnName, $tableName.'_'.$columnName.'_dbid_fk', ['dbid'], $tableName, ['dbid']);
+            $this->_createArrayPropertyTable($object, $property, $tableName);
         }
 
         // Create all the tables that store multi language properties
@@ -842,6 +836,24 @@ class DataBaseObjectsManager extends BaseStrictClass{
         }
 
         return $this->convertObjectToTableData($object);
+    }
+
+
+    /**
+     * TODO
+     * @param DataBaseObject $object
+     * @param string $property
+     * @param string $tableName
+     */
+    private function _createArrayPropertyTable(DataBaseObject $object, string $property, string $tableName){
+
+        $columnName = strtolower($property);
+
+        $this->_db->tableCreate($tableName.'_'.$columnName, [$this->_dbIdSQLColumnDefinition,
+            'value '.$this->getSQLTypeFromObjectProperty($object, $property)
+        ]);
+
+        $this->_db->tableAddForeignKey($tableName.'_'.$columnName, $tableName.'_'.$columnName.'_dbid_fk', ['dbid'], $tableName, ['dbid']);
     }
 
 
@@ -890,11 +902,19 @@ class DataBaseObjectsManager extends BaseStrictClass{
             if(count($object->{$property}) > 0){
 
                 $arrayPropTableName = $tableName.'_'.strtolower($property);
-                $tableColumnType = $this->_db->tableGetColumnDataTypes($arrayPropTableName)['value'];
 
-                foreach ($object->{$property} as $value) {
+                if(!$this->_db->tableExists($arrayPropTableName)){
 
-                    $this->_checkColumnFitsType($arrayPropTableName, 'value', $tableColumnType, $this->_db->getSQLTypeFromValue($value));
+                    $this->_createArrayPropertyTable($object, $property, $tableName);
+
+                }else{
+
+                    $tableColumnType = $this->_db->tableGetColumnDataTypes($arrayPropTableName)['value'];
+
+                    foreach ($object->{$property} as $value) {
+
+                        $this->_checkColumnFitsType($arrayPropTableName, 'value', $tableColumnType, $this->_db->getSQLTypeFromValue($value));
+                    }
                 }
             }
         }
@@ -959,7 +979,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
                 if(!$this->isColumnDeletedWhenMissingOnObject){
 
-                    throw new UnexpectedValueException('<'.$tableColumnName.'> exists on <'.$tableName.'> table but not on object being saved');
+                    throw new UnexpectedValueException('<'.$tableColumnName.'> exists on <'.$tableName.'> table and must exist as a basic property on object being saved');
                 }
 
                 // TODO - Remove the table column which is not found on the object being saved.

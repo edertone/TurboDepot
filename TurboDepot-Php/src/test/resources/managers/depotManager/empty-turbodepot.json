@@ -34,7 +34,7 @@
             },
             "users": {
                 "source": "",
-                "tokenLength": 175,
+                "prefix": "usr_",
                 "tokenLifetime": 60
             }
         }   
@@ -44,7 +44,7 @@
     
         "fileSystem": [],
         
-        "mysql": [],
+        "mariadb": [],
         
         "sqLite": []   
     }

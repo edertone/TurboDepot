@@ -24,31 +24,16 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Contains the turbodepot setup data that's been loaded by this class
-     */
-    private $_setup = null;
-
-
-    /**
-     * Manages all the user system features and operations
+     * Manages a fully featured user system engine
      *
-     * @param \stdClass|string $setup Full or relative path to the turbodepot.json file that contains the turbodepot setup or
-     *        an stdclass instance with the setup file data decoded from json
+     * @param DataBaseObjectsManager $databaseObjectsManager A DataBaseObjectsManager instance which is fully initialized against a valid database and ready
+     *        to operate. This instance will be used by this class to store and read users info.
      */
-    public function __construct($setup){
+    public function __construct(DataBaseObjectsManager $databaseObjectsManager){
 
-        // Load the provided setup data
-        if(is_string($setup) && is_file($setup)){
+        if(!$databaseObjectsManager->getDataBaseManager()->isConnected()){
 
-            $this->_setup = json_decode((new FilesManager())->readFile($setup));
-
-        }else if (is_object($setup) && property_exists($setup, '$schema')){
-
-            $this->_setup = $setup;
-
-        }else{
-
-            throw new UnexpectedValueException('UsersManager constructor expects a valid path to users setup or an stdclass instance with the setup data');
+            throw new UnexpectedValueException('No active connection to database available for the provided DataBaseObjectsManager');
         }
     }
 
