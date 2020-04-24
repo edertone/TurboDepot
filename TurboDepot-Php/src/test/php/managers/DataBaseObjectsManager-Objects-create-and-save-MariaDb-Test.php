@@ -40,6 +40,7 @@ use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\Object
 use org\turbotesting\src\main\php\utils\AssertUtils;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerTypedWithoutSize;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerTypedArrayWithoutSize;
+use org\turbodepot\src\main\php\managers\FilesManager;
 
 
 /**
@@ -66,26 +67,9 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
      */
     protected function setUp(){
 
-        // TODO - should be interesting to extract test database connection info to a common file for all tests
-        $this->dbHost = 'localhost';
-        $this->dbUser = 'root';
-        $this->dbPsw = '';
-        $this->dbName = 'data_base_objects_manager_test';
-        $this->db = new DataBaseManager();
-        $this->assertTrue($this->db->connectMariaDb($this->dbHost, $this->dbUser, $this->dbPsw));
-
-        if($this->db->dataBaseExists($this->dbName)){
-
-            $this->db->dataBaseDelete($this->dbName);
-        }
-
-        $this->assertFalse($this->db->dataBaseExists($this->dbName));
-        $this->assertTrue($this->db->dataBaseCreate($this->dbName));
-        $this->assertTrue($this->db->dataBaseSelect($this->dbName));
-        $this->assertSame($this->dbName, $this->db->dataBaseGetSelected());
-
-        $this->sut = new DataBaseObjectsManager();
-        $this->assertTrue($this->sut->connectMariaDb($this->dbHost, $this->dbUser, $this->dbPsw, $this->dbName));
+        $this->sut = DataBaseManagerTest::createAndConnectToTestingMariaDb();
+        $this->db = $this->sut->getDataBaseManager();
+        $this->dbSetup = json_decode((new FilesManager())->readFile(__DIR__.'/../../resources/managers/databaseManager/database-setup-for-testing.json'));
     }
 
 
@@ -96,13 +80,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
      */
     protected function tearDown(){
 
-        $this->assertFalse($this->db->isAnyTransactionActive(), 'unclosed transactions exist!!');
-        $this->assertFalse($this->sut->getDataBaseManager()->isAnyTransactionActive(), 'unclosed transactions exist!!');
-        $this->assertTrue($this->db->dataBaseExists($this->dbName));
-        $this->assertTrue($this->db->dataBaseDelete($this->dbName));
-
-        $this->assertTrue($this->sut->disconnect());
-        $this->assertTrue($this->db->disconnect());
+        DataBaseManagerTest::deleteAndDisconnectFromTestingMariaDb($this->sut);
     }
 
 
@@ -226,7 +204,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         // Test ok values
         $test = new DataBaseObjectsManager();
-        $this->assertTrue($test->connectMysql($this->dbHost, $this->dbUser, $this->dbPsw));
+        $this->assertTrue($test->connectMysql($this->dbSetup->host, $this->dbSetup->user, $this->dbSetup->psw));
         $this->assertTrue($test->disconnect());
 
         // Test wrong values
@@ -247,7 +225,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         // Test ok values
         $test = new DataBaseObjectsManager();
-        $this->assertTrue($test->connectMariaDb($this->dbHost, $this->dbUser, $this->dbPsw));
+        $this->assertTrue($test->connectMariaDb($this->dbSetup->host, $this->dbSetup->user, $this->dbSetup->psw));
         $this->assertTrue($test->disconnect());
 
         // Test wrong values
@@ -515,7 +493,19 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
      */
     public function testSave_multiple_objects_on_a_single_transaction(){
 
+        // Test empty values
         // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 
@@ -1042,6 +1032,9 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object->name = 'john';
         $object->arrayProp = [true];
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/arrayProp size is not specified/');
+
+        // This is simply to avoid the "test does not perform any assertion" warning
+        $this->assertTrue(true);
     }
 
 
@@ -1429,6 +1422,20 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         // TODO - And what happens with the previously existing property table?? should it be removed also??? or what!
         // It is complicated cause we cannot know if the table exists without performing a query
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 
@@ -1438,6 +1445,20 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
     public function testSave_Object_With_Multi_Language_Properties_update_object_by_renaming_array_prop_that_did_exist_previously(){
 
         // TODO - And what happens with the previously existing property table?? should it be removed also??? or what!
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 
@@ -1474,6 +1495,20 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
     public function testSave_Object_With_Multi_Language_Properties_update_object_by_removing_multilan_prop_that_did_exist_previously(){
 
         // TODO - And what happens with the previously existing property table?? should it be removed also??? or what!
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 
@@ -1483,6 +1518,20 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
     public function testSave_Object_With_Multi_Language_Properties_update_object_by_renaming_multilan_prop_that_did_exist_previously(){
 
         // TODO - And what happens with the previously existing property table?? should it be removed also??? or what!
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 
@@ -1556,6 +1605,9 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object->setLocales(['es_ES', 'en_US']);
         $object->setupLocalized = 1;
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/setupLocalized .1. does not match BOOL.1. .locale es_ES.$/');
+
+        // This is simply to avoid the "test does not perform any assertion" warning
+        $this->assertTrue(true);
     }
 
 

@@ -278,6 +278,7 @@ class DepotManager extends BaseStrictClass{
             }
 
             $databaseObjectsManager = new DataBaseObjectsManager();
+            $databaseObjectsManager->tablesPrefix = $this->_loadedDepotSetup->users->prefix;
 
             // Currently only mariadb is accepted. When more databases are allowed, we must check here to which db we are connecting
             $databaseObjectsManager->connectMariaDb($usersSource->host, $usersSource->user, $usersSource->password, $usersSource->database);

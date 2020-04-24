@@ -339,12 +339,13 @@ class DepotManagerTest extends TestCase {
         // Test ok values
         $this->setup->sources->mariadb[] = new stdclass();
 
-        // TODO - should be interesting to extract test database connection info to a common file for all tests
+        $dbSetup = json_decode($this->filesManager->readFile(__DIR__.'/../../resources/managers/databaseManager/database-setup-for-testing.json'));
+
         $this->setup->sources->mariadb[0]->name = 'tmp_db_source';
-        $this->setup->sources->mariadb[0]->host = 'localhost';
+        $this->setup->sources->mariadb[0]->host = $dbSetup->host;
         $this->setup->sources->mariadb[0]->database = '';
-        $this->setup->sources->mariadb[0]->user = 'root';
-        $this->setup->sources->mariadb[0]->password = '';
+        $this->setup->sources->mariadb[0]->user = $dbSetup->user;
+        $this->setup->sources->mariadb[0]->password = $dbSetup->psw;
 
         $this->setup->depots[0]->users->source = 'tmp_db_source';
 

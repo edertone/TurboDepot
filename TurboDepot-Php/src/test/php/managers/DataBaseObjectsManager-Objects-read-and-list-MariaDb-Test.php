@@ -89,6 +89,19 @@ class DataBaseObjectsManagerObjectsReadAndListMariaDbTest extends TestCase {
      */
     public function testTODO(){
 
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 }
 
