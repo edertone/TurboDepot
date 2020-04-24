@@ -603,7 +603,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     private function _validateAndFormatTypeArray(array $array, $property){
 
-        $result = ['', 1];
+        $result = ['', null];
         $isArray = false;
         $isNotNull = false;
         $isMultiLanguage = false;
@@ -634,13 +634,26 @@ class DataBaseObjectsManager extends BaseStrictClass{
                     break;
 
                 default:
+
+                    if(!is_int($item)){
+
+                        throw new UnexpectedValueException($property.' is defined as '.(($isArray) ? 'an array of ' : '').$result[0].' but size is invalid');
+                    }
+
                     $result[1] = $item;
             }
         }
 
-        if(!is_int($result[1])){
+        if($result[1] === null){
 
-            throw new UnexpectedValueException($property.' is defined as '.(($isArray) ? 'an array of ' : '').$result[0].' but size is invalid');
+            if($result[0] === self::BOOL){
+
+                $result[1] = 1;
+
+            }else{
+
+                throw new UnexpectedValueException($property.' size is not specified');
+            }
         }
 
         if($result[0] === self::DATETIME && $result[1] !== 0  && $result[1] !== 3  && $result[1] !== 6){

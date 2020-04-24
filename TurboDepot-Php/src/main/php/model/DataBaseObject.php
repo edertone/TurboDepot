@@ -25,31 +25,31 @@ abstract class DataBaseObject extends BaseStrictClass{
     /**
      * @see DataBaseObject::getDbId()
      */
-    private $dbId = null;
+    protected $dbId = null;
 
 
     /**
      * @see DataBaseObject::getDbUUID()
      */
-    private $dbUUID = null;
+    protected $dbUUID = null;
 
 
     /**
      * @see DataBaseObject::getDbCreationDate()
      */
-    private $dbCreationDate = null;
+    protected $dbCreationDate = null;
 
 
     /**
      * @see DataBaseObject::getDbModificationDate()
      */
-    private $dbModificationDate = null;
+    protected $dbModificationDate = null;
 
 
     /**
      * @see DataBaseObject::getDbDeleted()
      */
-    private $dbDeleted = null;
+    protected $dbDeleted = null;
 
 
     /**
@@ -69,10 +69,11 @@ abstract class DataBaseObject extends BaseStrictClass{
 
     /**
      * Associative array that defines the data types to use with the object properties. Each array key must be the object property to set
-     * and each value an array with the following elements:<br>
+     * and each value an array with the following elements in any order:<br>
+     *
      * 1. The property data type: DataBaseObjectsManager::BOOL, ::INT, ::DOUBLE, ::STRING, ::DATETIME or ::ARRAY<br>
-     * 2. The property data size (for int and string values the maximum number of digits that can be stored)
-     * 3. True if the property can have null values, false otherwise
+     * 2. The property data size (for int and string values the maximum number of digits that can be stored). It is mandatory<br>
+     * 3. DataBaseObjectsManager::NOT_NULL if the property can have null values, skip this otherwise (it is optional)
      *
      * @var array
      */
@@ -84,7 +85,7 @@ abstract class DataBaseObject extends BaseStrictClass{
      *
      * @var array
      */
-    private $_locales = [];
+    protected $_locales = [];
 
 
     /**
@@ -92,11 +93,11 @@ abstract class DataBaseObject extends BaseStrictClass{
      *
      * @var boolean
      */
-    private $_isMultiLanguage = null;
+    protected $_isMultiLanguage = null;
 
 
     /**
-     * This method is always called before any other thing at thedatabase object constructor.
+     * This method is always called before any other thing at the database object constructor.
 
      * It must be declared to define the database object configuration and type values. If nothing is specified here, all setup parameters will be the default ones.
      *
@@ -170,7 +171,7 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
-     * Date when the object was created, or null if the object's still not saved to db
+     * Date when the object was created (UTC), or null if the object's still not saved to db
      *
      * @return null|string
      */
@@ -181,7 +182,7 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
-     * Date when the object was last modified, or null if the object's still not saved to db
+     * Date when the object was last modified (UTC), or null if the object's still not saved to db
      *
      * @return null|string
      */
@@ -192,7 +193,7 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
-     * When an object is deleted, the date and time of deletion is stored on this property, meaning it's been moved to trash. To delete it totally,
+     * When an object is deleted, the date and time (UTC) of deletion is stored on this property, meaning it's been moved to trash. To delete it totally,
      * we need to empty the trash (or disable the trash feature).
      *
      * If the object is still not stored on database or it is stored but not deleted, this value will be null

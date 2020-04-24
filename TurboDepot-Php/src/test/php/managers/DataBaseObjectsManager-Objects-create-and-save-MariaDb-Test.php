@@ -38,6 +38,8 @@ use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\Object
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongPropThatStartsWithUnderscore;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongStringTypeSize;
 use org\turbotesting\src\main\php\utils\AssertUtils;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerTypedWithoutSize;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerTypedArrayWithoutSize;
 
 
 /**
@@ -1024,6 +1026,22 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongDateTypeSize()); }, '/date DATETIME size must be 0, 3 or 6/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongArrayTypeSize()); }, '/array is defined as an array of STRING but size is invalid/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNotAllTypesDefined()); }, '/notDefined has no defined type but typing is mandatory. Define a type or disable this restriction by setting _isTypingMandatory = false/');
+    }
+
+    /**
+     * test
+     */
+    public function testSave_Strong_typed_Object_that_does_not_declare_a_type_size(){
+
+        $object = new CustomerTypedWithoutSize();
+        $object->name = 'john';
+        $object->commercialName = 'Smith';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/commercialName size is not specified/');
+
+        $object = new CustomerTypedArrayWithoutSize();
+        $object->name = 'john';
+        $object->arrayProp = [true];
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/arrayProp size is not specified/');
     }
 
 
