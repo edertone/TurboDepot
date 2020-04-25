@@ -986,6 +986,29 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
+     * Obtain all the data for the table rows that match the specified column values criteria
+     *
+     * @param string $tableName The name of the table for which we want to obtain the rows data
+     * @param string $columnValues Associative array where keys are column names and values are column values that must be found on all the rows
+     *        be returned
+     *
+     * @return array An array of associative arrays with the query result data. Note that in PHP all query result values are returned as strings
+     *         which must be casted to the appropiate types by the user
+     */
+    public function tableGetRow($tableName, array $columnValues){
+
+        $sqlWherePart = [];
+
+        foreach ($columnValues as $columnName => $value) {
+
+            $sqlWherePart[] = $columnName." = '".$value."'";
+        }
+
+        return $this->query('SELECT * FROM '.$tableName.' WHERE '.implode(' AND ', $sqlWherePart));
+    }
+
+
+    /**
      * Delete the specified database table
      *
      * @param string $tableName The name of the table to delete
