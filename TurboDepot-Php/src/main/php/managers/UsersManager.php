@@ -162,12 +162,30 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Perform the login for the specified user token
      *
-     * @param string $token
+     * @param string $token An active and valid user token
+     *
+     * @return User[]|string[] An empty array if login failed or an array with two elements if
+     *         the login succeeded: First element will be a string with the user token and second element will be the User instance for the
+     *         requested user.
      */
     public function loginByToken(string $token){
 
+        if(StringUtils::isEmpty($token)){
+
+            throw new UnexpectedValueException('token must have a value');
+        }
+
+        $tableName = $this->_databaseObjectsManager->tablesPrefix.'token';
+        $tokenData = $this->_databaseObjectsManager->getDataBaseManager()->tableGetRows($tableName, ['token' => $token]);
+
+        if(count($tokenData) === 1){
+
+            return [$token, $this->_databaseObjectsManager->getByDbId(User::class, $tokenData[0]['userdbid'])[0]];
+        }
+
+        return [];
     }
 
 

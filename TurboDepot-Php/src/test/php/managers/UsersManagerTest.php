@@ -199,8 +199,8 @@ class UsersManagerTest extends TestCase {
         // Test empty values
         AssertUtils::throwsException(function() { $this->sut->login(); }, '/Too few arguments to function/');
         AssertUtils::throwsException(function() { $this->sut->login('', ''); }, '/userName and password must have a value/');
-        AssertUtils::throwsException(function() { $this->sut->login(null, null); }, '/Argument 1 passed to .*UsersManager.* must be of the type string, null given/');
-        AssertUtils::throwsException(function() { $this->sut->login([], []); }, '/Argument 1 passed to .*UsersManager.* must be of the type string, array given/');
+        AssertUtils::throwsException(function() { $this->sut->login(null, null); }, '/Argument 1 passed to .*login.* must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->login([], []); }, '/Argument 1 passed to .*login.* must be of the type string, array given/');
 
         // Test ok values
         $user = new User();
@@ -229,6 +229,54 @@ class UsersManagerTest extends TestCase {
         // TODO
 
         // Test wrong values
+        $this->assertSame([], $this->sut->login('invalid user', 'invalid token'));
+        // TODO
+
+        // Test exceptions
+        // TODO
+    }
+
+
+    /**
+     * test
+     */
+    public function testLoginByToken(){
+
+        // Test empty values
+        AssertUtils::throwsException(function() { $this->sut->loginByToken(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->loginByToken(''); }, '/token must have a value/');
+        AssertUtils::throwsException(function() { $this->sut->loginByToken(null); }, '/Argument 1 passed to .*loginByToken.* must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->loginByToken([]); }, '/Argument 1 passed to .*loginByToken.* must be of the type string, array given/');
+
+        // Test ok values
+        $user = new User();
+        $user->userName = 'user';
+        $user->password = 'psw';
+        $this->sut->save($user);
+        $token = $this->sut->login('user', 'psw')[0];
+        $login1Result = $this->sut->loginByToken($token);
+        $this->assertSame($login1Result[0], $token);
+        $this->assertSame('user', $login1Result[1]->userName);
+        $this->assertSame('psw', $login1Result[1]->password);
+        $this->assertSame(1, $login1Result[1]->getDbId());
+
+        $user = new User();
+        $user->userName = 'user2';
+        $user->password = 'psw2';
+        $this->sut->save($user);
+        $token = $this->sut->login('user2', 'psw2')[0];
+        $login2Result = $this->sut->loginByToken($token);
+        $this->assertSame($login2Result[0], $token);
+        $this->assertSame('user2', $login2Result[1]->userName);
+        $this->assertSame('psw2', $login2Result[1]->password);
+        $this->assertSame(2, $login2Result[1]->getDbId());
+
+        $this->assertSame([$login1Result[0], $login2Result[0]], $this->db->tableGetColumnValues('usr_token', 'token'));
+        $this->assertSame(['1', '2'], $this->db->tableGetColumnValues('usr_token', 'userdbid'));
+        // TODO
+
+        // Test wrong values
+        $this->assertSame([], $this->sut->loginByToken('invalid token'));
         // TODO
 
         // Test exceptions
