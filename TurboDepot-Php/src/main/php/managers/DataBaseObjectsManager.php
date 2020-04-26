@@ -495,6 +495,33 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
+     * Generate an object instance from the provided table data array
+     *
+     * @param array $tableData An associative array with the object table data
+     * @param mixed $class The class (which extends DataBaseObject) for the object type that we want to obtain. Fo example: User::class
+     *
+     * @return DataBaseObject The generated database object
+     */
+    private function _convertTableDataToObject(array $tableData, $class){
+
+        $object = new $class();
+
+        $objectbasicProperties = $this->_getBasicProperties($object, false);
+
+        $this->_setPrivatePropertyValue($object, 'dbId', (int)$tableData['dbid']);
+        $this->_setPrivatePropertyValue($object, 'dbCreationDate', $tableData['dbcreationdate']);
+        $this->_setPrivatePropertyValue($object, 'dbModificationDate', $tableData['dbmodificationdate']);
+
+        foreach ($objectbasicProperties as $property) {
+
+            $object->{$property} = $tableData[strtolower($property)];
+        }
+
+        return $object;
+    }
+
+
+    /**
      * Obtain the SQL type which can be used to store the requested object property with the smallest possible precision.
      *
      * @param DataBaseObject $object An object instance that we want to inspect
@@ -1224,27 +1251,55 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Search a database object that has the specified dbId value
+     *
+     * @param mixed $class The class (which extends DataBaseObject) for the object type that we want to obtain. Fo example: User::class
+     * @param array $dbid Integers with the dbId value we are looking for
+     *
+     * @return DataBaseObject An object instance that matches the specified id or null if object not found.
      */
     public function getByDbId($class, int $dbid) {
 
-        // TODO - Obtain one or more Database objects given its id or ids
+        $result = $this->getByDbIds($class, [$dbid]);
+
+        return $result === [] ? null : $result;
     }
 
 
     /**
-     * TODO
+     * Search database objects which have the specified dbId values
+     *
+     * @param mixed $class The class (which extends DataBaseObject) for the object types that we want to obtain. Fo example: User::class
+     * @param array $dbids Array of integers with all the dbId values we are looking for
+     *
+     * @return DataBaseObject[] An array of object instances with all the objects that match the specified ids, or empty array if no objects found.
      */
     public function getByDbIds($class, array $dbids) {
 
-        // TODO - Obtain one or more Database objects given its id or ids
+        $tableName = $this->tablesPrefix.strtolower(StringUtils::getPathElement($class));
+
+        $dbidsArray = [];
+
+        foreach ($dbids as $dbid) {
+
+            $dbidsArray['dbid'] = $dbid;
+        }
+
+        $data = $this->_db->tableGetRows($tableName, $dbidsArray);
+
+        if($data === false){
+
+            return [];
+        }
+
+        return array_map(function ($r) use ($class) {return $this->_convertTableDataToObject($r, $class);}, $data);
     }
 
 
     /**
      * Search database objects of the specified type which have values that match the specified properties
      *
-     * @param class $class The class for the object types we want to obtain. That class must extend DataBaseObject. Fo example: User::class
+     * @param mixed $class The class (which extends DataBaseObject) for the object types that we want to obtain. Fo example: User::class
      * @param array $propertyValues Associative array where keys are the property names and values the property values that must be found on all
      *        the objects that will be returned by this Method
      *
@@ -1254,33 +1309,14 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $tableName = $this->tablesPrefix.strtolower(StringUtils::getPathElement($class));
 
-        $data = $this->_db->tableGetRow($tableName, $propertyValues);
+        $data = $this->_db->tableGetRows($tableName, array_map(function ($p) {return strtolower($p);}, $propertyValues));
 
         if($data === false){
 
             return [];
         }
 
-        $object = new $class();
-        $objectbasicProperties = $this->_getBasicProperties($object, false);
-
-        $result = [];
-
-        foreach ($data as $row) {
-
-            $this->_setPrivatePropertyValue($object, 'dbId', (int)$row['dbid']);
-            $this->_setPrivatePropertyValue($object, 'dbCreationDate', $row['dbcreationdate']);
-            $this->_setPrivatePropertyValue($object, 'dbModificationDate', $row['dbmodificationdate']);
-
-            foreach ($objectbasicProperties as $property) {
-
-                $object->{$property} = $row[strtolower($property)];
-            }
-
-            $result[] = $object;
-        }
-
-        return $result;
+        return array_map(function ($r) use ($class) {return $this->_convertTableDataToObject($r, $class);}, $data);
     }
 
 

@@ -995,7 +995,7 @@ class DataBaseManager extends BaseStrictClass {
      * @return array An array of associative arrays with the query result data. Note that in PHP all query result values are returned as strings
      *         which must be casted to the appropiate types by the user
      */
-    public function tableGetRow($tableName, array $columnValues){
+    public function tableGetRows($tableName, array $columnValues){
 
         $sqlWherePart = [];
 
