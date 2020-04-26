@@ -12,6 +12,9 @@
 namespace org\turbodepot\src\test\php\managers;
 
 use PHPUnit\Framework\TestCase;
+use org\turbodepot\src\main\php\managers\UsersManager;
+use org\turbotesting\src\main\php\utils\AssertUtils;
+use org\turbodepot\src\main\php\model\User;
 
 
 /**
@@ -40,6 +43,11 @@ class UsersManagerTest extends TestCase {
      */
     protected function setUp(){
 
+        $this->dbObjectsManager = DataBaseManagerTest::createAndConnectToTestingMariaDb();
+        $this->dbObjectsManager->tablesPrefix = 'usr_';
+
+        $this->db = $this->dbObjectsManager->getDataBaseManager();
+        $this->sut = new UsersManager($this->dbObjectsManager);
     }
 
 
@@ -50,6 +58,7 @@ class UsersManagerTest extends TestCase {
      */
     protected function tearDown(){
 
+        DataBaseManagerTest::deleteAndDisconnectFromTestingMariaDb($this->dbObjectsManager);
     }
 
 
@@ -65,9 +74,7 @@ class UsersManagerTest extends TestCase {
 
 
     /**
-     * testConstruct
-     *
-     * @return void
+     * test
      */
     public function testConstruct(){
 
@@ -85,6 +92,151 @@ class UsersManagerTest extends TestCase {
 
         $this->markTestIncomplete('This test has not been implemented yet.');
     }
+
+
+    /**
+     * test
+     */
+    public function testEncodeUserAndPassword(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * test
+     */
+    public function testDecodeUserName(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * test
+     */
+    public function testDecodePassword(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * test
+     */
+    public function testSave(){
+
+        // Test empty values
+        AssertUtils::throwsException(function() { $this->sut->save(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->save(null); }, '/Argument 1 passed to .* must be an instance of .*User/');
+        AssertUtils::throwsException(function() { $this->sut->save(''); }, '/Argument 1 passed to .* must be an instance of .*User/');
+        AssertUtils::throwsException(function() { $this->sut->save([]); }, '/Argument 1 passed to .* must be an instance of .*User/');
+
+        // Test ok values
+        $user = new User();
+        $user->userName = 'user';
+        $user->password = 'psw';
+        $this->sut->save($user);
+        $this->assertSame(['user'], $this->db->tableGetColumnValues('usr_user', 'username'));
+        $this->assertSame(['psw'], $this->db->tableGetColumnValues('usr_user', 'password'));
+
+        $user = new User();
+        $user->userName = 'user2';
+        $user->password = 'psw2';
+        $this->sut->save($user);
+        $this->assertSame(['user', 'user2'], $this->db->tableGetColumnValues('usr_user', 'username'));
+        $this->assertSame(['psw', 'psw2'], $this->db->tableGetColumnValues('usr_user', 'password'));
+
+        // Test wrong values
+        // Test exceptions
+        AssertUtils::throwsException(function() { $this->sut->save('string'); }, '/Argument 1 passed to .* must be an instance of .*User/');
+        AssertUtils::throwsException(function() { $this->sut->save(1345345); }, '/Argument 1 passed to .* must be an instance of .*User/');
+        AssertUtils::throwsException(function() { $this->sut->save([1,2,3,4,5]); }, '/Argument 1 passed to .* must be an instance of .*User/');
+    }
+
+
+    /**
+     * test
+     */
+    public function testLogin(){
+
+        // Test empty values
+        AssertUtils::throwsException(function() { $this->sut->login(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->login('', ''); }, '/userName and password must have a value/');
+        AssertUtils::throwsException(function() { $this->sut->login(null, null); }, '/Argument 1 passed to .*UsersManager.* must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->login([], []); }, '/Argument 1 passed to .*UsersManager.* must be of the type string, array given/');
+
+        // Test ok values
+        $user = new User();
+        $user->userName = 'user';
+        $user->password = 'psw';
+        $this->sut->save($user);
+        $login1Result = $this->sut->login('user', 'psw');
+        $this->assertTrue(strlen($login1Result[0]) > 100);
+        $this->assertSame('user', $login1Result[1]->userName);
+        $this->assertSame('psw', $login1Result[1]->password);
+        $this->assertSame(1, $login1Result[1]->getDbId());
+
+        $user = new User();
+        $user->userName = 'user2';
+        $user->password = 'psw2';
+        $this->sut->save($user);
+        $login2Result = $this->sut->login('user2', 'psw2');
+        $this->assertTrue(strlen($login2Result[0]) > 100);
+        $this->assertSame('user2', $login2Result[1]->userName);
+        $this->assertSame('psw2', $login2Result[1]->password);
+        $this->assertSame(2, $login2Result[1]->getDbId());
+
+        $this->assertSame([$login1Result[0], $login2Result[0]], $this->db->tableGetColumnValues('usr_token', 'token'));
+
+        $this->assertSame(['1', '2'], $this->db->tableGetColumnValues('usr_token', 'userdbid'));
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+    }
+
+
+    // TODO - implement all missing tests
 }
 
 ?>

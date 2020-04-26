@@ -745,7 +745,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      *
      * @return string[] An array with all the basic property names, sorted as they must be on the object database table.
      */
-    private function _getBasicProperties(DataBaseObject $object){
+    private function _getBasicProperties(DataBaseObject $object, bool $includeBaseObjectProperties = true){
 
         $basicProperties = [];
         $excludedProps = array_merge($this->_getArrayTypedProperties($object), $this->_getMultiLanguageTypedProperties($object));
@@ -758,7 +758,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             }
         }
 
-        return array_unique(array_merge($this->_baseObjectProperties, $basicProperties));
+        return $includeBaseObjectProperties ? array_unique(array_merge($this->_baseObjectProperties, $basicProperties)) : $basicProperties;
     }
 
 
@@ -1226,7 +1226,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
     /**
      * TODO
      */
-    public function getByDbId($class, $dbid) {
+    public function getByDbId($class, int $dbid) {
 
         // TODO - Obtain one or more Database objects given its id or ids
     }
@@ -1238,6 +1238,49 @@ class DataBaseObjectsManager extends BaseStrictClass{
     public function getByDbIds($class, array $dbids) {
 
         // TODO - Obtain one or more Database objects given its id or ids
+    }
+
+
+    /**
+     * Search database objects of the specified type which have values that match the specified properties
+     *
+     * @param class $class The class for the object types we want to obtain. That class must extend DataBaseObject. Fo example: User::class
+     * @param array $propertyValues Associative array where keys are the property names and values the property values that must be found on all
+     *        the objects that will be returned by this Method
+     *
+     * @return array An array of object instances with all the objects that match the specified properties, or empty array if no objects found.
+     */
+    public function getByPropertyValues($class, array $propertyValues) {
+
+        $tableName = $this->tablesPrefix.strtolower(StringUtils::getPathElement($class));
+
+        $data = $this->_db->tableGetRow($tableName, $propertyValues);
+
+        if($data === false){
+
+            return [];
+        }
+
+        $object = new $class();
+        $objectbasicProperties = $this->_getBasicProperties($object, false);
+
+        $result = [];
+
+        foreach ($data as $row) {
+
+            $this->_setPrivatePropertyValue($object, 'dbId', (int)$row['dbid']);
+            $this->_setPrivatePropertyValue($object, 'dbCreationDate', $row['dbcreationdate']);
+            $this->_setPrivatePropertyValue($object, 'dbModificationDate', $row['dbmodificationdate']);
+
+            foreach ($objectbasicProperties as $property) {
+
+                $object->{$property} = $row[strtolower($property)];
+            }
+
+            $result[] = $object;
+        }
+
+        return $result;
     }
 
 

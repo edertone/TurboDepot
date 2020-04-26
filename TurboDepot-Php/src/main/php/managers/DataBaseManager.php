@@ -683,7 +683,7 @@ class DataBaseManager extends BaseStrictClass {
      * Creates a new empty table with the specified name, columns and constraints
      *
      * @param string $tableName The name for the new table to create
-     * @param @param array $columns An array containing all the columns to create and their type. Each array element must be a string with the
+     * @param array $columns An array containing all the columns to create and their type. Each array element must be a string with the
      *        column name and the sql data type to use. For example: 'column1 bigint', 'column2 varchar(255)', 'column 3 double NOT NULL' etc...
      * @param array $primaryKey An array with all the column names that conform the table primary key (or empty array if no primary key)
      * @param array $uniqueIndices An array of arrays where each element contains all the column names for each unique index to create

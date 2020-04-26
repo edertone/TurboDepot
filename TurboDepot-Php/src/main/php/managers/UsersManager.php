@@ -12,15 +12,26 @@
 
 namespace org\turbodepot\src\main\php\managers;
 
+use Throwable;
 use UnexpectedValueException;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
 use org\turbocommons\src\main\php\utils\ConversionUtils;
+use org\turbodepot\src\main\php\model\User;
+use org\turbocommons\src\main\php\utils\StringUtils;
 
 
 /**
  * Users management class
  */
 class UsersManager extends BaseStrictClass{
+
+
+    /**
+     * An instance of the DataBaseObjectsManager class that is used by this class to interact with db
+     *
+     * @var DataBaseObjectsManager
+     */
+    private $_databaseObjectsManager = null;
 
 
     /**
@@ -31,7 +42,9 @@ class UsersManager extends BaseStrictClass{
      */
     public function __construct(DataBaseObjectsManager $databaseObjectsManager){
 
-        if(!$databaseObjectsManager->getDataBaseManager()->isConnected()){
+        $this->_databaseObjectsManager = $databaseObjectsManager;
+
+        if(!$this->_databaseObjectsManager->getDataBaseManager()->isConnected()){
 
             throw new UnexpectedValueException('No active connection to database available for the provided DataBaseObjectsManager');
         }
@@ -106,44 +119,114 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Save to database the provided user instance or update it if it already exists
+     *
+     * @param User $user The User instance that we want to save
+     *
+     * @return int An int containing the dbId value for the user that's been saved.
+     */
+    public function save(User $user){
+
+        return $this->_databaseObjectsManager->save($user);
+    }
+
+
+    /**
+     * Perform the login for the specified username and password.
+     *
+     * @param string $userName The username for the user we want to login
+     * @param string $password The password for the user we want to login
+     * @param string $domain The domain to which the user will be logged in
+     *
+     * @return User[]|string[] An empty array if login failed or an array with two elements if
+     *         the login succeeded: First element will be a string with the user token and second element will be the User instance for the
+     *         requested user.
      */
     public function login(string $userName, string $password, string $domain = ''){
 
-        $loginOk = true;
+        if(StringUtils::isEmpty($userName.$password)){
 
-        if($loginOk){
-
-            return $this->saveToken($this->encodeToken($userName, $password));
+            throw new UnexpectedValueException('userName and password must have a value');
         }
 
-        return '';
+        $user = $this->_databaseObjectsManager->getByPropertyValues(User::class,
+            ['userName' => $userName, 'password' => $password, 'domain' => $domain]);
+
+        if(count($user) === 1){
+
+            return [$this->createToken($user[0]), $user[0]];
+        }
+
+        return [];
     }
 
 
     /**
      * TODO
+     *
+     * @param string $token
+     */
+    public function loginByToken(string $token){
+
+    }
+
+
+    /**
+     * Perform a login obtaining the user and password from the encoded credentials
+     *
+     * @see UsersManager::login
+     * @see UsersManager::encodeUserAndPassword
+     *
+     * @param string $encodedCredentials The user and password credentials as they are encoded by UsersManager::encodeUserAndPassword() method
+     * @param string $domain The domain to which the user will be logged in
+     *
+     * @return See UsersManager::login()
      */
     public function loginFromEncodedCredentials(string $encodedCredentials, string $domain = ''){
 
-        $userName = $usersManager->decodeUserName($encodedCredentials);
-        $psw = $usersManager->decodePassword($encodedCredentials);
-
-
+        return $this->login($this->decodeUserName($encodedCredentials), $this->decodePassword($encodedCredentials));
     }
 
 
     /**
-     * TODO
+     * Generate a token string for the provided user and stores it on database so it can be later verified
+     *
+     * @param User $user An instance of the user fo which we want to create a token.
+     *
+     * @return string
      */
-    public function createToken(string $userName, string $domain = ''){
+    private function createToken(User $user){
 
-        return base64_encode(md5($userName).md5($password));
+        $token = base64_encode(StringUtils::generateRandom(75, 75).
+            StringUtils::limitLen(md5($user->userName).md5($user->password), 25));
+
+        $db = $this->_databaseObjectsManager->getDataBaseManager();
+        $tableName = $this->_databaseObjectsManager->tablesPrefix.'token';
+
+        try {
+
+            $db->tableAddRows($tableName, [['token' => $token, 'userdbid' => $user->getDbId()]]);
+
+        } catch (Throwable $e) {
+
+            if(!$db->tableExists($tableName) && $db->tableCreate($tableName,
+                ['token varchar(150) NOT NULL', 'userdbid bigint NOT NULL'])){
+
+                return $this->createToken($user);
+            }
+
+            throw new UnexpectedValueException('Could not create '.$tableName.' table');
+        }
+
+        return $token;
     }
 
 
     /**
      * TODO
+     *
+     * @param string $token
+     * @return boolean
      */
     private function isTokenValid(string $token){
 
@@ -163,40 +246,6 @@ class UsersManager extends BaseStrictClass{
         }
 
         return false;
-    }
-
-
-    /**
-     * TODO
-     */
-    private function encodeToken(string $userName, string $password){
-
-        return base64_encode(md5($userName).md5($password));
-    }
-
-
-    /**
-     * TODO
-     */
-    private function saveToken(string $token){
-
-//         $token = new DepotFile();
-
-//         $token->setName($token);
-//         $token->setContent(curddate() + $this->_setup->tokenLifetime);
-
-//         $this->_depotManager->saveFile('tokens', $token);
-
-//         return $token;
-    }
-
-
-    /**
-     * TODO
-     */
-    private function createDomain(string $name, string $description){
-
-        // TODO
     }
 }
 
