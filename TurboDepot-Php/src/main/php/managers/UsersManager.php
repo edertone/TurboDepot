@@ -13,6 +13,8 @@
 namespace org\turbodepot\src\main\php\managers;
 
 use Throwable;
+use DateTime;
+use DateTimeZone;
 use UnexpectedValueException;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
 use org\turbocommons\src\main\php\utils\ConversionUtils;
@@ -24,6 +26,21 @@ use org\turbocommons\src\main\php\utils\StringUtils;
  * Users management class
  */
 class UsersManager extends BaseStrictClass{
+
+
+    /**
+     * Defines the number of seconds that user tokens will be active since they are created. After the number of seconds has passed,
+     * tokens will expire and a login will be necessary to obtain a new token. (Note that  tokenLifeTimeReinit will affect this value)
+     */
+    public $tokenLifeTime = 3600;
+
+
+    /**
+     * If set to true, every time a token is validated the lifetime will be restarted to the configured token lifetime. So the token lifetime
+     * will start counting again after the last token validation has been performed. So with a 10 minutes token lifetime if we perform 2 token
+     * validations in 5 minutes, the time will still be 10 minutes after the last validation's been performed.
+     */
+    public $isTokenLifeTimeRecycled = true;
 
 
     /**
@@ -127,12 +144,29 @@ class UsersManager extends BaseStrictClass{
      */
     public function save(User $user){
 
+        // TODO - duplicate user names must not be allowed
+
         return $this->_databaseObjectsManager->save($user);
     }
 
 
     /**
-     * Perform the login for the specified username and password.
+     * Check if the specified userName is stored on database for the specified domain
+     *
+     * @param string $userName The user name that we want to check
+     * @param string $domain The domain for which we want to check the user
+     *
+     * @return boolean True if the user exists on the specified domain, false otherwise
+     */
+    public function isUser(string $userName, string $domain = ''){
+
+        return count($this->_databaseObjectsManager->getByPropertyValues(User::class,
+            ['userName' => $userName, 'domain' => $domain])) === 1;
+    }
+
+
+    /**
+     * Perform the login for the specified username and password, and generate a new token to be used for subsequent logins
      *
      * @param string $userName The username for the user we want to login
      * @param string $password The password for the user we want to login
@@ -162,34 +196,6 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Perform the login for the specified user token
-     *
-     * @param string $token An active and valid user token
-     *
-     * @return User[]|string[] An empty array if login failed or an array with two elements if
-     *         the login succeeded: First element will be a string with the user token and second element will be the User instance for the
-     *         requested user.
-     */
-    public function loginByToken(string $token){
-
-        if(StringUtils::isEmpty($token)){
-
-            throw new UnexpectedValueException('token must have a value');
-        }
-
-        $tableName = $this->_databaseObjectsManager->tablesPrefix.'token';
-        $tokenData = $this->_databaseObjectsManager->getDataBaseManager()->tableGetRows($tableName, ['token' => $token]);
-
-        if(count($tokenData) === 1){
-
-            return [$token, $this->_databaseObjectsManager->getByDbId(User::class, $tokenData[0]['userdbid'])[0]];
-        }
-
-        return [];
-    }
-
-
-    /**
      * Perform a login obtaining the user and password from the encoded credentials
      *
      * @see UsersManager::login
@@ -207,6 +213,49 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
+     * Test that the current token is active and valid, and that it is allowed to perform the specified list of user operations
+     *
+     * @param string $token An active and valid user token
+     * @param array $operations TODO
+     *
+     * @return True if the token is valid for the provided list of operations or false otherwise.
+     */
+    public function isTokenValid(string $token, array $operations = []){
+
+        if(StringUtils::isEmpty($token)){
+
+            throw new UnexpectedValueException('token must have a value');
+        }
+
+        $db = $this->_databaseObjectsManager->getDataBaseManager();
+        $tableName = $this->_databaseObjectsManager->tablesPrefix.'token';
+        $tokenData = $db->tableGetRows($tableName, ['token' => $token]);
+
+        if(count($tokenData) === 1){
+
+            if((new DateTime($tokenData[0]['expires'], new DateTimeZone('UTC')) > new DateTime(null, new DateTimeZone('UTC')))){
+
+                if($this->isTokenLifeTimeRecycled === true){
+
+                    $newExpiryDate = (new DateTime('+'.$this->tokenLifeTime.' seconds', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
+
+                    $db->tableUpdateRow($tableName, ['token' => $tokenData[0]['token']], ['expires' => $newExpiryDate]);
+                }
+
+                return true;
+            }
+
+            if($db->tableDeleteRows($tableName, ['token' => $tokenData[0]['token']]) === 0){
+
+                throw new UnexpectedValueException('Could not delete expired token from db');
+            }
+        }
+
+        return false;
+    }
+
+
+    /**
      * Generate a token string for the provided user and stores it on database so it can be later verified
      *
      * @param User $user An instance of the user fo which we want to create a token.
@@ -215,20 +264,22 @@ class UsersManager extends BaseStrictClass{
      */
     private function createToken(User $user){
 
+        $expiryDate = (new DateTime('+'.$this->tokenLifeTime.' seconds', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
+
         $token = base64_encode(StringUtils::generateRandom(75, 75).
-            StringUtils::limitLen(md5($user->userName).md5($user->password), 25));
+            StringUtils::limitLen(md5($user->userName).md5($expiryDate), 25));
 
         $db = $this->_databaseObjectsManager->getDataBaseManager();
         $tableName = $this->_databaseObjectsManager->tablesPrefix.'token';
 
         try {
 
-            $db->tableAddRows($tableName, [['token' => $token, 'userdbid' => $user->getDbId()]]);
+            $db->tableAddRows($tableName, [['token' => $token, 'userdbid' => $user->getDbId(), 'expires' => $expiryDate]]);
 
         } catch (Throwable $e) {
 
             if(!$db->tableExists($tableName) && $db->tableCreate($tableName,
-                ['token varchar(150) NOT NULL', 'userdbid bigint NOT NULL'])){
+                ['token varchar(150) NOT NULL', 'userdbid bigint NOT NULL', 'expires datetime NOT NULL'])){
 
                 return $this->createToken($user);
             }
@@ -237,33 +288,6 @@ class UsersManager extends BaseStrictClass{
         }
 
         return $token;
-    }
-
-
-    /**
-     * TODO
-     *
-     * @param string $token
-     * @return boolean
-     */
-    private function isTokenValid(string $token){
-
-        if($this->_depotManager->isFile('tokens', $token)){
-
-            // TODO -. farem servir ja el turbodepot per guardar en FS
-
-            $tokenExpiration = $this->_depotManager->getFile('tokens', $token);
-
-            if(!$tokenExpiration){
-
-                return true;
-            }
-
-            // Borrar token
-            $this->_depotManager->deleteFile('tokens', $token);
-        }
-
-        return false;
     }
 }
 

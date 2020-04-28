@@ -339,12 +339,12 @@ class TmpFilesManagerTest extends TestCase {
         $this->assertRegExp('/....-..-.._..-..-.._test-2/', $tmpDir);
         $this->assertTrue($this->filesManager->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.$tmpDir));
 
-        $tmpDir = $this->sut->addDirectory('nominutes', 0);
-        $this->assertRegExp('/....-..-.._..-..-.._nominutes/', $tmpDir);
+        $tmpDir = $this->sut->addDirectory('1minute', 1);
+        $this->assertRegExp('/....-..-.._..-..-.._1minute/', $tmpDir);
         $this->assertTrue($this->filesManager->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.$tmpDir));
 
-        $tmpDir = $this->sut->addDirectory('nominutes', 0);
-        $this->assertRegExp('/....-..-.._..-..-.._nominutes-1/', $tmpDir);
+        $tmpDir = $this->sut->addDirectory('1minute', 1);
+        $this->assertRegExp('/....-..-.._..-..-.._1minute/', $tmpDir);
         $this->assertTrue($this->filesManager->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.$tmpDir));
 
         $tmpDir = $this->sut->addDirectory('minutes', 10000);

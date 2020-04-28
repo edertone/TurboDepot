@@ -284,6 +284,8 @@ class DepotManager extends BaseStrictClass{
             $databaseObjectsManager->connectMariaDb($usersSource->host, $usersSource->user, $usersSource->password, $usersSource->database);
 
             $this->_usersManager = new UsersManager($databaseObjectsManager);
+            $this->_usersManager->tokenLifeTime = $this->_loadedDepotSetup->users->tokenLifeTime;
+            $this->_usersManager->isTokenLifeTimeRecycled = $this->_loadedDepotSetup->users->isTokenLifeTimeRecycled;
         }
 
         return $this->_usersManager;
