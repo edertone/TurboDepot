@@ -225,9 +225,10 @@ class UsersManagerTest extends TestCase {
 
         // Test empty values
         AssertUtils::throwsException(function() { $this->sut->login(); }, '/Too few arguments to function/');
-        AssertUtils::throwsException(function() { $this->sut->login('', ''); }, '/userName and password must have a value/');
         AssertUtils::throwsException(function() { $this->sut->login(null, null); }, '/Argument 1 passed to .*login.* must be of the type string, null given/');
         AssertUtils::throwsException(function() { $this->sut->login([], []); }, '/Argument 1 passed to .*login.* must be of the type string, array given/');
+
+        $this->assertSame([], $this->sut->login('', ''));
 
         // Test ok values
         $user = new User();
@@ -288,7 +289,7 @@ class UsersManagerTest extends TestCase {
     /**
      * test
      */
-    public function testValidateToken(){
+    public function testIsTokenValid(){
 
         // Test empty values
         AssertUtils::throwsException(function() { $this->sut->isTokenValid(); }, '/Too few arguments to function/');
@@ -366,7 +367,51 @@ class UsersManagerTest extends TestCase {
     }
 
 
-    // TODO - implement all missing tests
+    /**
+     * test
+     */
+    public function testLogout(){
+
+        // Test empty values
+        AssertUtils::throwsException(function() { $this->sut->logout(); }, '/Too few arguments to function/');
+        $this->assertFalse($this->sut->logout(null));
+        $this->assertFalse($this->sut->logout(''));
+        $this->assertFalse($this->sut->logout([]));
+
+        // Test ok values
+        $user = new User();
+        $user->userName = 'user';
+        $user->password = 'psw';
+        $this->sut->save($user);
+
+        $user = new User();
+        $user->userName = 'user2';
+        $user->password = 'psw2';
+        $this->sut->save($user);
+
+        $token = $this->sut->login('user', 'psw')[0];
+        $this->assertSame([$token], $this->db->tableGetColumnValues('usr_token', 'token'));
+        $this->assertTrue($this->sut->logout($token));
+        $this->assertSame([], $this->db->tableGetColumnValues('usr_token', 'token'));
+
+        $this->sut->tokenLifeTime = 2;
+
+        $token1 = $this->sut->login('user', 'psw')[0];
+        $token2 = $this->sut->login('user2', 'psw2')[0];
+
+        $this->assertSame([$token1, $token2], $this->db->tableGetColumnValues('usr_token', 'token'));
+        sleep(3);
+
+        $this->assertTrue($this->sut->logout($token1));
+        $this->assertSame([], $this->db->tableGetColumnValues('usr_token', 'token'));
+
+        // Test wrong values
+        $this->assertFalse($this->sut->logout('invalidtoken'));
+
+        // Test exceptions
+        AssertUtils::throwsException(function() { $this->sut->logout(123123); }, '/value is not a string/');
+        AssertUtils::throwsException(function() { $this->sut->logout([1,2,3]); }, '/value is not a string/');
+    }
 }
 
 ?>

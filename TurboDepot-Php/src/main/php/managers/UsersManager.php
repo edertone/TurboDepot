@@ -178,11 +178,6 @@ class UsersManager extends BaseStrictClass{
      */
     public function login(string $userName, string $password, string $domain = ''){
 
-        if(StringUtils::isEmpty($userName.$password)){
-
-            throw new UnexpectedValueException('userName and password must have a value');
-        }
-
         $user = $this->_databaseObjectsManager->getByPropertyValues(User::class,
             ['userName' => $userName, 'password' => $password, 'domain' => $domain]);
 
@@ -196,6 +191,42 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
+     * Generate a token string for the provided user and stores it on database so it can be later verified
+     *
+     * @param User $user An instance of the user fo which we want to create a token.
+     *
+     * @return string
+     */
+    private function createToken(User $user){
+
+        $expiryDate = (new DateTime('+'.$this->tokenLifeTime.' seconds', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
+
+        $token = base64_encode(StringUtils::generateRandom(75, 75).
+            StringUtils::limitLen(md5($user->userName).md5($expiryDate), 25));
+
+        $db = $this->_databaseObjectsManager->getDataBaseManager();
+        $tableName = $this->_databaseObjectsManager->tablesPrefix.'token';
+
+        try {
+
+            $db->tableAddRows($tableName, [['token' => $token, 'userdbid' => $user->getDbId(), 'expires' => $expiryDate]]);
+
+        } catch (Throwable $e) {
+
+            if(!$db->tableExists($tableName) && $db->tableCreate($tableName,
+                ['token varchar(150) NOT NULL', 'userdbid bigint NOT NULL', 'expires datetime NOT NULL'])){
+
+                    return $this->createToken($user);
+            }
+
+            throw new UnexpectedValueException('Could not create '.$tableName.' table');
+        }
+
+        return $token;
+    }
+
+
+    /**
      * Perform a login obtaining the user and password from the encoded credentials
      *
      * @see UsersManager::login
@@ -204,7 +235,7 @@ class UsersManager extends BaseStrictClass{
      * @param string $encodedCredentials The user and password credentials as they are encoded by UsersManager::encodeUserAndPassword() method
      * @param string $domain The domain to which the user will be logged in
      *
-     * @return See UsersManager::login()
+     * @return User[]|string[] See UsersManager::login()
      */
     public function loginFromEncodedCredentials(string $encodedCredentials, string $domain = ''){
 
@@ -256,38 +287,34 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Generate a token string for the provided user and stores it on database so it can be later verified
+     * Perform the logout to destroy the specified user token
      *
-     * @param User $user An instance of the user fo which we want to create a token.
+     * @param string $token The token that represents the user we want to logout
      *
-     * @return string
+     * @return boolean True on success, false on failure. Note that this method will always silently fail,
+     *         cause it is designed to give the less possible information
      */
-    private function createToken(User $user){
+    public function logout($token){
 
-        $expiryDate = (new DateTime('+'.$this->tokenLifeTime.' seconds', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
+        if(StringUtils::isEmpty($token)){
 
-        $token = base64_encode(StringUtils::generateRandom(75, 75).
-            StringUtils::limitLen(md5($user->userName).md5($expiryDate), 25));
+            return false;
+        }
 
         $db = $this->_databaseObjectsManager->getDataBaseManager();
         $tableName = $this->_databaseObjectsManager->tablesPrefix.'token';
 
-        try {
+        // Purge the provided token
+        if($db->tableDeleteRows($tableName, ['token' => $token]) === 0){
 
-            $db->tableAddRows($tableName, [['token' => $token, 'userdbid' => $user->getDbId(), 'expires' => $expiryDate]]);
-
-        } catch (Throwable $e) {
-
-            if(!$db->tableExists($tableName) && $db->tableCreate($tableName,
-                ['token varchar(150) NOT NULL', 'userdbid bigint NOT NULL', 'expires datetime NOT NULL'])){
-
-                return $this->createToken($user);
-            }
-
-            throw new UnexpectedValueException('Could not create '.$tableName.' table');
+            return false;
         }
 
-        return $token;
+        // Purge all the other possibly expired tokens
+        $this->_databaseObjectsManager->getDataBaseManager()->query('DELETE FROM '
+            .$this->_databaseObjectsManager->tablesPrefix.'token WHERE expires < NOW()');
+
+        return true;
     }
 }
 
