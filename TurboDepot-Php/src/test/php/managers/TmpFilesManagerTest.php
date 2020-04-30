@@ -182,7 +182,7 @@ class TmpFilesManagerTest extends TestCase {
         $this->assertSame('data1', $this->filesManager->readFile($this->tempFolder.DIRECTORY_SEPARATOR.$tmpFile));
 
         $tmpFile = $this->sut->addFile('data2');
-        $this->assertRegExp('/....-..-.._..-..-.._-1/', $tmpFile);
+        $this->assertRegExp('/....-..-.._..-..-.._/', $tmpFile);
         $this->assertSame('data2', $this->filesManager->readFile($this->tempFolder.DIRECTORY_SEPARATOR.$tmpFile));
 
         // Test ok values
