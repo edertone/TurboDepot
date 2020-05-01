@@ -26,6 +26,7 @@ final class User extends DataBaseObject{
         $this->_types['userName'] = [100, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING];
         $this->_types['password'] = [100, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING];
         $this->_types['domain'] = [250, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING];
+        $this->_types['data'] = [5000, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING];
     }
 
 
@@ -41,7 +42,15 @@ final class User extends DataBaseObject{
      * @var string
      */
     public $password = '';
-
+    
+    
+    /**
+     * Any extra data which is custom to the user in our application (normally stored as a json encoded string).
+     *
+     * @var string
+     */
+    public $data = '';
+    
 
     /**
      * The domain in which the user resides.

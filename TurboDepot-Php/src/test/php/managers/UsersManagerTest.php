@@ -254,7 +254,25 @@ class UsersManagerTest extends TestCase {
         $this->assertSame([$login1Result[0], $login2Result[0]], $this->db->tableGetColumnValues('usr_token', 'token'));
 
         $this->assertSame(['1', '2'], $this->db->tableGetColumnValues('usr_token', 'userdbid'));
-        // TODO
+
+        // Validate that a token is reused and recycled when performing several logins for the same user
+        $this->sut->tokenLifeTime = 2;
+        $token1 = $this->sut->login('user', 'psw')[0];
+        $this->assertSame($token1, $login1Result[0]);
+        $this->assertSame([$login1Result[0], $login2Result[0]], $this->db->tableGetColumnValues('usr_token', 'token'));
+        sleep(1);
+        $token1 = $this->sut->login('user', 'psw')[0];
+        $this->assertSame($token1, $login1Result[0]);
+        sleep(1);
+        $token1 = $this->sut->login('user', 'psw')[0];
+        $this->assertSame($token1, $login1Result[0]);
+        sleep(1);
+        $token1 = $this->sut->login('user', 'psw')[0];
+        $this->assertSame($token1, $login1Result[0]);
+        $this->assertTrue($this->sut->isTokenValid($token1));
+        $token2 = $this->sut->login('user2', 'psw2')[0];
+        $this->assertSame($token2, $login2Result[0]);
+        $this->assertSame([$login1Result[0], $login2Result[0]], $this->db->tableGetColumnValues('usr_token', 'token'));
 
         // Test wrong values
         $this->assertSame([], $this->sut->login('invalid user', 'invalid token'));
@@ -323,42 +341,43 @@ class UsersManagerTest extends TestCase {
 
         // Validate that when a token expires it gets removed from db
         $this->sut->tokenLifeTime = 2;
-        $token3 = $this->sut->login('user', 'psw')[0];
-        $this->assertTrue($this->sut->isTokenValid($token3));
-        $this->assertSame($token3, $this->db->tableGetColumnValues('usr_token', 'token')[2]);
+        $this->assertSame($token1, $this->sut->login('user', 'psw')[0]);
+        $this->assertTrue($this->sut->isTokenValid($token1));
+        $this->assertSame($token1, $this->db->tableGetColumnValues('usr_token', 'token')[0]);
         sleep(2);
-        $this->assertSame($token3, $this->db->tableGetColumnValues('usr_token', 'token')[2]);
-        $this->assertFalse($this->sut->isTokenValid($token3));
-        $this->assertSame([$token1, $token2], $this->db->tableGetColumnValues('usr_token', 'token'));
+        $this->assertSame($token1, $this->db->tableGetColumnValues('usr_token', 'token')[0]);
+        $this->assertFalse($this->sut->isTokenValid($token1));
+        $this->assertSame([$token2], $this->db->tableGetColumnValues('usr_token', 'token'));
 
         // Validate that a token expiry time gets recycled when it gets correctly validated, and then when it
         // expires it gets removed from db
         $token3 = $this->sut->login('user', 'psw')[0];
+        $this->assertNotSame($token1, $token3);
         $this->assertTrue($this->sut->isTokenValid($token3));
-        $this->assertSame($token3, $this->db->tableGetColumnValues('usr_token', 'token')[2]);
+        $this->assertSame($token3, $this->db->tableGetColumnValues('usr_token', 'token')[1]);
         sleep(1);
         $this->assertTrue($this->sut->isTokenValid($token3));
-        $this->assertSame($token3, $this->db->tableGetColumnValues('usr_token', 'token')[2]);
+        $this->assertSame($token3, $this->db->tableGetColumnValues('usr_token', 'token')[1]);
         sleep(1);
         $this->assertTrue($this->sut->isTokenValid($token3));
-        $this->assertSame($token3, $this->db->tableGetColumnValues('usr_token', 'token')[2]);
+        $this->assertSame($token3, $this->db->tableGetColumnValues('usr_token', 'token')[1]);
         sleep(2);
-        $this->assertSame($token3, $this->db->tableGetColumnValues('usr_token', 'token')[2]);
+        $this->assertSame($token3, $this->db->tableGetColumnValues('usr_token', 'token')[1]);
         $this->assertFalse($this->sut->isTokenValid($token3));
-        $this->assertSame([$token1, $token2], $this->db->tableGetColumnValues('usr_token', 'token'));
+        $this->assertSame([$token2], $this->db->tableGetColumnValues('usr_token', 'token'));
 
         // Validate that a token expiry time does not get recycled when it gets correctly validated if token recycle is false
         $this->sut->isTokenLifeTimeRecycled = false;
-        $token3 = $this->sut->login('user', 'psw')[0];
-        $this->assertTrue($this->sut->isTokenValid($token3));
-        $this->assertSame($token3, $this->db->tableGetColumnValues('usr_token', 'token')[2]);
+        $token4 = $this->sut->login('user', 'psw')[0];
+        $this->assertTrue($this->sut->isTokenValid($token4));
+        $this->assertSame($token4, $this->db->tableGetColumnValues('usr_token', 'token')[1]);
         sleep(1);
-        $this->assertTrue($this->sut->isTokenValid($token3));
-        $this->assertSame($token3, $this->db->tableGetColumnValues('usr_token', 'token')[2]);
+        $this->assertTrue($this->sut->isTokenValid($token4));
+        $this->assertSame($token4, $this->db->tableGetColumnValues('usr_token', 'token')[1]);
         sleep(1);
-        $this->assertSame($token3, $this->db->tableGetColumnValues('usr_token', 'token')[2]);
-        $this->assertFalse($this->sut->isTokenValid($token3));
-        $this->assertSame([$token1, $token2], $this->db->tableGetColumnValues('usr_token', 'token'));
+        $this->assertSame($token4, $this->db->tableGetColumnValues('usr_token', 'token')[1]);
+        $this->assertFalse($this->sut->isTokenValid($token4));
+        $this->assertSame([$token2], $this->db->tableGetColumnValues('usr_token', 'token'));
 
         // TODO
 

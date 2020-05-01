@@ -207,6 +207,14 @@ class UsersManager extends BaseStrictClass{
         $db = $this->_databaseObjectsManager->getDataBaseManager();
         $tableName = $this->_databaseObjectsManager->tablesPrefix.'token';
 
+        // If a token for the given user already exists, we will simply return it
+        $existingTokens = $db->tableGetRows($tableName, ['userdbid' => $user->getDbId()]);
+
+        if($existingTokens !== false && count($existingTokens) === 1 && $this->isTokenValid($existingTokens[0]['token'])){
+
+            return $existingTokens[0]['token'];
+        }
+
         try {
 
             $db->tableAddRows($tableName, [['token' => $token, 'userdbid' => $user->getDbId(), 'expires' => $expiryDate]]);
