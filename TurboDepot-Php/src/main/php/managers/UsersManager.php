@@ -207,7 +207,7 @@ class UsersManager extends BaseStrictClass{
         $db = $this->_databaseObjectsManager->getDataBaseManager();
         $tableName = $this->_databaseObjectsManager->tablesPrefix.'token';
 
-        // If a token for the given user already exists, we will simply return it
+        // If a token for the given user already exists, we will simply recycle it and return it
         $existingTokens = $db->tableGetRows($tableName, ['userdbid' => $user->getDbId()]);
 
         if($existingTokens !== false && count($existingTokens) === 1 && $this->isTokenValid($existingTokens[0]['token'])){
@@ -222,9 +222,9 @@ class UsersManager extends BaseStrictClass{
         } catch (Throwable $e) {
 
             if(!$db->tableExists($tableName) && $db->tableCreate($tableName,
-                ['token varchar(150) NOT NULL', 'userdbid bigint NOT NULL', 'expires '.$db->getSQLDateTimeType(false)])){
+               ['token varchar(150) NOT NULL', 'userdbid bigint NOT NULL', 'expires '.$db->getSQLDateTimeType(false)])){
 
-                    return $this->createToken($user);
+                return $this->createToken($user);
             }
 
             throw new UnexpectedValueException('Could not create '.$tableName.' table');
@@ -272,7 +272,7 @@ class UsersManager extends BaseStrictClass{
 
         if(count($tokenData) === 1){
 
-            if((new DateTime($tokenData[0]['expires'], new DateTimeZone('UTC')) > new DateTime(null, new DateTimeZone('UTC')))){
+            if(new DateTime($tokenData[0]['expires'], new DateTimeZone('UTC')) > new DateTime(null, new DateTimeZone('UTC'))){
 
                 if($this->isTokenLifeTimeRecycled === true){
 
