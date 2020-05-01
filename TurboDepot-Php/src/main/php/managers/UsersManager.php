@@ -222,7 +222,7 @@ class UsersManager extends BaseStrictClass{
         } catch (Throwable $e) {
 
             if(!$db->tableExists($tableName) && $db->tableCreate($tableName,
-                ['token varchar(150) NOT NULL', 'userdbid bigint NOT NULL', 'expires datetime NOT NULL'])){
+                ['token varchar(150) NOT NULL', 'userdbid bigint NOT NULL', 'expires '.$db->getSQLDateTimeType(false)])){
 
                     return $this->createToken($user);
             }
