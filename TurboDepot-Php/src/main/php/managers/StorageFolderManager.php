@@ -34,7 +34,7 @@ class StorageFolderManager extends BaseStrictClass{
      *
      * The storage folder is a file system location where we store all our required application data. It is organized as a
      * standardized set of files and folders which are used to save the most commonly required application data, just like logs,
-     * temporary files, executable binaries, extra libraries, cached data, custom files, etc..
+     * temporary files, executable binaries, extra libraries, cached data, custom files, application data, etc..
      *
      * By defining a standard organization for all this information, we improve the structure and cleanliness of our project. And
      * a faster learning curve when switching between projects.
@@ -63,9 +63,14 @@ class StorageFolderManager extends BaseStrictClass{
 
         $filesManager = new FilesManager();
 
-        if($filesManager->countDirectoryItems($this->_storagePath, 'both', 0) !== 6){
+        if($filesManager->countDirectoryItems($this->_storagePath, 'folders', 0) !== 7){
 
-            throw new UnexpectedValueException('The storage folder must have 6 directories: '.$this->_storagePath);
+            throw new UnexpectedValueException('The storage folder must have 7 directories: '.$this->_storagePath);
+        }
+
+        if(!$filesManager->isFile($this->_storagePath.DIRECTORY_SEPARATOR.'README.txt')){
+
+            throw new UnexpectedValueException('The current storage folder does not have a README.txt file: '.$this->_storagePath);
         }
 
         if(!$filesManager->isDirectory($this->_storagePath.DIRECTORY_SEPARATOR.'cache')){
@@ -81,6 +86,11 @@ class StorageFolderManager extends BaseStrictClass{
         if(!$filesManager->isDirectory($this->_storagePath.DIRECTORY_SEPARATOR.'db')){
 
             throw new UnexpectedValueException('The current storage folder does not have a db folder: '.$this->_storagePath);
+        }
+
+        if(!$filesManager->isDirectory($this->_storagePath.DIRECTORY_SEPARATOR.'data')){
+
+            throw new UnexpectedValueException('The current storage folder does not have a data folder: '.$this->_storagePath);
         }
 
         if(!$filesManager->isDirectory($this->_storagePath.DIRECTORY_SEPARATOR.'executable')){
@@ -143,6 +153,17 @@ class StorageFolderManager extends BaseStrictClass{
     public function getPathToExecutable(){
 
         return $this->_storagePath.DIRECTORY_SEPARATOR.'executable';
+    }
+
+
+    /**
+     * Gives the filesystem location to the storage/data folder
+     *
+     * @return string
+     */
+    public function getPathToData(){
+
+        return $this->_storagePath.DIRECTORY_SEPARATOR.'data';
     }
 }
 

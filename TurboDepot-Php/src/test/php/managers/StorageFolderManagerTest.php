@@ -16,6 +16,7 @@ use Throwable;
 use stdClass;
 use org\turbodepot\src\main\php\managers\FilesManager;
 use org\turbodepot\src\main\php\managers\StorageFolderManager;
+use org\turbotesting\src\main\php\utils\AssertUtils;
 
 
 /**
@@ -44,7 +45,6 @@ class StorageFolderManagerTest extends TestCase {
      */
     protected function setUp(){
 
-        $this->exceptionMessage = '';
         $this->emptyValues = [null, '', [], new stdClass(), '     ', "\n\n\n", 0];
 
         $this->filesManager = new FilesManager();
@@ -54,9 +54,11 @@ class StorageFolderManagerTest extends TestCase {
         $this->filesManager->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'cache');
         $this->filesManager->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'custom');
         $this->filesManager->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'db');
+        $this->filesManager->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'data');
         $this->filesManager->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'executable');
         $this->filesManager->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'logs');
         $this->filesManager->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'tmp');
+        $this->filesManager->saveFile($this->tempFolder.DIRECTORY_SEPARATOR.'README.txt');
 
         $this->sut = new StorageFolderManager($this->tempFolder);
     }
@@ -71,11 +73,6 @@ class StorageFolderManagerTest extends TestCase {
 
         // Delete temporary folder
         $this->filesManager->deleteDirectory($this->tempFolder);
-
-        if($this->exceptionMessage != ''){
-
-            $this->fail($this->exceptionMessage);
-        }
     }
 
 
@@ -98,52 +95,18 @@ class StorageFolderManagerTest extends TestCase {
     public function testConstruct(){
 
         // Test empty values
-        try {
-            $this->sut = new StorageFolderManager(null);
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/must be of the type string, null given/', $e->getMessage());
-        }
-
-        try {
-            $this->sut = new StorageFolderManager(0);
-            $this->exceptionMessage = '0 did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Could not find storage folder based on/', $e->getMessage());
-        }
-
-        try {
-            $this->sut = new StorageFolderManager('');
-            $this->exceptionMessage = '"" did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Could not find storage folder based on/', $e->getMessage());
-        }
-
-        try {
-            $this->sut = new StorageFolderManager('          ');
-            $this->exceptionMessage = '"      " did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Could not find storage folder based on/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function() { $this->sut = new StorageFolderManager(null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut = new StorageFolderManager(0); }, '/Could not find storage folder based on/');
+        AssertUtils::throwsException(function() { $this->sut = new StorageFolderManager(''); }, '/Could not find storage folder based on/');
+        AssertUtils::throwsException(function() { $this->sut = new StorageFolderManager('          '); }, '/Could not find storage folder based on/');
 
         // Test ok values
         $this->assertSame('org\turbodepot\src\main\php\managers\StorageFolderManager', get_class(new StorageFolderManager($this->tempFolder)));
 
         // Test wrong values
         // Test exceptions
-        try {
-            $this->sut = new StorageFolderManager('invalid/path/here');
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Could not find storage folder based on: invalid\/path\/here/', $e->getMessage());
-        }
-
-        try {
-            $this->sut = new StorageFolderManager([1, 2, 3], 'test');
-            $this->exceptionMessage = '[1, 2, 3] did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/must be of the type string, array given/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function() { $this->sut = new StorageFolderManager('invalid/path/here'); }, '/Could not find storage folder based on: invalid\/path\/here/');
+        AssertUtils::throwsException(function() { $this->sut = new StorageFolderManager([1, 2, 3], 'test'); }, '/must be of the type string, array given/');
     }
 
 
@@ -163,21 +126,11 @@ class StorageFolderManagerTest extends TestCase {
         // Test wrong values
         $this->assertSame(0, $this->filesManager->deleteDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'cache'));
 
-        try {
-            $this->sut->validateFolderStructure();
-            $this->exceptionMessage = 'validateFolderStructure did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/The storage folder must have 6 directories/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function() { $this->sut->validateFolderStructure(); }, '/The storage folder must have 7 directories/');
 
         $this->assertTrue($this->filesManager->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'invalid'));
 
-        try {
-            $this->sut->validateFolderStructure();
-            $this->exceptionMessage = 'validateFolderStructure did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/The current storage folder does not have a cache folder/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function() { $this->sut->validateFolderStructure(); }, '/The current storage folder does not have a cache folder/');
 
         // Test exceptions
         // Not necessary
