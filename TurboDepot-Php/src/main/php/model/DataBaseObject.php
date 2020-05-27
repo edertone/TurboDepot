@@ -86,31 +86,31 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
-     * @see DataBaseObject::getDbId()
+     * @see self::getDbId()
      */
     protected $dbId = null;
 
 
     /**
-     * @see DataBaseObject::getDbUUID()
+     * @see self::getDbUUID()
      */
     protected $dbUUID = null;
 
 
     /**
-     * @see DataBaseObject::getDbCreationDate()
+     * @see self::getDbCreationDate()
      */
     protected $dbCreationDate = null;
 
 
     /**
-     * @see DataBaseObject::getDbModificationDate()
+     * @see self::getDbModificationDate()
      */
     protected $dbModificationDate = null;
 
 
     /**
-     * @see DataBaseObject::getDbDeleted()
+     * @see self::getDbDeleted()
      */
     protected $dbDeleted = null;
 
@@ -123,7 +123,7 @@ abstract class DataBaseObject extends BaseStrictClass{
      *
      * This flag won't have any effect if the _types array is not used
      *
-     * @see DataBaseObject::$_types
+     * @see self::$_types
      *
      * @var string
      */
@@ -144,7 +144,7 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
-     * @see DataBaseObject::setLocales()
+     * @see self::setLocales()
      *
      * @var array
      */
@@ -172,7 +172,7 @@ abstract class DataBaseObject extends BaseStrictClass{
     /**
      * Base class for all the objects that are manipulated by the DataBaseObjectsManager class.
      *
-     * @see DataBaseObject::setLocales()
+     * @see self::setLocales()
      *
      * @param array $locales The list of locales that are used on localized properties by this instance, sorted by preference
      */
@@ -200,7 +200,7 @@ abstract class DataBaseObject extends BaseStrictClass{
                     throw new UnexpectedValueException('Invalid locale specified: '.$locales[$i]);
                 }
 
-                if(in_array(DataBaseObject::MULTI_LANGUAGE, $typedef, true)){
+                if(in_array(self::MULTI_LANGUAGE, $typedef, true)){
 
                     $this->_locales[$locales[$i]][$property] = $this->{$property};
                 }
@@ -282,7 +282,7 @@ abstract class DataBaseObject extends BaseStrictClass{
 
             foreach ($this->_types as $type) {
 
-                if(in_array(DataBaseObject::MULTI_LANGUAGE, $type, true)){
+                if(in_array(self::MULTI_LANGUAGE, $type, true)){
 
                     return $this->_isMultiLanguage = true;
                 }
@@ -296,7 +296,7 @@ abstract class DataBaseObject extends BaseStrictClass{
     /**
      * Get the list of strings containing the locales that are used by this class, sorted by preference.
      *
-     * @see DataBaseObject::setLocales()
+     * @see self::setLocales()
      *
      * @return array The list of locales.
      */

@@ -12,7 +12,7 @@ class ObjectWithWrongStringTypeSize extends DataBaseObject{
 
     protected function setup(){
 
-        $this->_types['name'] = [DataBaseObject::STRING, 'invalidsize'];
+        $this->_types['name'] = [self::STRING, 'invalidsize'];
     }
 
     public $name = '';

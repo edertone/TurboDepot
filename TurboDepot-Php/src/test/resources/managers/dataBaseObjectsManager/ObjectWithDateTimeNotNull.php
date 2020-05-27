@@ -15,7 +15,7 @@ class ObjectWithDateTimeNotNull extends DataBaseObject{
 
     protected function setup(){
 
-        $this->_types['date'] = [DataBaseObject::DATETIME, DataBaseObject::NOT_NULL, 0];
+        $this->_types['date'] = [self::DATETIME, self::NOT_NULL, 0];
     }
 
 

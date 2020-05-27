@@ -15,8 +15,8 @@ class CustomerTypedArrayWithoutSize extends DataBaseObject{
 
     protected function setup(){
 
-        $this->_types['name'] = [20, DataBaseObject::NOT_NULL, DataBaseObject::STRING];
-        $this->_types['arrayProp'] = [DataBaseObject::ARRAY, DataBaseObject::DOUBLE];
+        $this->_types['name'] = [20, self::NOT_NULL, self::STRING];
+        $this->_types['arrayProp'] = [self::ARRAY, self::DOUBLE];
     }
 
 

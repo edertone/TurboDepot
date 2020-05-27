@@ -12,7 +12,7 @@ class ObjectWithWrongDateTypeSize extends DataBaseObject{
 
     protected function setup(){
 
-        $this->_types['date'] = [DataBaseObject::DATETIME, 10];
+        $this->_types['date'] = [self::DATETIME, 10];
     }
 
     public $date = '';

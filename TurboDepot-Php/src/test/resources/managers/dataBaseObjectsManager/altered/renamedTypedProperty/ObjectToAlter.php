@@ -16,7 +16,7 @@ class ObjectToAlter extends DataBaseObject{
     protected function setup(){
 
         $this->_isTypingMandatory = false;
-        $this->_types['nameRenamed'] = [20, DataBaseObject::NOT_NULL, DataBaseObject::STRING];
+        $this->_types['nameRenamed'] = [20, self::NOT_NULL, self::STRING];
     }
 
     public $nameRenamed = '';

@@ -16,21 +16,21 @@ class CustomerTyped extends DataBaseObject{
 
     protected function setup(){
 
-        $this->_types['name'] = [20, DataBaseObject::NOT_NULL, DataBaseObject::STRING];
-        $this->_types['commercialName'] = [DataBaseObject::STRING, 25];
-        $this->_types['birthDate'] = [DataBaseObject::DATETIME, 0];
-        $this->_types['miliSecondsDate'] = [3, DataBaseObject::DATETIME];
-        $this->_types['microSecondsDate'] = [6, DataBaseObject::DATETIME];
-        $this->_types['age'] = [DataBaseObject::INT, 2];
-        $this->_types['oneDigitInt'] = [DataBaseObject::INT, 1];
-        $this->_types['sixDigitInt'] = [6, DataBaseObject::INT];
-        $this->_types['twelveDigitInt'] = [DataBaseObject::INT, 12];
-        $this->_types['doubleValue'] = [DataBaseObject::DOUBLE, 5];
-        $this->_types['setup'] = [DataBaseObject::BOOL];
-        $this->_types['emails'] = [75, DataBaseObject::ARRAY, DataBaseObject::STRING];
-        $this->_types['boolArray'] = [DataBaseObject::BOOL, DataBaseObject::ARRAY, DataBaseObject::NOT_NULL];
-        $this->_types['intArray'] = [DataBaseObject::INT, DataBaseObject::ARRAY, 3];
-        $this->_types['doubleArray'] = [DataBaseObject::DOUBLE, 5, DataBaseObject::ARRAY];
+        $this->_types['name'] = [20, self::NOT_NULL, self::STRING];
+        $this->_types['commercialName'] = [self::STRING, 25];
+        $this->_types['birthDate'] = [self::DATETIME, 0];
+        $this->_types['miliSecondsDate'] = [3, self::DATETIME];
+        $this->_types['microSecondsDate'] = [6, self::DATETIME];
+        $this->_types['age'] = [self::INT, 2];
+        $this->_types['oneDigitInt'] = [self::INT, 1];
+        $this->_types['sixDigitInt'] = [6, self::INT];
+        $this->_types['twelveDigitInt'] = [self::INT, 12];
+        $this->_types['doubleValue'] = [self::DOUBLE, 5];
+        $this->_types['setup'] = [self::BOOL];
+        $this->_types['emails'] = [75, self::ARRAY, self::STRING];
+        $this->_types['boolArray'] = [self::BOOL, self::ARRAY, self::NOT_NULL];
+        $this->_types['intArray'] = [self::INT, self::ARRAY, 3];
+        $this->_types['doubleArray'] = [self::DOUBLE, 5, self::ARRAY];
     }
 
 

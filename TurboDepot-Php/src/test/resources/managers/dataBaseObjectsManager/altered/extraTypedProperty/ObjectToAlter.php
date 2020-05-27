@@ -16,8 +16,8 @@ class ObjectToAlter extends DataBaseObject{
     protected function setup(){
 
         $this->_isTypingMandatory = false;
-        $this->_types['name'] = [20, DataBaseObject::NOT_NULL, DataBaseObject::STRING];
-        $this->_types['extraTyped'] = [10, DataBaseObject::INT];
+        $this->_types['name'] = [20, self::NOT_NULL, self::STRING];
+        $this->_types['extraTyped'] = [10, self::INT];
     }
 
     public $name = '';

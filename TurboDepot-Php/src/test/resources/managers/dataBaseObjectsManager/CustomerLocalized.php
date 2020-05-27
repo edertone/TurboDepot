@@ -15,15 +15,15 @@ class CustomerLocalized extends DataBaseObject{
 
     protected function setup(){
 
-        $this->_types['name'] = [DataBaseObject::STRING, 250];
-        $this->_types['nameLocalized'] = [DataBaseObject::MULTI_LANGUAGE, DataBaseObject::STRING, 20];
-        $this->_types['nameLocalizedNotNull'] = [DataBaseObject::MULTI_LANGUAGE, DataBaseObject::STRING, 20, DataBaseObject::NOT_NULL];
-        $this->_types['birthDate'] = [DataBaseObject::DATETIME, 0];
-        $this->_types['birthDateLocalized'] = [DataBaseObject::MULTI_LANGUAGE, DataBaseObject::DATETIME, 0];
-        $this->_types['age'] = [DataBaseObject::INT, 2];
-        $this->_types['ageLocalized'] = [DataBaseObject::INT, 2, DataBaseObject::MULTI_LANGUAGE];
-        $this->_types['setup'] = [DataBaseObject::BOOL];
-        $this->_types['setupLocalized'] = [DataBaseObject::BOOL, DataBaseObject::MULTI_LANGUAGE];
+        $this->_types['name'] = [self::STRING, 250];
+        $this->_types['nameLocalized'] = [self::MULTI_LANGUAGE, self::STRING, 20];
+        $this->_types['nameLocalizedNotNull'] = [self::MULTI_LANGUAGE, self::STRING, 20, self::NOT_NULL];
+        $this->_types['birthDate'] = [self::DATETIME, 0];
+        $this->_types['birthDateLocalized'] = [self::MULTI_LANGUAGE, self::DATETIME, 0];
+        $this->_types['age'] = [self::INT, 2];
+        $this->_types['ageLocalized'] = [self::INT, 2, self::MULTI_LANGUAGE];
+        $this->_types['setup'] = [self::BOOL];
+        $this->_types['setupLocalized'] = [self::BOOL, self::MULTI_LANGUAGE];
     }
 
 

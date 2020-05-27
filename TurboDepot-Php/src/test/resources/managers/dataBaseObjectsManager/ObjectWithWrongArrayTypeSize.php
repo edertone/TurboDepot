@@ -12,7 +12,7 @@ class ObjectWithWrongArrayTypeSize extends DataBaseObject{
 
     protected function setup(){
 
-        $this->_types['array'] = [DataBaseObject::ARRAY, DataBaseObject::STRING, 'invalidsize'];
+        $this->_types['array'] = [self::ARRAY, self::STRING, 'invalidsize'];
     }
 
     public $array = '';
