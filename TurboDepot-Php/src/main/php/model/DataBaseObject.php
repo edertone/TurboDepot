@@ -137,10 +137,21 @@ abstract class DataBaseObject extends BaseStrictClass{
      * 1. The property data type: DataBaseObject::BOOL, ::INT, ::DOUBLE, ::STRING, ::DATETIME or ::ARRAY<br>
      * 2. The property data size (for int and string values the maximum number of digits that can be stored). It is mandatory<br>
      * 3. DataBaseObject::NOT_NULL if the property cannot have null values, skip this otherwise (it is optional)
+     * 4. DataBaseObject::NO_DUPLICATES if the property cannot have duplicate values on database, skip this otherwise (it is optional)
      *
      * @var array
      */
     protected $_types = [];
+
+
+    /**
+     * Array of arrays where each element contains the names for the properties that will be included on a unique index, so values cannot be repeated.
+     * We can define simple indices by providing only one property name (which can also be done via DataBaseObject::NO_DUPLICATES on the _types setup) and
+     * we can also define complex indices by providing two or more property names at each array element to generate complex indices.
+     *
+     * @var array
+     */
+    protected $_uniqueIndices = [];
 
 
     /**

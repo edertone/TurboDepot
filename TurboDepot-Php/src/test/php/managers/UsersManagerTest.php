@@ -186,6 +186,17 @@ class UsersManagerTest extends TestCase {
         $this->assertSame(['psw', 'psw2'], $this->db->tableGetColumnValues('usr_user', 'password'));
 
         // Test wrong values
+        $user = new User();
+        $user->userName = 'user';
+        $user->password = 'psw';
+        AssertUtils::throwsException(function() use ($user) { $this->sut->save($user); }, '/Duplicate entry \'user\'/');
+
+        $user = new User();
+        $user->domain = 'different domain';
+        $user->userName = 'user';
+        $user->password = 'psw';
+        $this->sut->save($user);
+
         // Test exceptions
         AssertUtils::throwsException(function() { $this->sut->save('string'); }, '/Argument 1 passed to .* must be an instance of .*User/');
         AssertUtils::throwsException(function() { $this->sut->save(1345345); }, '/Argument 1 passed to .* must be an instance of .*User/');

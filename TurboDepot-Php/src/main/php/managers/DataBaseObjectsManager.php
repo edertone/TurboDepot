@@ -827,6 +827,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
             }
         }
 
+        foreach ($this->_getPropertyValue($object, '_uniqueIndices') as $uniqueIndex) {
+
+            $uniqueIndicesToCreate[] =  array_map(function ($p) {return strtolower($p);}, $uniqueIndex);
+        }
+
         $this->_db->tableCreate($tableName, $columnsToCreate, ['dbid'], $uniqueIndicesToCreate);
 
         // Create all the tables that store array properties

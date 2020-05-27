@@ -604,6 +604,55 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
     /**
      * test
      */
+    public function testSave_no_duplicate_values_with_complex_indices(){
+
+        $object = new CustomerTypedWithNoDuplicates();
+        $object->name = 'name1';
+        $object->age = 25;
+        $object->address = 'address 1';
+        $object->city = 'city 1';
+        $this->assertSame(1, $this->sut->save($object));
+
+        $object = new CustomerTypedWithNoDuplicates();
+        $object->name = 'name2';
+        $object->age = 26;
+        $object->address = 'address 2';
+        $object->city = 'city 2';
+        $this->assertSame(2, $this->sut->save($object));
+
+        $object = new CustomerTypedWithNoDuplicates();
+        $object->name = 'name3';
+        $object->age = 27;
+        $object->address = 'address 1';
+        $object->city = 'city 3';
+        $this->assertSame(3, $this->sut->save($object));
+
+        $object = new CustomerTypedWithNoDuplicates();
+        $object->name = 'name1';
+        $object->age = 28;
+        $object->address = 'address 1';
+        $object->city = 'city 4';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Duplicate entry \'name1\'/');
+
+        $object = new CustomerTypedWithNoDuplicates();
+        $object->name = 'name4';
+        $object->age = 29;
+        $object->address = 'address 1';
+        $object->city = 'city 1';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Duplicate entry \'city 1-address 1\'/');
+
+        $object = new CustomerTypedWithNoDuplicates();
+        $object->name = 'name5';
+        $object->age = 30;
+        $object->address = 'address 2';
+        $object->city = 'city 1';
+        $this->assertSame(6, $this->sut->save($object));
+    }
+
+
+    /**
+     * test
+     */
     public function testSave_datetime_values_are_as_expected(){
 
         // Test that creation and modification dates are correct
