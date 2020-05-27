@@ -11,7 +11,6 @@
 
 namespace org\turbodepot\src\main\php\model;
 
-use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 use org\turbodepot\src\main\php\model\DataBaseObject;
 
 
@@ -25,11 +24,11 @@ final class User extends DataBaseObject{
 
         // TODO - domain and username must be a unique index to avoid duplicate values
 
-        $this->_types['domain'] = [250, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING, DataBaseObjectsManager::STRING];
-        $this->_types['userName'] = [100, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING];
-        $this->_types['password'] = [100, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING];
-        $this->_types['mails'] = [250, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::ARRAY, DataBaseObjectsManager::STRING];
-        $this->_types['data'] = [5000, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING];
+        $this->_types['domain'] = [250, DataBaseObject::NOT_NULL, DataBaseObject::STRING, DataBaseObject::STRING];
+        $this->_types['userName'] = [100, DataBaseObject::NOT_NULL, DataBaseObject::STRING];
+        $this->_types['password'] = [100, DataBaseObject::NOT_NULL, DataBaseObject::STRING];
+        $this->_types['mails'] = [250, DataBaseObject::NOT_NULL, DataBaseObject::ARRAY, DataBaseObject::STRING];
+        $this->_types['data'] = [5000, DataBaseObject::NOT_NULL, DataBaseObject::STRING];
     }
 
 

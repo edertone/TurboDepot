@@ -13,7 +13,7 @@ class ObjectWithWrongArrayMultilanProperty extends DataBaseObject{
     protected function setup(){
 
         // This object must fail when saving cause arrays are not allowed on multilanguage properties
-        $this->_types['arrayMul'] = [DataBaseObjectsManager::ARRAY, DataBaseObjectsManager::STRING, 10, DataBaseObjectsManager::MULTI_LANGUAGE];
+        $this->_types['arrayMul'] = [DataBaseObject::ARRAY, DataBaseObject::STRING, 10, DataBaseObject::MULTI_LANGUAGE];
     }
 
     public $arrayMul = '';

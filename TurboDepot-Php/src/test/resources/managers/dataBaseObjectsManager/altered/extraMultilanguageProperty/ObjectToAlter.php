@@ -16,8 +16,8 @@ class ObjectToAlter extends DataBaseObject{
     protected function setup(){
 
         $this->_isTypingMandatory = false;
-        $this->_types['name'] = [20, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING];
-        $this->_types['nameLocalized'] = [DataBaseObjectsManager::MULTI_LANGUAGE, DataBaseObjectsManager::STRING, 400];
+        $this->_types['name'] = [20, DataBaseObject::NOT_NULL, DataBaseObject::STRING];
+        $this->_types['nameLocalized'] = [DataBaseObject::MULTI_LANGUAGE, DataBaseObject::STRING, 400];
     }
 
 

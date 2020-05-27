@@ -13,13 +13,76 @@ namespace org\turbodepot\src\main\php\model;
 
 use UnexpectedValueException;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
-use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 
 
 /**
  * DataBaseObject
  */
 abstract class DataBaseObject extends BaseStrictClass{
+
+
+    /**
+     * Boolean type that can be used to constrain object properties
+     */
+    const BOOL = 'BOOL';
+
+
+    /**
+     * Signed integer type with a max value of 2147483647 that can be used to constrain object properties
+     */
+    const INT = 'INT';
+
+
+    /**
+     * Signed float type that can be used to constrain object properties
+     */
+    const DOUBLE = 'DOUBLE';
+
+
+    /**
+     * Text type that can be used to constrain object properties
+     */
+    const STRING = 'STRING';
+
+
+    /**
+     * Date type that can be used to constrain object properties which must be always defined as ISO 8601 strings
+     * with a mandatory UTC +0 timezone (yyyy-mm-ddTHH:MM:SS.UUUUUU+00:00), or an exception will be thrown.
+     *
+     * The UTC offset is mandatory so all the dates are standarized and consistent.Local timezone may be applied at the presentation layer
+     * if necessary.
+     *
+     * Accepted size values are 0 for seconds precision, 3 for miliseconds and 6 for microseconds
+     */
+    const DATETIME = 'DATETIME';
+
+
+    /**
+     * Array type that can be used to constrain object properties.
+     * IMPORTANT: If we define an object property as ARRAY, we must also specify the type of the array elements
+     */
+    const ARRAY = 'ARRAY';
+
+
+    /**
+     * Flag that is used to specify on a data type that a property is stored with multiple language values.
+     *
+     * Properties that are multilanguage will contain the value that's specifically set for that language on that property.
+     */
+    const MULTI_LANGUAGE = 'MULTI_LANGUAGE';
+
+
+    /**
+     * Flag that is used to specify that a data type cannot be null
+     */
+    const NOT_NULL = 'NOT_NULL';
+
+
+    /**
+     * Flag that is used to specify that a data type cannot have duplicate values. If an object is saved with a value that already exists
+     * on db for a property which has this flag set, an exception will be thrown.
+     */
+    const NO_DUPLICATES = 'NO_DUPLICATES';
 
 
     /**
@@ -71,9 +134,9 @@ abstract class DataBaseObject extends BaseStrictClass{
      * Associative array that defines the data types to use with the object properties. Each array key must be the object property to set
      * and each value an array with the following elements in any order:<br>
      *
-     * 1. The property data type: DataBaseObjectsManager::BOOL, ::INT, ::DOUBLE, ::STRING, ::DATETIME or ::ARRAY<br>
+     * 1. The property data type: DataBaseObject::BOOL, ::INT, ::DOUBLE, ::STRING, ::DATETIME or ::ARRAY<br>
      * 2. The property data size (for int and string values the maximum number of digits that can be stored). It is mandatory<br>
-     * 3. DataBaseObjectsManager::NOT_NULL if the property cannot have null values, skip this otherwise (it is optional)
+     * 3. DataBaseObject::NOT_NULL if the property cannot have null values, skip this otherwise (it is optional)
      *
      * @var array
      */
@@ -137,7 +200,7 @@ abstract class DataBaseObject extends BaseStrictClass{
                     throw new UnexpectedValueException('Invalid locale specified: '.$locales[$i]);
                 }
 
-                if(in_array(DataBaseObjectsManager::MULTI_LANGUAGE, $typedef, true)){
+                if(in_array(DataBaseObject::MULTI_LANGUAGE, $typedef, true)){
 
                     $this->_locales[$locales[$i]][$property] = $this->{$property};
                 }
@@ -219,7 +282,7 @@ abstract class DataBaseObject extends BaseStrictClass{
 
             foreach ($this->_types as $type) {
 
-                if(in_array(DataBaseObjectsManager::MULTI_LANGUAGE, $type, true)){
+                if(in_array(DataBaseObject::MULTI_LANGUAGE, $type, true)){
 
                     return $this->_isMultiLanguage = true;
                 }

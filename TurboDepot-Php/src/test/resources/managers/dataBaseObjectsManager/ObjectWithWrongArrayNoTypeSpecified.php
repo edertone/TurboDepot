@@ -12,7 +12,7 @@ class ObjectWithWrongArrayNoTypeSpecified extends DataBaseObject{
 
     protected function setup(){
 
-        $this->_types['arrayVal'] = [DataBaseObjectsManager::ARRAY, 20];
+        $this->_types['arrayVal'] = [DataBaseObject::ARRAY, 20];
     }
 
     public $arrayVal = '';

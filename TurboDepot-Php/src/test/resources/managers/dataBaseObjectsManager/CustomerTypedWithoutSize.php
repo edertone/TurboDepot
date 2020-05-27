@@ -15,8 +15,8 @@ class CustomerTypedWithoutSize extends DataBaseObject{
 
     protected function setup(){
 
-        $this->_types['name'] = [20, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING];
-        $this->_types['commercialName'] = [DataBaseObjectsManager::STRING];
+        $this->_types['name'] = [20, DataBaseObject::NOT_NULL, DataBaseObject::STRING];
+        $this->_types['commercialName'] = [DataBaseObject::STRING];
     }
 
 

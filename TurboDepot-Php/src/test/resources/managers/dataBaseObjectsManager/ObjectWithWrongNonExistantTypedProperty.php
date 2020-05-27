@@ -15,9 +15,9 @@ class ObjectWithWrongNonExistantTypedProperty extends DataBaseObject{
 
     protected function setup(){
 
-        $this->_types['name'] = [DataBaseObjectsManager::STRING, 20];
-        $this->_types['commercialName'] = [DataBaseObjectsManager::STRING, 25];
-        $this->_types['nonexistant'] = [DataBaseObjectsManager::INT, 2];
+        $this->_types['name'] = [DataBaseObject::STRING, 20];
+        $this->_types['commercialName'] = [DataBaseObject::STRING, 25];
+        $this->_types['nonexistant'] = [DataBaseObject::INT, 2];
     }
 
 

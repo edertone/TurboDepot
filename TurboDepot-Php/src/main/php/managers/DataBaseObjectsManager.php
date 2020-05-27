@@ -31,70 +31,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Boolean type that can be used to constrain object properties
-     */
-    const BOOL = 'BOOL';
-
-
-    /**
-     * Signed integer type with a max value of 2147483647 that can be used to constrain object properties
-     */
-    const INT = 'INT';
-
-
-    /**
-     * Signed float type that can be used to constrain object properties
-     */
-    const DOUBLE = 'DOUBLE';
-
-
-    /**
-     * Text type that can be used to constrain object properties
-     */
-    const STRING = 'STRING';
-
-
-    /**
-     * Date type that can be used to constrain object properties which must be always defined as ISO 8601 strings
-     * with a mandatory UTC +0 timezone (yyyy-mm-ddTHH:MM:SS.UUUUUU+00:00), or an exception will be thrown.
-     *
-     * The UTC offset is mandatory so all the dates are standarized and consistent.Local timezone may be applied at the presentation layer
-     * if necessary.
-     *
-     * Accepted size values are 0 for seconds precision, 3 for miliseconds and 6 for microseconds
-     */
-    const DATETIME = 'DATETIME';
-
-
-    /**
-     * Array type that can be used to constrain object properties.
-     * IMPORTANT: If we define an object property as ARRAY, we must also specify the type of the array elements
-     */
-    const ARRAY = 'ARRAY';
-
-
-    /**
-     * Flag that is used to specify on a data type that a property is stored with multiple language values.
-     *
-     * Properties that are multilanguage will contain the value that's specifically set for that language on that property.
-     */
-    const MULTI_LANGUAGE = 'MULTI_LANGUAGE';
-
-
-    /**
-     * Flag that is used to specify that a data type cannot be null
-     */
-    const NOT_NULL = 'NOT_NULL';
-
-
-    /**
-     * Flag that is used to specify that a data type cannot have duplicate values. If an object is saved with a value that already exists
-     * on db for a property which has this flag set, an exception will be thrown.
-     */
-    const NO_DUPLICATES = 'NO_DUPLICATES';
-
-
-    /**
      * To prevent name collisions with any other possible existing database tables, we can define a prefix here that will be
      * added to all the tables that are used by this class. It will be automatically added when tables are created, and expected when
      * tables are read.
@@ -558,20 +494,20 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $type = $this->_getTypeFromObjectProperty($object, $property);
 
-        $isNullable = !in_array(self::NOT_NULL, $type, true);
+        $isNullable = !in_array(DataBaseObject::NOT_NULL, $type, true);
 
         switch ($type[0]) {
 
-            case self::BOOL:
+            case DataBaseObject::BOOL:
                 return $this->_db->getSQLTypeFromValue(true, $isNullable);
 
-            case self::INT:
+            case DataBaseObject::INT:
                 return $this->_db->getSQLTypeFromValue(pow(10, $type[1]) - 1, $isNullable);
 
-            case self::DOUBLE:
+            case DataBaseObject::DOUBLE:
                 return $this->_db->getSQLTypeFromValue(1.0, $isNullable);
 
-            case self::DATETIME:
+            case DataBaseObject::DATETIME:
                 return $this->_db->getSQLDateTimeType($isNullable, $type[1]);
 
             default:
@@ -587,12 +523,12 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * @param string $property The name of a property for which we want to obtain the class type info
      *
      * @return array An array with the following possible values:<br>
-     *         First element: The property type (DataBaseObjectsManager::BOOL, DataBaseObjectsManager::INT, DataBaseObjectsManager::DOUBLE, DataBaseObjectsManager::STRING, DataBaseObjectsManager::DATETIME)<br>
+     *         First element: The property type (DataBaseObject::BOOL, DataBaseObject::INT, DataBaseObject::DOUBLE, DataBaseObject::STRING, DataBaseObject::DATETIME)<br>
      *         Second element: The type precision size (or digits) when the type is a simple one, or the type for each array element if the type is an array<br>
      *         Next elements may contain any of the following extra flags:<br>
-     *         - DataBaseObjectsManager::NOT_NULL If the property does not allow null values
-     *         - DataBaseObjectsManager::MULTI_LANGUAGE If the property values can be different depending on the language
-     *         - DataBaseObjectsManager::ARRAY If the property is an array of elements, in which case each element will match the same type definition
+     *         - DataBaseObject::NOT_NULL If the property does not allow null values
+     *         - DataBaseObject::MULTI_LANGUAGE If the property values can be different depending on the language
+     *         - DataBaseObject::ARRAY If the property is an array of elements, in which case each element will match the same type definition
      */
     private function _getTypeFromObjectProperty(DataBaseObject $object, string $property){
 
@@ -647,25 +583,25 @@ class DataBaseObjectsManager extends BaseStrictClass{
         foreach ($array as $item) {
 
             switch ((string)$item) {
-                case self::BOOL: case self::INT: case self::DOUBLE: case self::STRING: case self::DATETIME:
+                case DataBaseObject::BOOL: case DataBaseObject::INT: case DataBaseObject::DOUBLE: case DataBaseObject::STRING: case DataBaseObject::DATETIME:
                     $result[0] = $item;
                     break;
 
-                case self::ARRAY:
+                case DataBaseObject::ARRAY:
                     $isArray = true;
                     break;
 
-                case self::NOT_NULL:
+                case DataBaseObject::NOT_NULL:
                     $isNotNull = true;
                     break;
 
-                case self::NO_DUPLICATES:
+                case DataBaseObject::NO_DUPLICATES:
                     $isNoDuplicates = true;
                     break;
 
-                case self::MULTI_LANGUAGE:
+                case DataBaseObject::MULTI_LANGUAGE:
 
-                    if(in_array(self::ARRAY, $array, true)){
+                    if(in_array(DataBaseObject::ARRAY, $array, true)){
 
                         throw new UnexpectedValueException('ARRAY type is not supported by multi language properties: '.$property);
                     }
@@ -686,7 +622,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         if($result[1] === null){
 
-            if($result[0] === self::BOOL){
+            if($result[0] === DataBaseObject::BOOL){
 
                 $result[1] = 1;
 
@@ -696,34 +632,34 @@ class DataBaseObjectsManager extends BaseStrictClass{
             }
         }
 
-        if($result[0] === self::DATETIME && $result[1] !== 0  && $result[1] !== 3  && $result[1] !== 6){
+        if($result[0] === DataBaseObject::DATETIME && $result[1] !== 0  && $result[1] !== 3  && $result[1] !== 6){
 
             throw new UnexpectedValueException($property.' DATETIME size must be 0, 3 or 6');
         }
 
         if($isArray){
 
-            if(!in_array($result[0], [self::BOOL, self::INT, self::DOUBLE, self::STRING, self::DATETIME], true)){
+            if(!in_array($result[0], [DataBaseObject::BOOL, DataBaseObject::INT, DataBaseObject::DOUBLE, DataBaseObject::STRING, DataBaseObject::DATETIME], true)){
 
                 throw new UnexpectedValueException($property.' defined as ARRAY but no type for the array elements is specified');
             }
 
-            $result[] = self::ARRAY;
+            $result[] = DataBaseObject::ARRAY;
         }
 
         if($isNotNull){
 
-            $result[] = self::NOT_NULL;
+            $result[] = DataBaseObject::NOT_NULL;
         }
 
         if($isNoDuplicates){
 
-            $result[] = self::NO_DUPLICATES;
+            $result[] = DataBaseObject::NO_DUPLICATES;
         }
 
         if($isMultiLanguage){
 
-            $result[] = self::MULTI_LANGUAGE;
+            $result[] = DataBaseObject::MULTI_LANGUAGE;
         }
 
         return $result;
@@ -741,22 +677,22 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         if(is_bool($value)){
 
-            return [self::BOOL, 1, self::NOT_NULL];
+            return [DataBaseObject::BOOL, 1, DataBaseObject::NOT_NULL];
         }
 
         if(is_int($value)){
 
-            return [self::INT, strlen((string)abs($value)), self::NOT_NULL];
+            return [DataBaseObject::INT, strlen((string)abs($value)), DataBaseObject::NOT_NULL];
         }
 
         if(is_double($value)){
 
-            return [self::DOUBLE,strlen((string)abs($value)), self::NOT_NULL];
+            return [DataBaseObject::DOUBLE,strlen((string)abs($value)), DataBaseObject::NOT_NULL];
         }
 
         if(is_string($value)){
 
-            return [self::STRING, strlen($value), self::NOT_NULL];
+            return [DataBaseObject::STRING, strlen($value), DataBaseObject::NOT_NULL];
         }
 
         if(is_array($value) && count($value) > 0){
@@ -780,7 +716,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 }
             }
 
-            return array_merge($this->_getTypeFromValue($value[$biggestValueIndex]), [self::ARRAY, self::NOT_NULL]);
+            return array_merge($this->_getTypeFromValue($value[$biggestValueIndex]), [DataBaseObject::ARRAY, DataBaseObject::NOT_NULL]);
         }
 
         throw new UnexpectedValueException('Could not detect type from '.gettype($value));
@@ -828,7 +764,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             if(isset($types[$property])){
 
-                if(in_array(self::ARRAY, $types[$property], true)){
+                if(in_array(DataBaseObject::ARRAY, $types[$property], true)){
 
                     $result[] = $property;
                 }
@@ -857,7 +793,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
         foreach($this->_getPropertyValue($object, '_types') as $property => $type){
 
             // Note that we ignore all arrays cause they are not allowed for multi language properties
-            if(in_array(self::MULTI_LANGUAGE, $type, true) && !is_array($object->{$property})){
+            if(in_array(DataBaseObject::MULTI_LANGUAGE, $type, true) && !is_array($object->{$property})){
 
                 $result[] = $property;
             }
@@ -885,7 +821,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             $columnsToCreate[] = strtolower($property).' '.$this->getSQLTypeFromObjectProperty($object, $property);
 
             if(!in_array($property, $this->_baseObjectProperties, true) &&
-               in_array(self::NO_DUPLICATES, $this->_getTypeFromObjectProperty($object, $property), true)){
+               in_array(DataBaseObject::NO_DUPLICATES, $this->_getTypeFromObjectProperty($object, $property), true)){
 
                 $uniqueIndicesToCreate[] = [strtolower($property)];
             }
@@ -1210,7 +1146,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
                 if($propertyValuesToCheck[$i] === null){
 
-                    if(in_array(self::NOT_NULL, $propertyExpectedType, true) || in_array(self::ARRAY, $propertyExpectedType, true)){
+                    if(in_array(DataBaseObject::NOT_NULL, $propertyExpectedType, true) || in_array(DataBaseObject::ARRAY, $propertyExpectedType, true)){
 
                         throw new UnexpectedValueException('NULL value is not accepted by '.$classProperty.' property'.$multilanErrorTag);
                     }
@@ -1223,20 +1159,21 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 // Check that property type matches expected one (note that double types are able to store int values and datetime types string values)
                 // Property type must be valid based on the object defined restrictions and it must fit the expected precision
                 if($propertyExpectedType[0] !== $propertyValueType[0] &&
-                   !($propertyExpectedType[0] === self::DOUBLE && $propertyValueType[0] === self::INT)){
+                   !($propertyExpectedType[0] === DataBaseObject::DOUBLE && $propertyValueType[0] === DataBaseObject::INT)){
 
-                    if($propertyExpectedType[0] === self::DATETIME){
+                    if($propertyExpectedType[0] === DataBaseObject::DATETIME){
 
                         $this->_validateDateTimeValue($propertyValuesToCheck[$i], $propertyExpectedType[1], $classProperty, $multilanErrorTag);
 
                     }else{
 
-                        throw new UnexpectedValueException($classProperty.' ('.print_r($propertyValuesToCheck[$i], true).') does not match '.$propertyExpectedType[0].'('.$propertyExpectedType[1].')'.$multilanErrorTag);
+                        throw new UnexpectedValueException($classProperty.' ('.print_r($propertyValuesToCheck[$i], true).') does not match '.
+                            $propertyExpectedType[0].'('.$propertyExpectedType[1].')'.$multilanErrorTag);
                     }
                 }
 
                 // The property maximum allowed type size must be respected
-                if($propertyExpectedType[0] !== self::DATETIME && $propertyValueType[1] > $propertyExpectedType[1]){
+                if($propertyExpectedType[0] !== DataBaseObject::DATETIME && $propertyValueType[1] > $propertyExpectedType[1]){
 
                     throw new UnexpectedValueException($classProperty.' value size '.$propertyValueType[1].' exceeds '.$propertyExpectedType[1].$multilanErrorTag);
                 }

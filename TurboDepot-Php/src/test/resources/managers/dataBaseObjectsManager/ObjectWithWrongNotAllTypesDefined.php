@@ -12,7 +12,7 @@ class ObjectWithWrongNotAllTypesDefined extends DataBaseObject{
 
     protected function setup(){
 
-        $this->_types['array'] = [DataBaseObjectsManager::ARRAY, DataBaseObjectsManager::STRING];
+        $this->_types['array'] = [DataBaseObject::ARRAY, DataBaseObject::STRING];
     }
 
     public $array = [];

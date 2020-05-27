@@ -15,8 +15,8 @@ class CustomerTypedWithNoDuplicates extends DataBaseObject{
 
     protected function setup(){
 
-        $this->_types['name'] = [50, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING, DataBaseObjectsManager::NO_DUPLICATES];
-        $this->_types['age'] = [DataBaseObjectsManager::INT, DataBaseObjectsManager::NO_DUPLICATES, 4];
+        $this->_types['name'] = [50, DataBaseObject::NOT_NULL, DataBaseObject::STRING, DataBaseObject::NO_DUPLICATES];
+        $this->_types['age'] = [DataBaseObject::INT, DataBaseObject::NO_DUPLICATES, 4];
     }
 
 

@@ -14,7 +14,7 @@ class ObjectWithTypingDisabled extends DataBaseObject{
 
         $this->_isTypingMandatory = false;
 
-        $this->_types['array'] = [DataBaseObjectsManager::ARRAY, 20, DataBaseObjectsManager::STRING];
+        $this->_types['array'] = [DataBaseObject::ARRAY, 20, DataBaseObject::STRING];
     }
 
     public $array = [];
