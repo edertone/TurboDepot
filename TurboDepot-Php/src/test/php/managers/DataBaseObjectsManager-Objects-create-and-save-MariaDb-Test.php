@@ -43,6 +43,7 @@ use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\CustomerTy
 use org\turbodepot\src\main\php\managers\FilesManager;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongArrayNoTypeSpecified;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\CustomerTypedWithNoDuplicates;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongTypeHasDuplicateValues;
 
 
 /**
@@ -479,6 +480,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongPropThatStartsWithUnderscore()); }, '/Properties starting with _ are forbidden, but found: _name/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNullNonTypedProperty()); }, '/Could not detect property age type: Could not detect type from NULL/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongEmptyNonTypedArrayProperty()); }, '/Could not detect property emails type: Could not detect type from array/');
+        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongTypeHasDuplicateValues()); }, '/Duplicate value <STRING> found on _types for name property/');
         AssertUtils::throwsException(function() { new ObjectWithWrongNonExistantTypedProperty(); }, '/Cannot define type for nonexistant cause it does not exist on class/');
 
         // Add an unexpected column to the customer table and make sure saving fails

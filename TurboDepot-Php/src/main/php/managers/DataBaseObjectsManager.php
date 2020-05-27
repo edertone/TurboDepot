@@ -580,7 +580,13 @@ class DataBaseObjectsManager extends BaseStrictClass{
         $isNoDuplicates = false;
         $isMultiLanguage = false;
 
-        foreach ($array as $item) {
+        foreach(array_count_values($array) as $item => $itemRepeatCount){
+
+            // Duplicate values are not allowed on the properties _types setup
+            if($itemRepeatCount > 1){
+
+                throw new UnexpectedValueException('Duplicate value <'.$item.'> found on _types for '.$property.' property');
+            }
 
             switch ((string)$item) {
                 case DataBaseObject::BOOL: case DataBaseObject::INT: case DataBaseObject::DOUBLE: case DataBaseObject::STRING: case DataBaseObject::DATETIME:

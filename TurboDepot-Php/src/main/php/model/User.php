@@ -22,7 +22,7 @@ final class User extends DataBaseObject{
 
     protected function setup(){
 
-        $this->_types['domain'] = [250, self::NOT_NULL, self::STRING, self::STRING];
+        $this->_types['domain'] = [250, self::NOT_NULL, self::STRING];
         $this->_types['userName'] = [100, self::NOT_NULL, self::STRING];
         $this->_types['password'] = [100, self::NOT_NULL, self::STRING];
         $this->_types['mails'] = [250, self::NOT_NULL, self::ARRAY, self::STRING];
