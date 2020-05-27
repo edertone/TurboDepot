@@ -17,30 +17,32 @@ use stdClass;
 use org\turbocommons\src\main\php\model\DateTimeObject;
 use org\turbodepot\src\main\php\managers\DataBaseManager;
 use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\Customer;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerLocalized;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerTyped;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerWithArrayProps;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectToAlter;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithDateTimeNotNull;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithTypingDisabled;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongArrayMultilanProperty;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongArrayTypeSize;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongDateTypeSize;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongEmptyNonTypedArrayProperty;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongExtendedDbCreationDateProperty;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongExtendedDbDeletedProperty;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongExtendedDbIdProperty;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongMethods;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNonExistantTypedProperty;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNotAllTypesDefined;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongNullNonTypedProperty;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongPropThatStartsWithUnderscore;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\ObjectWithWrongStringTypeSize;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\Customer;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\CustomerLocalized;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\CustomerTyped;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\CustomerWithArrayProps;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectToAlter;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithDateTimeNotNull;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithTypingDisabled;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongArrayMultilanProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongArrayTypeSize;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongDateTypeSize;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongEmptyNonTypedArrayProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongExtendedDbCreationDateProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongExtendedDbDeletedProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongExtendedDbIdProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongMethods;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongNonExistantTypedProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongNotAllTypesDefined;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongNullNonTypedProperty;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongPropThatStartsWithUnderscore;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongStringTypeSize;
 use org\turbotesting\src\main\php\utils\AssertUtils;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerTypedWithoutSize;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\CustomerTypedArrayWithoutSize;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\CustomerTypedWithoutSize;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\CustomerTypedArrayWithoutSize;
 use org\turbodepot\src\main\php\managers\FilesManager;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongArrayNoTypeSpecified;
+use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\CustomerTypedWithNoDuplicates;
 
 
 /**
@@ -570,6 +572,38 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
     /**
      * test
      */
+    public function testSave_no_duplicate_values(){
+
+        $object = new CustomerTypedWithNoDuplicates();
+        $object->name = 'name1';
+        $object->age = 25;
+        $this->assertSame(1, $this->sut->save($object));
+
+        $object = new CustomerTypedWithNoDuplicates();
+        $object->name = 'name2';
+        $object->age = 27;
+        $this->assertSame(2, $this->sut->save($object));
+
+        $object = new CustomerTypedWithNoDuplicates();
+        $object->name = 'name1';
+        $object->age = 30;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Duplicate entry \'name1\'/');
+
+        $object = new CustomerTypedWithNoDuplicates();
+        $object->name = 'name3';
+        $object->age = 27;
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/Duplicate entry \'27\'/');
+
+        $object->age = 31;
+        $this->assertSame(5, $this->sut->save($object));
+
+        $this->assertSame(3, $this->sut->getDataBaseManager()->tableCountRows($this->sut->getTableNameFromObject($object)));
+    }
+
+
+    /**
+     * test
+     */
     public function testSave_datetime_values_are_as_expected(){
 
         // Test that creation and modification dates are correct
@@ -1015,6 +1049,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongStringTypeSize()); }, '/name is defined as STRING but size is invalid/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongDateTypeSize()); }, '/date DATETIME size must be 0, 3 or 6/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongArrayTypeSize()); }, '/array is defined as an array of STRING but size is invalid/');
+        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongArrayNoTypeSpecified()); }, '/arrayVal defined as ARRAY but no type for the array elements is specified/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNotAllTypesDefined()); }, '/notDefined has no defined type but typing is mandatory. Define a type or disable this restriction by setting _isTypingMandatory = false/');
     }
 
@@ -1252,7 +1287,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_extranontyped'));
 
         // It is expected that the new property that previously did not exist will be transparently added to the table
-        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\extraNonTypedProperty\ObjectToAlter();
+        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\altered\extraNonTypedProperty\ObjectToAlter();
         $object->name = 'Peter';
         $object->city = 'Chicago';
         $object->extraNonTyped = 'extra non typed value';
@@ -1277,7 +1312,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));
         $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['city']));
 
-        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\removedNonTypedProperty\ObjectToAlter();
+        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\altered\removedNonTypedProperty\ObjectToAlter();
         $object->name = 'Peter';
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<city> exists on <td_objecttoalter> table and must exist as a basic property on object being saved/');
 
@@ -1300,7 +1335,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));
         $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['city']));
 
-        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\renamedNonTypedProperty\ObjectToAlter();
+        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\altered\renamedNonTypedProperty\ObjectToAlter();
         $object->name = 'Peter';
         $object->cityRenamed = 'New York 2';
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<city> exists on <td_objecttoalter> table and must exist as a basic property on object being saved/');
@@ -1328,7 +1363,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_extratyped'));
 
         // It is expected that the new property that previously did not exist will be transparently added to the table
-        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\extraTypedProperty\ObjectToAlter();
+        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\altered\extraTypedProperty\ObjectToAlter();
         $object->name = 'Peter';
         $object->city = 'Chicago';
         $object->extraTyped = 'extra typed value';
@@ -1355,7 +1390,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));
         $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['city']));
 
-        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\removedSimpleTypedProperty\ObjectToAlter();
+        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\altered\removedSimpleTypedProperty\ObjectToAlter();
         $object->city = 'Chicago';
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<name> exists on <td_objecttoalter> table and must exist as a basic property on object being saved/');
     }
@@ -1372,7 +1407,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object->city = 'New York';
         $this->assertSame(1, $this->sut->save($object));
 
-        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\renamedTypedProperty\ObjectToAlter();
+        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\altered\renamedTypedProperty\ObjectToAlter();
         $object->nameRenamed = 'Renamed name';
         $object->city = 'New York City 2';
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<name> exists on <td_objecttoalter> table and must exist as a basic property on object being saved/');
@@ -1403,7 +1438,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertFalse(isset($this->db->tableGetColumnDataTypes($objectTableName)['arrayProp']));
         $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_arrayprop'));
 
-        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\extraArrayProperty\ObjectToAlter();
+        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\altered\extraArrayProperty\ObjectToAlter();
         $object->name = 'Peter';
         $object->city = 'Chicago';
         $object->arrayProp = [1,2,3,4,5,6,7,8];
@@ -1477,7 +1512,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertFalse(isset($this->db->tableGetColumnDataTypes($objectTableName)['namelocalized']));
         $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_namelocalized'));
 
-        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManagerTest\altered\extraMultilanguageProperty\ObjectToAlter(['es_ES']);
+        $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\altered\extraMultilanguageProperty\ObjectToAlter(['es_ES']);
         $object->name = 'Peter';
         $object->city = 'Chicago';
         $object->nameLocalized = 'Pedro';

@@ -144,8 +144,6 @@ class UsersManager extends BaseStrictClass{
      */
     public function save(User $user){
 
-        // TODO - duplicate user names must not be allowed
-
         return $this->_databaseObjectsManager->save($user);
     }
 

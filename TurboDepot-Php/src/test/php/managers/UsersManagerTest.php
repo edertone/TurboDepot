@@ -172,9 +172,11 @@ class UsersManagerTest extends TestCase {
         $user = new User();
         $user->userName = 'user';
         $user->password = 'psw';
+        $user->mails = ['test@test.com', 'user2@user.com'];
         $this->sut->save($user);
         $this->assertSame(['user'], $this->db->tableGetColumnValues('usr_user', 'username'));
         $this->assertSame(['psw'], $this->db->tableGetColumnValues('usr_user', 'password'));
+        $this->assertSame(['test@test.com', 'user2@user.com'], $this->db->tableGetColumnValues('usr_user_mails', 'value'));
 
         $user = new User();
         $user->userName = 'user2';

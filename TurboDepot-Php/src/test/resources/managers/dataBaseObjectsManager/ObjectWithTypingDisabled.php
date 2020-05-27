@@ -1,0 +1,25 @@
+<?php
+
+namespace org\turbodepot\src\test\resources\managers\dataBaseObjectsManager;
+
+
+use org\turbodepot\src\main\php\model\DataBaseObject;
+use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
+
+
+class ObjectWithTypingDisabled extends DataBaseObject{
+
+
+    protected function setup(){
+
+        $this->_isTypingMandatory = false;
+
+        $this->_types['array'] = [DataBaseObjectsManager::ARRAY, 20, DataBaseObjectsManager::STRING];
+    }
+
+    public $array = [];
+
+    public $notDefined = '';
+}
+
+?>

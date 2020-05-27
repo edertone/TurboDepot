@@ -73,7 +73,7 @@ abstract class DataBaseObject extends BaseStrictClass{
      *
      * 1. The property data type: DataBaseObjectsManager::BOOL, ::INT, ::DOUBLE, ::STRING, ::DATETIME or ::ARRAY<br>
      * 2. The property data size (for int and string values the maximum number of digits that can be stored). It is mandatory<br>
-     * 3. DataBaseObjectsManager::NOT_NULL if the property can have null values, skip this otherwise (it is optional)
+     * 3. DataBaseObjectsManager::NOT_NULL if the property cannot have null values, skip this otherwise (it is optional)
      *
      * @var array
      */

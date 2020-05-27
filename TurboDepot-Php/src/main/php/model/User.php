@@ -23,11 +23,27 @@ final class User extends DataBaseObject{
 
     protected function setup(){
 
+        // TODO - domain and username must be a unique index to avoid duplicate values
+
+        $this->_types['domain'] = [250, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING, DataBaseObjectsManager::STRING];
         $this->_types['userName'] = [100, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING];
         $this->_types['password'] = [100, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING];
-        $this->_types['domain'] = [250, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING];
+        $this->_types['mails'] = [250, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::ARRAY, DataBaseObjectsManager::STRING];
         $this->_types['data'] = [5000, DataBaseObjectsManager::NOT_NULL, DataBaseObjectsManager::STRING];
     }
+
+
+    /**
+    * The domain in which the user resides.
+    * Domains are like "folders" or "zones" that let us keep some users isolated from others. Users from
+    * one domain won't be related to users of anoter domain in any way. We can use this feature to store different application
+     * users on the same database for example.
+     *
+     * Note that the empty "" domain is also a valid domain
+     *
+     * @var string
+     */
+    public $domain = '';
 
 
     /**
@@ -42,27 +58,21 @@ final class User extends DataBaseObject{
      * @var string
      */
     public $password = '';
-    
-    
+
+
+    /**
+     * A list of all the emails that belong to the user, sorted by priority
+     * @var string
+     */
+    public $mails = [];
+
+
     /**
      * Any extra data which is custom to the user in our application (normally stored as a json encoded string).
      *
      * @var string
      */
     public $data = '';
-    
-
-    /**
-     * The domain in which the user resides.
-     * Domains are like "folders" or "zones" that let us keep some users isolated from others. Users from
-     * one domain won't be related to users of anoter domain in any way. We can use this feature to store different application
-     * users on the same database for example.
-     *
-     * Note that the empty "" domain is also a valid domain
-     *
-     * @var string
-     */
-    public $domain = '';
 }
 
 ?>

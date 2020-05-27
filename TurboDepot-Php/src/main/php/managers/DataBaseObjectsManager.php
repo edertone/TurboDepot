@@ -67,7 +67,8 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Array type that can be used to constrain object properties
+     * Array type that can be used to constrain object properties.
+     * IMPORTANT: If we define an object property as ARRAY, we must also specify the type of the array elements
      */
     const ARRAY = 'ARRAY';
 
@@ -84,6 +85,13 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * Flag that is used to specify that a data type cannot be null
      */
     const NOT_NULL = 'NOT_NULL';
+
+
+    /**
+     * Flag that is used to specify that a data type cannot have duplicate values. If an object is saved with a value that already exists
+     * on db for a property which has this flag set, an exception will be thrown.
+     */
+    const NO_DUPLICATES = 'NO_DUPLICATES';
 
 
     /**
@@ -633,6 +641,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
         $result = ['', null];
         $isArray = false;
         $isNotNull = false;
+        $isNoDuplicates = false;
         $isMultiLanguage = false;
 
         foreach ($array as $item) {
@@ -648,6 +657,10 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
                 case self::NOT_NULL:
                     $isNotNull = true;
+                    break;
+
+                case self::NO_DUPLICATES:
+                    $isNoDuplicates = true;
                     break;
 
                 case self::MULTI_LANGUAGE:
@@ -690,12 +703,22 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         if($isArray){
 
+            if(!in_array($result[0], [self::BOOL, self::INT, self::DOUBLE, self::STRING, self::DATETIME], true)){
+
+                throw new UnexpectedValueException($property.' defined as ARRAY but no type for the array elements is specified');
+            }
+
             $result[] = self::ARRAY;
         }
 
         if($isNotNull){
 
             $result[] = self::NOT_NULL;
+        }
+
+        if($isNoDuplicates){
+
+            $result[] = self::NO_DUPLICATES;
         }
 
         if($isMultiLanguage){
@@ -855,13 +878,20 @@ class DataBaseObjectsManager extends BaseStrictClass{
     private function _createObjectTables(DataBaseObject $object, string $tableName){
 
         $columnsToCreate = [];
+        $uniqueIndicesToCreate = [['dbuuid']];
 
         foreach ($this->_getBasicProperties($object) as $property) {
 
             $columnsToCreate[] = strtolower($property).' '.$this->getSQLTypeFromObjectProperty($object, $property);
+
+            if(!in_array($property, $this->_baseObjectProperties, true) &&
+               in_array(self::NO_DUPLICATES, $this->_getTypeFromObjectProperty($object, $property), true)){
+
+                $uniqueIndicesToCreate[] = [strtolower($property)];
+            }
         }
 
-        $this->_db->tableCreate($tableName, $columnsToCreate, ['dbid'], [['dbuuid']]);
+        $this->_db->tableCreate($tableName, $columnsToCreate, ['dbid'], $uniqueIndicesToCreate);
 
         // Create all the tables that store array properties
         foreach ($this->_getArrayTypedProperties($object) as $property) {
