@@ -22,6 +22,7 @@ use org\turbocommons\src\main\php\model\BaseStrictClass;
 use org\turbocommons\src\main\php\model\DateTimeObject;
 use org\turbocommons\src\main\php\utils\StringUtils;
 use org\turbodepot\src\main\php\model\DataBaseObject;
+use org\turbocommons\src\main\php\utils\NumericUtils;
 
 
 /**
@@ -1232,11 +1233,16 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * Search a database object that has the specified dbId value
      *
      * @param mixed $class The class (which extends DataBaseObject) for the object type that we want to obtain. Fo example: User::class
-     * @param array $dbid Integers with the dbId value we are looking for
+     * @param int $dbid Integer with the dbId value we are looking for
      *
      * @return DataBaseObject An object instance that matches the specified id or null if object not found.
      */
     public function getByDbId($class, int $dbid) {
+
+        if($dbid === null || !NumericUtils::isInteger($dbid)){
+
+            throw new UnexpectedValueException('dbid non integer value: '.$dbid);
+        }
 
         $result = $this->getByDbIds($class, [$dbid]);
 
@@ -1258,7 +1264,14 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $dbidsArray = [];
 
-        foreach ($dbids as $dbid) {
+        for ($i = 0, $l = count($dbids); $i < $l; $i++) {
+
+            $dbid = $dbids[$i];
+
+            if($dbid === null || !NumericUtils::isInteger($dbid)){
+
+                throw new UnexpectedValueException('dbids array non integer value ('.$dbid.') at position '.$i);
+            }
 
             $dbidsArray['dbid'] = $dbid;
         }

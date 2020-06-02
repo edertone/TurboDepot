@@ -25,7 +25,6 @@ final class User extends DataBaseObject{
         $this->_types['domain'] = [250, self::NOT_NULL, self::STRING];
         $this->_types['userName'] = [100, self::NOT_NULL, self::STRING];
         $this->_types['password'] = [100, self::NOT_NULL, self::STRING];
-        $this->_types['mails'] = [250, self::NOT_NULL, self::ARRAY, self::STRING];
         $this->_types['data'] = [5000, self::NOT_NULL, self::STRING];
 
         $this->_uniqueIndices[] = ['domain', 'userName'];
@@ -57,13 +56,6 @@ final class User extends DataBaseObject{
      * @var string
      */
     public $password = '';
-
-
-    /**
-     * A list of all the emails that belong to the user, sorted by priority
-     * @var string
-     */
-    public $mails = [];
 
 
     /**

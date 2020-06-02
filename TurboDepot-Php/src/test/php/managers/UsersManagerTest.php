@@ -160,6 +160,31 @@ class UsersManagerTest extends TestCase {
     /**
      * test
      */
+    public function testIsUser(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        $user = new User();
+        $user->userName = 'user';
+        $user->password = 'psw';
+        $this->sut->save($user);
+        $this->assertTrue($this->sut->isUser('user'));
+        // TODO
+
+        // Test wrong values
+        $this->assertFalse($this->sut->isUser('non existant'));
+        // TODO
+
+        // Test exceptions
+        // TODO
+    }
+
+
+    /**
+     * test
+     */
     public function testSave(){
 
         // Test empty values
@@ -172,11 +197,9 @@ class UsersManagerTest extends TestCase {
         $user = new User();
         $user->userName = 'user';
         $user->password = 'psw';
-        $user->mails = ['test@test.com', 'user2@user.com'];
         $this->sut->save($user);
         $this->assertSame(['user'], $this->db->tableGetColumnValues('usr_user', 'username'));
         $this->assertSame(['psw'], $this->db->tableGetColumnValues('usr_user', 'password'));
-        $this->assertSame(['test@test.com', 'user2@user.com'], $this->db->tableGetColumnValues('usr_user_mails', 'value'));
 
         $user = new User();
         $user->userName = 'user2';
@@ -207,27 +230,53 @@ class UsersManagerTest extends TestCase {
     /**
      * test
      */
-    public function testIsUser(){
+    public function testSaveUserMail(){
 
         // Test empty values
-        // TODO
+        AssertUtils::throwsException(function() { $this->sut->saveUserMail(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->saveUserMail(null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->saveUserMail(null, null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->saveUserMail(null, null, null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->saveUserMail(''); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->saveUserMail('', ''); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->saveUserMail('', '', ''); }, '/Trying to add an email account to a non existing user:  on domain $/');
+        AssertUtils::throwsException(function() { $this->sut->saveUserMail('', '', []); }, '/must be of the type string, array given/');
 
         // Test ok values
         $user = new User();
         $user->userName = 'user';
         $user->password = 'psw';
         $this->sut->save($user);
-        $this->assertTrue($this->sut->isUser('user'));
-        // TODO
+        $this->sut->saveUserMail('user', '', 'test@email.com');
+        $this->assertSame([['userdbid' => '1', 'mail' => 'test@email.com', 'isverified' => '0', 'comments' => '', 'data' => '']],
+            $this->db->tableGetRows('usr_user_mails', ['userdbid' => 1]));
+
+        $this->sut->saveUserMail('user', '', 'test@email.com', '', 'data1');
+        $this->assertSame(1, count($this->db->tableGetRows('usr_user_mails', ['userdbid' => 1])));
+
+        $this->sut->saveUserMail('user', '', 'test2@email2.com', 'comments2');
+        $this->assertSame([
+            ['userdbid' => '1', 'mail' => 'test2@email2.com', 'isverified' => '0', 'comments' => 'comments2', 'data' => ''],
+            ['userdbid' => '1', 'mail' => 'test@email.com', 'isverified' => '0', 'comments' => '', 'data' => 'data1']
+        ], $this->db->tableGetRows('usr_user_mails', ['userdbid' => 1]));
+
+        $this->sut->saveUserMail('user', '', 'test2@email2.com');
+        $this->assertSame(2, count($this->db->tableGetRows('usr_user_mails', ['userdbid' => 1])));
+
+        $this->sut->saveUserMail('user', '', 'test3@email3.com', 'comments3', 'data3');
+        $this->assertSame([
+            ['userdbid' => '1', 'mail' => 'test2@email2.com', 'isverified' => '0', 'comments' => '', 'data' => ''],
+            ['userdbid' => '1', 'mail' => 'test3@email3.com', 'isverified' => '0', 'comments' => 'comments3', 'data' => 'data3'],
+            ['userdbid' => '1', 'mail' => 'test@email.com', 'isverified' => '0', 'comments' => '', 'data' => 'data1']
+        ], $this->db->tableGetRows('usr_user_mails', ['userdbid' => 1]));
 
         // Test wrong values
-        $this->assertFalse($this->sut->isUser('non existant'));
+        AssertUtils::throwsException(function() { $this->sut->saveUserMail('nonexistantuser', '', 'test@email.com', 'comments', 'data'); }, '/Trying to add an email account to a non existing user: nonexistantuser on domain /');
+        AssertUtils::throwsException(function() { $this->sut->saveUserMail('user', 'nonexistantdomain', 'test@email.com'); }, '/Trying to add an email account to a non existing user: user on domain nonexistantdomain/');
         // TODO
 
         // Test exceptions
         // TODO
-
-        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 

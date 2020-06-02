@@ -136,6 +136,21 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
+     * Check if the specified userName is stored on database for the specified domain
+     *
+     * @param string $userName The user name that we want to check
+     * @param string $domain The domain for which we want to check the user
+     *
+     * @return boolean True if the user exists on the specified domain, false otherwise
+     */
+    public function isUser(string $userName, string $domain = ''){
+
+        return count($this->_databaseObjectsManager->getByPropertyValues(User::class,
+            ['userName' => $userName, 'domain' => $domain])) === 1;
+    }
+
+
+    /**
      * Save to database the provided user instance or update it if it already exists
      *
      * @param User $user The User instance that we want to save
@@ -149,17 +164,100 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Check if the specified userName is stored on database for the specified domain
+     * Save an email account to the specified user. If the email account already exists linked to the user it will be updated.
+     * All new email accounts that are added to a user will be stored with a non verified status. We must set the verification
+     * status of an email account with the method setUserMailValidStatus()
      *
-     * @param string $userName The user name that we want to check
-     * @param string $domain The domain for which we want to check the user
+     * @param string $userName The username for the user to which whe want to add the email account
+     * @param string $domain The domain for the user
+     * @param string $mail The email account that we want to add or update
+     * @param string $comments Comments that will be stored with the email account
+     * @param string $data Any extra data which we may need to store related to the email account (normally we use a json encoded string).
      *
-     * @return boolean True if the user exists on the specified domain, false otherwise
+     * @throws UnexpectedValueException
+     *
+     * @return boolean True if the save succeeded
      */
-    public function isUser(string $userName, string $domain = ''){
+    public function saveUserMail(string $userName, string $domain, string $mail, string $comments = '', string $data = ''){
 
-        return count($this->_databaseObjectsManager->getByPropertyValues(User::class,
-            ['userName' => $userName, 'domain' => $domain])) === 1;
+        // User Must exist on database to add an email account
+        if(!$this->isUser($userName, $domain)){
+
+            throw new UnexpectedValueException('Trying to add an email account to a non existing user: '.$userName.' on domain '.$domain);
+        }
+
+        $db = $this->_databaseObjectsManager->getDataBaseManager();
+        $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mails';
+        $userDbId = $this->_databaseObjectsManager->getByPropertyValues(User::class, ['userName' => $userName, 'domain' => $domain])[0]->getDbId();
+
+        $rowToAdd = ['userdbid' => $userDbId, 'mail' => $mail, 'isverified' => 0, 'comments' => $comments, 'data' => $data];
+
+        try {
+
+            if(count($db->tableGetRows($tableName, ['userdbid' => $userDbId, 'mail' => $mail])) === 1){
+
+                $db->tableUpdateRow($tableName, ['userdbid' => $userDbId, 'mail' => $mail], $rowToAdd);
+
+            }else{
+
+                $db->tableAddRows($tableName, [$rowToAdd]);
+            }
+
+        } catch (Throwable $e) {
+
+            if(!$db->tableExists($tableName) && $db->tableCreate($tableName,
+                ['userdbid bigint NOT NULL', 'mail varchar(250) NOT NULL', 'isverified tinyint(1) NOT NULL', 'comments varchar(5000) NOT NULL',
+                 'data varchar(25000) NOT NULL'], ['userdbid', 'mail'])){
+
+                 return $this->saveUserMail($userName, $domain, $mail, $comments, $data);
+            }
+
+            throw new UnexpectedValueException('Could not add mail accounts to '.$userName.' on domain '.$domain.': '.$e->getMessage());
+        }
+
+        return true;
+    }
+
+
+    /**
+     * TODO
+     */
+    public function sendUserMailValidation(User $user, $mail, $subject, $message){
+
+        // TODO - Send an email to the provided user email account so he can click to mark that account as valid
+    }
+
+
+    /**
+     * TODO
+     */
+    public function isUserMailValid(User $user, $mail){
+
+        // TODO - Given a user and a mail account, this method will give true if the account's been validated and false otherwise
+    }
+
+
+    /**
+     * TODO
+     */
+    public function setUserMailValidStatus(User $user, $mail, $isValid){
+
+        // TODO - Given a user and a mail account, this method will set the status of that accont as valid or invalid
+    }
+
+
+    /**
+     * TODO
+     */
+    public function getUserMails(User $user, $getValidOnes = true, $getInvalidOnes = true){
+
+        // TODO - Get a list with the required email accounts that are linked to the provided user
+    }
+
+
+    public function deleteUserMails(User $user, array $mails){
+
+        // TODO - Delete from db all the email accounts that are linked to the provided user, so they are not anymore
     }
 
 
@@ -225,7 +323,7 @@ class UsersManager extends BaseStrictClass{
                 return $this->createToken($user);
             }
 
-            throw new UnexpectedValueException('Could not create '.$tableName.' table');
+            throw new UnexpectedValueException('Could not create '.$tableName.' table: '.$e->getMessage());
         }
 
         return $token;
