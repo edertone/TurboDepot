@@ -186,8 +186,13 @@ class UsersManager extends BaseStrictClass{
             throw new UnexpectedValueException('Trying to add an email account to a non existing user: '.$userName.' on domain '.$domain);
         }
 
+        if(StringUtils::isEmpty($mail)){
+
+            throw new UnexpectedValueException('Invalid mail');
+        }
+
         $db = $this->_databaseObjectsManager->getDataBaseManager();
-        $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mails';
+        $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mail';
         $userDbId = $this->_databaseObjectsManager->getByPropertyValues(User::class, ['userName' => $userName, 'domain' => $domain])[0]->getDbId();
 
         $rowToAdd = ['userdbid' => $userDbId, 'mail' => $mail, 'isverified' => 0, 'comments' => $comments, 'data' => $data];
@@ -229,18 +234,48 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Check if the provided email account is verified for the specified user
+     *
+     * @param string $userName The username for the user to which whe want to check the mail account
+     * @param string $domain The domain for the user
+     * @param string $mail The email account that we want to check
+     *
+     * @throws UnexpectedValueException
+     *
+     * @return boolean True if the provided mail is verified for the provided user, false otherwise
      */
-    public function isUserMailValid(User $user, $mail){
+    public function isUserMailValid(string $userName, string $domain, string $mail){
 
-        // TODO - Given a user and a mail account, this method will give true if the account's been validated and false otherwise
+        if(StringUtils::isEmpty($mail)){
+
+            throw new UnexpectedValueException('Invalid mail');
+        }
+
+        $db = $this->_databaseObjectsManager->getDataBaseManager();
+        $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mail';
+
+        $user = $this->_databaseObjectsManager->getByPropertyValues(User::class, ['userName' => $userName, 'domain' => $domain]);
+
+        if(count($user) < 1){
+
+            throw new UnexpectedValueException('Non existing user: '.$userName.' on domain '.$domain);
+        }
+
+        $userMail = $db->tableGetRows($tableName, ['userdbid' =>  $user[0]->getDbId(), 'mail' => $mail]);
+
+        if(count($userMail) < 1){
+
+            throw new UnexpectedValueException('Non existing mail: '.$mail.' on user: '.$userName.' on domain '.$domain);
+        }
+
+        return $userMail[0]['isverified'] === '1';
     }
 
 
     /**
      * TODO
      */
-    public function setUserMailValidStatus(User $user, $mail, $isValid){
+    public function setUserMailValidStatus(string $userName, string $domain, string $mail, bool $isValid){
 
         // TODO - Given a user and a mail account, this method will set the status of that accont as valid or invalid
     }
