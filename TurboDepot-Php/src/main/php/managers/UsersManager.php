@@ -164,9 +164,10 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Save an email account to the specified user. If the email account already exists linked to the user it will be updated.
+     * Save an email account to the specified user. It will be updated if it already exists on the provided user.
      * All new email accounts that are added to a user will be stored with a non verified status. We must set the verification
-     * status of an email account with the method setUserMailValidStatus()
+     * status of an email account with the method setUserMailVerified(), normally after sending a verification email to the user with
+     * the sendUserMailVerification() method.
      *
      * @param string $userName The username for the user to which whe want to add the email account
      * @param string $domain The domain for the user
@@ -227,9 +228,9 @@ class UsersManager extends BaseStrictClass{
     /**
      * TODO
      */
-    public function sendUserMailValidation(User $user, $mail, $subject, $message){
+    public function sendUserMailVerification(User $user, $mail, $subject, $message){
 
-        // TODO - Send an email to the provided user email account so he can click to mark that account as valid
+        // TODO - Send an email to the provided user email account so he can click to mark that account as verified
     }
 
 
@@ -244,7 +245,7 @@ class UsersManager extends BaseStrictClass{
      *
      * @return boolean True if the provided mail is verified for the provided user, false otherwise
      */
-    public function isUserMailValid(string $userName, string $domain, string $mail){
+    public function isUserMailVerified(string $userName, string $domain, string $mail){
 
         if(StringUtils::isEmpty($mail)){
 
@@ -273,18 +274,35 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Set the verified status for the specified user email
+     *
+     * @param string $userName The username for the user to which whe want to update the email verification status
+     * @param string $domain The domain for the user
+     * @param string $mail The email account that we want to update
+     * @param bool $isVerified True to set the email as verified, false to set it as non verified
+     *
+     * @return boolean boolean True if the provided mail is correctly updated for the provided user, false otherwise
      */
-    public function setUserMailValidStatus(string $userName, string $domain, string $mail, bool $isValid){
+    public function setUserMailVerified(string $userName, string $domain, string $mail, bool $isVerified){
 
-        // TODO - Given a user and a mail account, this method will set the status of that accont as valid or invalid
+        if($this->isUserMailVerified($userName, $domain, $mail) !== $isVerified){
+
+            $db = $this->_databaseObjectsManager->getDataBaseManager();
+            $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mail';
+
+            $user = $this->_databaseObjectsManager->getByPropertyValues(User::class, ['userName' => $userName, 'domain' => $domain]);
+
+            return $db->tableUpdateRow($tableName, ['userdbid' =>  $user[0]->getDbId(), 'mail' => $mail], ['isverified' => $isVerified]);
+        }
+
+        return false;
     }
 
 
     /**
      * TODO
      */
-    public function getUserMails(User $user, $getValidOnes = true, $getInvalidOnes = true){
+    public function getUserMails(User $user, $getVerifiedOnes = true, $getNonVerifiedOnes = true){
 
         // TODO - Get a list with the required email accounts that are linked to the provided user
     }
