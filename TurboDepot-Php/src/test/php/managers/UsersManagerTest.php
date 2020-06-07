@@ -380,7 +380,7 @@ class UsersManagerTest extends TestCase {
         $this->assertFalse($this->sut->isUserMailVerified('user', '', 'test@email.com'));
         $this->assertFalse($this->sut->isUserMailVerified('user2', '', 'test2@email2.com'));
 
-        $this->assertFalse($this->sut->setUserMailVerified('user2', '', 'test2@email2.com', false));
+        $this->assertTrue($this->sut->setUserMailVerified('user2', '', 'test2@email2.com', false));
         $this->assertFalse($this->sut->isUserMailVerified('user2', '', 'test2@email2.com'));
 
         // Test wrong values
@@ -393,6 +393,85 @@ class UsersManagerTest extends TestCase {
         // TODO
     }
 
+
+    /**
+     * test
+     */
+    public function testGetUserMails(){
+
+        // Test empty values
+        AssertUtils::throwsException(function() { $this->sut->getUserMails(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->getUserMails(null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->getUserMails(null, null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->getUserMails(null, null, null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->getUserMails(''); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->getUserMails('', ''); }, '/Non existing user:  on domain /');
+        AssertUtils::throwsException(function() { $this->sut->getUserMails('', '', ''); }, '/filter must be VERIFIED, NONVERIFIED or ALL/');
+        AssertUtils::throwsException(function() { $this->sut->getUserMails('', '', []); }, '/filter must be VERIFIED, NONVERIFIED or ALL/');
+
+        // Test ok values
+        $user = new User();
+        $user->userName = 'user';
+        $user->password = 'psw';
+        $this->sut->save($user);
+        $this->sut->saveUserMail('user', '', 'test@email.com');
+        $this->sut->saveUserMail('user', '', 'test2@email2.com');
+        $this->sut->saveUserMail('user', '', 'test3@email3.com');
+
+        // Get verified and non verified emails
+        $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => false], ['mail' => 'test3@email3.com', 'isverified' => false],
+            ['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user', ''));
+        $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => false], ['mail' => 'test3@email3.com', 'isverified' => false],
+            ['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user', '', 'NONVERIFIED'));
+
+        // get only verified emails
+        $this->assertSame([], $this->sut->getUserMails('user', '', 'VERIFIED'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test2@email2.com', true));
+        $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => true]], $this->sut->getUserMails('user', '', 'VERIFIED'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test3@email3.com', true));
+        $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => true], ['mail' => 'test3@email3.com', 'isverified' => true]],
+            $this->sut->getUserMails('user', '', 'VERIFIED'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test@email.com', true));
+        $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => true], ['mail' => 'test3@email3.com', 'isverified' => true],
+            ['mail' => 'test@email.com', 'isverified' => true]], $this->sut->getUserMails('user', '', 'VERIFIED'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test@email.com', false));
+        $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => true], ['mail' => 'test3@email3.com', 'isverified' => true]],
+            $this->sut->getUserMails('user', '', 'VERIFIED'));
+
+        // Get only non verified emails
+        $this->assertSame([['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user', '', 'NONVERIFIED'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test2@email2.com', false));
+        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test3@email3.com', false));
+        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test@email.com', false));
+        $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => false], ['mail' => 'test3@email3.com', 'isverified' => false],
+            ['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user', '', 'NONVERIFIED'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test2@email2.com', true));
+        $this->assertSame([['mail' => 'test3@email3.com', 'isverified' => false], ['mail' => 'test@email.com', 'isverified' => false]],
+            $this->sut->getUserMails('user', '', 'NONVERIFIED'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test3@email3.com', true));
+        $this->assertSame([['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user', '', 'NONVERIFIED'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test@email.com', true));
+        $this->assertSame([], $this->sut->getUserMails('user', '', 'NONVERIFIED'));
+
+        // Check that emails are not mixed between users
+        $user = new User();
+        $user->userName = 'user2';
+        $user->password = 'psw2';
+        $this->sut->save($user);
+        $this->sut->saveUserMail('user2', '', 'user@email.com');
+        $this->sut->saveUserMail('user2', '', 'user2@email2.com');
+        $this->sut->saveUserMail('user2', '', 'user3@email3.com');
+        $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => true], ['mail' => 'test3@email3.com', 'isverified' => true],
+            ['mail' => 'test@email.com', 'isverified' => true]], $this->sut->getUserMails('user', ''));
+        $this->assertSame([['mail' => 'user2@email2.com', 'isverified' => false], ['mail' => 'user3@email3.com', 'isverified' => false],
+            ['mail' => 'user@email.com', 'isverified' => false]], $this->sut->getUserMails('user2', ''));
+
+        // Test wrong values
+        // Test exceptions
+        AssertUtils::throwsException(function() { $this->sut->getUserMails('', '', 'INVALIDFILTER'); }, '/filter must be VERIFIED, NONVERIFIED or ALL/');
+        AssertUtils::throwsException(function() { $this->sut->getUserMails('nonexistantuser', ''); }, '/Non existing user: nonexistantuser on domain /');
+        AssertUtils::throwsException(function() { $this->sut->getUserMails('', '', 'ALL'); }, '/Non existing user:  on domain /');
+    }
 
 
     /**

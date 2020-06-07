@@ -252,24 +252,15 @@ class UsersManager extends BaseStrictClass{
             throw new UnexpectedValueException('Invalid mail');
         }
 
-        $db = $this->_databaseObjectsManager->getDataBaseManager();
-        $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mail';
+        foreach ($this->getUserMails($userName, $domain) as $userMail) {
 
-        $user = $this->_databaseObjectsManager->getByPropertyValues(User::class, ['userName' => $userName, 'domain' => $domain]);
+            if($userMail['mail'] === $mail){
 
-        if(count($user) < 1){
-
-            throw new UnexpectedValueException('Non existing user: '.$userName.' on domain '.$domain);
+                return $userMail['isverified'] === true;
+            }
         }
 
-        $userMail = $db->tableGetRows($tableName, ['userdbid' =>  $user[0]->getDbId(), 'mail' => $mail]);
-
-        if(count($userMail) < 1){
-
-            throw new UnexpectedValueException('Non existing mail: '.$mail.' on user: '.$userName.' on domain '.$domain);
-        }
-
-        return $userMail[0]['isverified'] === '1';
+        throw new UnexpectedValueException('Non existing mail: '.$mail.' on user: '.$userName.' on domain '.$domain);
     }
 
 
@@ -281,7 +272,7 @@ class UsersManager extends BaseStrictClass{
      * @param string $mail The email account that we want to update
      * @param bool $isVerified True to set the email as verified, false to set it as non verified
      *
-     * @return boolean boolean True if the provided mail is correctly updated for the provided user, false otherwise
+     * @return boolean True if the provided mail is correctly updated for the provided user
      */
     public function setUserMailVerified(string $userName, string $domain, string $mail, bool $isVerified){
 
@@ -292,19 +283,56 @@ class UsersManager extends BaseStrictClass{
 
             $user = $this->_databaseObjectsManager->getByPropertyValues(User::class, ['userName' => $userName, 'domain' => $domain]);
 
-            return $db->tableUpdateRow($tableName, ['userdbid' =>  $user[0]->getDbId(), 'mail' => $mail], ['isverified' => $isVerified]);
+            $db->tableUpdateRow($tableName, ['userdbid' => $user[0]->getDbId(), 'mail' => $mail], ['isverified' => $isVerified ? 1 : 0]);
         }
 
-        return false;
+        return true;
     }
 
 
     /**
-     * TODO
+     * Get a list with all the email accounts that are linked to the specified user
+     *
+     * @param string $userName The username for the user from which we want to obtain the emails
+     * @param string $domain The domain for the user
+     * @param string $filter Set to ALL to get all the user emails, VERIFIED to get only the verified emails and NONVERIFIED to get only the non verified ones
+     *
+     * @throws UnexpectedValueException In case the provided parameters are not valid
+     *
+     * @return array Associative array with the list of the user emails or empty array if no emails found. Each array element will have the following keys:
+     *         'mail' Containing the email address
+     *         'isverified' Containing true if the mail is verified and false if not
      */
-    public function getUserMails(User $user, $getVerifiedOnes = true, $getNonVerifiedOnes = true){
+    public function getUserMails(string $userName, string $domain, $filter = 'ALL'){
 
-        // TODO - Get a list with the required email accounts that are linked to the provided user
+        if($filter !== 'ALL' && $filter !== 'VERIFIED' &&  $filter !== 'NONVERIFIED'){
+
+            throw new UnexpectedValueException('filter must be VERIFIED, NONVERIFIED or ALL');
+        }
+
+        $db = $this->_databaseObjectsManager->getDataBaseManager();
+        $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mail';
+
+        $user = $this->_databaseObjectsManager->getByPropertyValues(User::class, ['userName' => $userName, 'domain' => $domain]);
+
+        if(count($user) < 1){
+
+            throw new UnexpectedValueException('Non existing user: '.$userName.' on domain '.$domain);
+        }
+
+        $result = [];
+
+        foreach ($db->tableGetRows($tableName, ['userdbid' => $user[0]->getDbId()]) as $row) {
+
+            if($filter === 'ALL' ||
+               ($filter === 'VERIFIED' && $row['isverified'] === '1') ||
+               ($filter === 'NONVERIFIED' && $row['isverified'] === '0')){
+
+                $result[] = ['mail' => $row['mail'], 'isverified' => $row['isverified'] === '1'];
+            }
+        }
+
+        return $result;
     }
 
 
