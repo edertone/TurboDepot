@@ -194,7 +194,7 @@ class UsersManager extends BaseStrictClass{
 
         $db = $this->_databaseObjectsManager->getDataBaseManager();
         $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mail';
-        $userDbId = $this->_databaseObjectsManager->getByPropertyValues(User::class, ['userName' => $userName, 'domain' => $domain])[0]->getDbId();
+        $userDbId = $this->_getUserDBId($userName, $domain);
 
         $rowToAdd = ['userdbid' => $userDbId, 'mail' => $mail, 'isverified' => 0, 'comments' => $comments, 'data' => $data];
 
@@ -281,9 +281,8 @@ class UsersManager extends BaseStrictClass{
             $db = $this->_databaseObjectsManager->getDataBaseManager();
             $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mail';
 
-            $user = $this->_databaseObjectsManager->getByPropertyValues(User::class, ['userName' => $userName, 'domain' => $domain]);
-
-            $db->tableUpdateRow($tableName, ['userdbid' => $user[0]->getDbId(), 'mail' => $mail], ['isverified' => $isVerified ? 1 : 0]);
+            $db->tableUpdateRow($tableName, ['userdbid' => $this->_getUserDBId($userName, $domain), 'mail' => $mail],
+                ['isverified' => $isVerified ? 1 : 0]);
         }
 
         return true;
@@ -313,16 +312,9 @@ class UsersManager extends BaseStrictClass{
         $db = $this->_databaseObjectsManager->getDataBaseManager();
         $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mail';
 
-        $user = $this->_databaseObjectsManager->getByPropertyValues(User::class, ['userName' => $userName, 'domain' => $domain]);
-
-        if(count($user) < 1){
-
-            throw new UnexpectedValueException('Non existing user: '.$userName.' on domain '.$domain);
-        }
-
         $result = [];
 
-        foreach ($db->tableGetRows($tableName, ['userdbid' => $user[0]->getDbId()]) as $row) {
+        foreach ($db->tableGetRows($tableName, ['userdbid' => $this->_getUserDBId($userName, $domain)]) as $row) {
 
             if($filter === 'ALL' ||
                ($filter === 'VERIFIED' && $row['isverified'] === '1') ||
@@ -336,9 +328,63 @@ class UsersManager extends BaseStrictClass{
     }
 
 
-    public function deleteUserMails(User $user, array $mails){
+    /**
+     * Delete the provided list of emails from the specified User
+     *
+     * @param string $userName The username for the user from which we want to delete the mail accounts
+     * @param string $domain The domain for the user
+     * @param array $mails List of emails to delete. If an empty array is provided, all the emails linked to the user will be deleted
+     *
+     * @throws UnexpectedValueException
+     *
+     * @return int Number of email accounts that have been deleted
+     */
+    public function deleteUserMails(string $userName, string $domain, array $mails){
 
-        // TODO - Delete from db all the email accounts that are linked to the provided user, so they are not anymore
+        $result = 0;
+        $db = $this->_databaseObjectsManager->getDataBaseManager();
+        $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mail';
+        $userDBId = $this->_getUserDBId($userName, $domain);
+
+        if(count($mails) <= 0){
+
+            return $db->tableDeleteRows($tableName, ['userdbid' => $userDBId]);
+        }
+
+        foreach ($mails as $mail) {
+
+            if(!StringUtils::isString($mail) || strlen($mail) < 3){
+
+                throw new UnexpectedValueException('Invalid mail: '.$mail);
+            }
+
+            $result += $db->tableDeleteRows($tableName, ['userdbid' => $userDBId, 'mail' => $mail]);
+        }
+
+        return $result;
+    }
+
+
+    /**
+     * Aux method to obtain the user dbid from a username and domain
+     *
+     * @param string $userName The user name
+     * @param string $domain The domain
+     *
+     * @throws UnexpectedValueException
+     *
+     * @return int The user dbid
+     */
+    private function _getUserDBId(string $userName, string $domain){
+
+        $user = $this->_databaseObjectsManager->getByPropertyValues(User::class, ['userName' => $userName, 'domain' => $domain]);
+
+        if(count($user) < 1){
+
+            throw new UnexpectedValueException('Non existing user: '.$userName.' on domain '.$domain);
+        }
+
+        return $user[0]->getDbId();
     }
 
 
