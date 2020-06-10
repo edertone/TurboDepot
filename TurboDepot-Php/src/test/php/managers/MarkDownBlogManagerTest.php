@@ -119,6 +119,10 @@ class MarkDownBlogManagerTest extends TestCase {
         $this->assertSame('convert string to camelcase javascript typescript php', $post->metaTitle);
         $this->assertSame('What is Camel Case Camel case conversion in TurboCommons library Convert a string to Camel Case in Php Convert a string to Camel Case in Javascrip ...',
             $post->metaDescription);
+
+        $post = $this->sut->getPost('2020-06-05', 'en', 'pad-string-with-characters-javascript-typescript-php');
+        $this->assertSame('Pad a string to a certain length with another string on Javascript, Typescript and Php', $post->title);
+        $this->assertSame('Pad string certain length with another string Javascript, Typescript and Php', $post->metaTitle);
     }
 
 
@@ -135,16 +139,18 @@ class MarkDownBlogManagerTest extends TestCase {
         // Test ok values
         $latestPosts = $this->sut->getLatestPosts('en', 10);
 
-        $this->assertSame(4, count($latestPosts));
+        $this->assertSame(5, count($latestPosts));
 
-        $this->assertSame('Convert string to CamelCase, UpperCamelCase or LowerCamelCase in Javascript, typescript and Php',
+        $this->assertSame('Pad a string to a certain length with another string on Javascript, Typescript and Php',
             $latestPosts[0]->title);
 
-        $this->assertSame('Blog post test 2', $latestPosts[1]->title);
+        $this->assertSame('Convert string to CamelCase, UpperCamelCase or LowerCamelCase in Javascript, typescript and Php', $latestPosts[1]->title);
 
-        $this->assertSame('Blog post test 1', $latestPosts[2]->title);
+        $this->assertSame('Blog post test 2', $latestPosts[2]->title);
 
-        $this->assertSame('Blog post test 18/9/2014', $latestPosts[3]->title);
+        $this->assertSame('Blog post test 1', $latestPosts[3]->title);
+
+        $this->assertSame('Blog post test 18/9/2014', $latestPosts[4]->title);
         // TODO - more tests
 
         // Test wrong values
