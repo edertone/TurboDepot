@@ -52,14 +52,23 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
+     * The users domain on which this instance is currently operating
+     *
+     * @var string
+     */
+    private $_domain = '';
+
+
+    /**
      * Manages a fully featured user system engine
      *
      * @param DataBaseObjectsManager $databaseObjectsManager A DataBaseObjectsManager instance which is fully initialized against a valid database and ready
      *        to operate. This instance will be used by this class to store and read users info.
      */
-    public function __construct(DataBaseObjectsManager $databaseObjectsManager){
+    public function __construct(DataBaseObjectsManager $databaseObjectsManager, string $domain = ''){
 
         $this->_databaseObjectsManager = $databaseObjectsManager;
+        $this->_domain = $domain;
 
         if(!$this->_databaseObjectsManager->getDataBaseManager()->isConnected()){
 
@@ -136,17 +145,91 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Check if the specified userName is stored on database for the specified domain
+     * Save to database the provided users domain or update it if already exists
      *
-     * @param string $userName The user name that we want to check
-     * @param string $domain The domain for which we want to check the user
+     * @param string $domainName The name for the domain to save or update
+     * @param string $description The domain description
      *
-     * @return boolean True if the user exists on the specified domain, false otherwise
+     * @throws UnexpectedValueException
+     *
+     * @return boolean True if the domain was correctly saved
      */
-    public function isUser(string $userName, string $domain = ''){
+    public function saveDomain($domainName, $description = ''){
 
-        return count($this->_databaseObjectsManager->getByPropertyValues(User::class,
-            ['userName' => $userName, 'domain' => $domain])) === 1;
+        StringUtils::forceNonEmptyString($domainName, 'domainName');
+        StringUtils::forceString($description, 'description');
+
+        $db = $this->_databaseObjectsManager->getDataBaseManager();
+        $tableName = $this->_databaseObjectsManager->tablesPrefix.'domain';
+
+        $rowToAdd = ['name' => $domainName, 'description' => $description];
+
+        try {
+
+            if(count($db->tableGetRows($tableName, ['name' => $domainName])) === 1){
+
+                $db->tableUpdateRow($tableName, ['name' => $domainName], $rowToAdd);
+
+            }else{
+
+                $db->tableAddRows($tableName, [$rowToAdd]);
+            }
+
+        } catch (Throwable $e) {
+
+            if(!$db->tableExists($tableName) && $db->tableCreate($tableName,
+                ['name varchar(250) NOT NULL', 'description varchar(5000) NOT NULL'], ['name'])){
+
+                    $db->tableAddRows($tableName, [['name' => '', 'description' => 'The default root users domain']]);
+
+                    return $this->saveDomain($domainName, $description);
+                }
+
+                throw new UnexpectedValueException('Could not add domain '.$domainName.' to db');
+        }
+
+        return true;
+    }
+
+
+    /**
+     * Check if the provided domain exists on database
+     *
+     * @param string $domainName The name for the domain we want to check
+     *
+     * @return boolean True if the domain exists and false otherwise
+     */
+    public function isDomain($domainName){
+
+        if($domainName === ''){
+
+            return true;
+        }
+
+        StringUtils::forceNonEmptyString($domainName, 'domainName');
+
+        return count($this->_databaseObjectsManager->getDataBaseManager()
+            ->tableGetRows($this->_databaseObjectsManager->tablesPrefix.'domain', ['name' => $domainName])) === 1;
+    }
+
+
+    /**
+     * Set the specified domain as the currently active one for this class
+     *
+     * @param string $domainName The name for the domain we want to currently use
+     *
+     * @throws UnexpectedValueException
+     *
+     * @return string The domain name
+     */
+    public function setDomain($domainName){
+
+        if(!$this->isDomain($domainName)){
+
+            throw new UnexpectedValueException('Domain does not exist '.$domainName);
+        }
+
+        return $this->_domain = $domainName;
     }
 
 
@@ -157,9 +240,59 @@ class UsersManager extends BaseStrictClass{
      *
      * @return int An int containing the dbId value for the user that's been saved.
      */
-    public function save(User $user){
+    public function saveUser(User $user){
 
         return $this->_databaseObjectsManager->save($user);
+    }
+
+
+    /**
+     * Check if the specified userName is stored on database for the current domain
+     *
+     * @param string $userName The user name that we want to check
+     *
+     * @return boolean True if the user exists on the current domain, false otherwise
+     */
+    public function isUser(string $userName){
+
+        return count($this->_databaseObjectsManager->getByPropertyValues(User::class,
+            ['userName' => $userName, 'domain' => $this->_domain])) === 1;
+    }
+
+
+    /**
+     * TODO
+     */
+    public function setUserPassword(string $userName, string $password){
+
+        // TODO
+    }
+
+
+    /**
+     * TODO
+     */
+    public function saveRole($name, $description = ''){
+
+        // TODO
+    }
+
+
+    /**
+     * TODO
+     */
+    public function setRoleToUsers($roleName, array $userNames){
+
+        // TODO
+    }
+
+
+    /**
+     * TODO
+     */
+    public function deleteRole(string $roleName){
+
+        // TODO
     }
 
 
@@ -170,7 +303,6 @@ class UsersManager extends BaseStrictClass{
      * the sendUserMailVerification() method.
      *
      * @param string $userName The username for the user to which whe want to add the email account
-     * @param string $domain The domain for the user
      * @param string $mail The email account that we want to add or update
      * @param string $comments Comments that will be stored with the email account
      * @param string $data Any extra data which we may need to store related to the email account (normally we use a json encoded string).
@@ -179,22 +311,19 @@ class UsersManager extends BaseStrictClass{
      *
      * @return boolean True if the save succeeded
      */
-    public function saveUserMail(string $userName, string $domain, string $mail, string $comments = '', string $data = ''){
+    public function saveUserMail(string $userName, string $mail, string $comments = '', string $data = ''){
 
         // User Must exist on database to add an email account
-        if(!$this->isUser($userName, $domain)){
+        if(!$this->isUser($userName)){
 
-            throw new UnexpectedValueException('Trying to add an email account to a non existing user: '.$userName.' on domain '.$domain);
+            throw new UnexpectedValueException('Trying to add an email account to a non existing user: '.$userName.' on domain '.$this->_domain);
         }
 
-        if(StringUtils::isEmpty($mail)){
-
-            throw new UnexpectedValueException('Invalid mail');
-        }
+        StringUtils::forceNonEmptyString($mail, '', 'Invalid mail');
 
         $db = $this->_databaseObjectsManager->getDataBaseManager();
         $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mail';
-        $userDbId = $this->_getUserDBId($userName, $domain);
+        $userDbId = $this->_getUserDBId($userName);
 
         $rowToAdd = ['userdbid' => $userDbId, 'mail' => $mail, 'isverified' => 0, 'comments' => $comments, 'data' => $data];
 
@@ -215,10 +344,10 @@ class UsersManager extends BaseStrictClass{
                 ['userdbid bigint NOT NULL', 'mail varchar(250) NOT NULL', 'isverified tinyint(1) NOT NULL', 'comments varchar(5000) NOT NULL',
                  'data varchar(25000) NOT NULL'], ['userdbid', 'mail'])){
 
-                 return $this->saveUserMail($userName, $domain, $mail, $comments, $data);
+                 return $this->saveUserMail($userName, $mail, $comments, $data);
             }
 
-            throw new UnexpectedValueException('Could not add mail accounts to '.$userName.' on domain '.$domain.': '.$e->getMessage());
+            throw new UnexpectedValueException('Could not add mail accounts to '.$userName.' on domain '.$this->_domain.': '.$e->getMessage());
         }
 
         return true;
@@ -228,7 +357,7 @@ class UsersManager extends BaseStrictClass{
     /**
      * TODO
      */
-    public function sendUserMailVerification(User $user, $mail, $subject, $message){
+    public function sendUserMailVerification(string $userName, string $mail, string $subject, string $message){
 
         // TODO - Send an email to the provided user email account so he can click to mark that account as verified
     }
@@ -238,21 +367,17 @@ class UsersManager extends BaseStrictClass{
      * Check if the provided email account is verified for the specified user
      *
      * @param string $userName The username for the user to which whe want to check the mail account
-     * @param string $domain The domain for the user
      * @param string $mail The email account that we want to check
      *
      * @throws UnexpectedValueException
      *
      * @return boolean True if the provided mail is verified for the provided user, false otherwise
      */
-    public function isUserMailVerified(string $userName, string $domain, string $mail){
+    public function isUserMailVerified(string $userName, string $mail){
 
-        if(StringUtils::isEmpty($mail)){
+        StringUtils::forceNonEmptyString($mail, '', 'Invalid mail');
 
-            throw new UnexpectedValueException('Invalid mail');
-        }
-
-        foreach ($this->getUserMails($userName, $domain) as $userMail) {
+        foreach ($this->getUserMails($userName) as $userMail) {
 
             if($userMail['mail'] === $mail){
 
@@ -260,7 +385,7 @@ class UsersManager extends BaseStrictClass{
             }
         }
 
-        throw new UnexpectedValueException('Non existing mail: '.$mail.' on user: '.$userName.' on domain '.$domain);
+        throw new UnexpectedValueException('Non existing mail: '.$mail.' on user: '.$userName.' on domain '.$this->_domain);
     }
 
 
@@ -268,20 +393,19 @@ class UsersManager extends BaseStrictClass{
      * Set the verified status for the specified user email
      *
      * @param string $userName The username for the user to which whe want to update the email verification status
-     * @param string $domain The domain for the user
      * @param string $mail The email account that we want to update
      * @param bool $isVerified True to set the email as verified, false to set it as non verified
      *
      * @return boolean True if the provided mail is correctly updated for the provided user
      */
-    public function setUserMailVerified(string $userName, string $domain, string $mail, bool $isVerified){
+    public function setUserMailVerified(string $userName, string $mail, bool $isVerified){
 
-        if($this->isUserMailVerified($userName, $domain, $mail) !== $isVerified){
+        if($this->isUserMailVerified($userName, $mail) !== $isVerified){
 
             $db = $this->_databaseObjectsManager->getDataBaseManager();
             $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mail';
 
-            $db->tableUpdateRow($tableName, ['userdbid' => $this->_getUserDBId($userName, $domain), 'mail' => $mail],
+            $db->tableUpdateRow($tableName, ['userdbid' => $this->_getUserDBId($userName), 'mail' => $mail],
                 ['isverified' => $isVerified ? 1 : 0]);
         }
 
@@ -293,7 +417,6 @@ class UsersManager extends BaseStrictClass{
      * Get a list with all the email accounts that are linked to the specified user
      *
      * @param string $userName The username for the user from which we want to obtain the emails
-     * @param string $domain The domain for the user
      * @param string $filter Set to ALL to get all the user emails, VERIFIED to get only the verified emails and NONVERIFIED to get only the non verified ones
      *
      * @throws UnexpectedValueException In case the provided parameters are not valid
@@ -302,7 +425,7 @@ class UsersManager extends BaseStrictClass{
      *         'mail' Containing the email address
      *         'isverified' Containing true if the mail is verified and false if not
      */
-    public function getUserMails(string $userName, string $domain, $filter = 'ALL'){
+    public function getUserMails(string $userName, $filter = 'ALL'){
 
         if($filter !== 'ALL' && $filter !== 'VERIFIED' &&  $filter !== 'NONVERIFIED'){
 
@@ -314,7 +437,7 @@ class UsersManager extends BaseStrictClass{
 
         $result = [];
 
-        foreach ($db->tableGetRows($tableName, ['userdbid' => $this->_getUserDBId($userName, $domain)]) as $row) {
+        foreach ($db->tableGetRows($tableName, ['userdbid' => $this->_getUserDBId($userName)]) as $row) {
 
             if($filter === 'ALL' ||
                ($filter === 'VERIFIED' && $row['isverified'] === '1') ||
@@ -329,22 +452,21 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Delete the provided list of emails from the specified User
+     * Delete the provided list of emails for the specified User
      *
      * @param string $userName The username for the user from which we want to delete the mail accounts
-     * @param string $domain The domain for the user
-     * @param array $mails List of emails to delete. If an empty array is provided, all the emails linked to the user will be deleted
+     * @param array $mails List of emails to delete. If an empty array is provided, ALL the emails linked to the user will be deleted
      *
      * @throws UnexpectedValueException
      *
      * @return int Number of email accounts that have been deleted
      */
-    public function deleteUserMails(string $userName, string $domain, array $mails){
+    public function deleteUserMails(string $userName, array $mails){
 
         $result = 0;
         $db = $this->_databaseObjectsManager->getDataBaseManager();
         $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mail';
-        $userDBId = $this->_getUserDBId($userName, $domain);
+        $userDBId = $this->_getUserDBId($userName);
 
         if(count($mails) <= 0){
 
@@ -366,25 +488,33 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Aux method to obtain the user dbid from a username and domain
+     * Aux method to obtain the user dbid from a username at the current domain
      *
      * @param string $userName The user name
-     * @param string $domain The domain
      *
      * @throws UnexpectedValueException
      *
      * @return int The user dbid
      */
-    private function _getUserDBId(string $userName, string $domain){
+    private function _getUserDBId(string $userName){
 
-        $user = $this->_databaseObjectsManager->getByPropertyValues(User::class, ['userName' => $userName, 'domain' => $domain]);
+        $user = $this->_databaseObjectsManager->getByPropertyValues(User::class, ['userName' => $userName, 'domain' => $this->_domain]);
 
         if(count($user) < 1){
 
-            throw new UnexpectedValueException('Non existing user: '.$userName.' on domain '.$domain);
+            throw new UnexpectedValueException('Non existing user: '.$userName.' on domain '.$this->_domain);
         }
 
         return $user[0]->getDbId();
+    }
+
+
+    /**
+     * TODO
+     */
+    public function saveOperation($operation){
+
+        // TODO
     }
 
 
@@ -393,16 +523,15 @@ class UsersManager extends BaseStrictClass{
      *
      * @param string $userName The username for the user we want to login
      * @param string $password The password for the user we want to login
-     * @param string $domain The domain to which the user will be logged in
      *
      * @return User[]|string[] An empty array if login failed or an array with two elements if
      *         the login succeeded: First element will be a string with the user token and second element will be the User instance for the
      *         requested user.
      */
-    public function login(string $userName, string $password, string $domain = ''){
+    public function login(string $userName, string $password){
 
         $user = $this->_databaseObjectsManager->getByPropertyValues(User::class,
-            ['userName' => $userName, 'password' => $password, 'domain' => $domain]);
+            ['userName' => $userName, 'password' => $password, 'domain' => $this->_domain]);
 
         if(count($user) === 1){
 
@@ -464,11 +593,10 @@ class UsersManager extends BaseStrictClass{
      * @see UsersManager::encodeUserAndPassword
      *
      * @param string $encodedCredentials The user and password credentials as they are encoded by UsersManager::encodeUserAndPassword() method
-     * @param string $domain The domain to which the user will be logged in
      *
      * @return User[]|string[] See UsersManager::login()
      */
-    public function loginFromEncodedCredentials(string $encodedCredentials, string $domain = ''){
+    public function loginFromEncodedCredentials(string $encodedCredentials){
 
         return $this->login($this->decodeUserName($encodedCredentials), $this->decodePassword($encodedCredentials));
     }
@@ -484,10 +612,7 @@ class UsersManager extends BaseStrictClass{
      */
     public function isTokenValid(string $token, array $operations = []){
 
-        if(StringUtils::isEmpty($token)){
-
-            throw new UnexpectedValueException('token must have a value');
-        }
+        StringUtils::forceNonEmptyString($token, '', 'token must have a value');
 
         $db = $this->_databaseObjectsManager->getDataBaseManager();
         $tableName = $this->_databaseObjectsManager->tablesPrefix.'token';

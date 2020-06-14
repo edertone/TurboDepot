@@ -136,10 +136,254 @@ class UsersManagerTest extends TestCase {
     }
 
 
+    /** test */
+    public function testDecodePassword(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /** test */
+    public function testSaveDomain(){
+
+        // Test empty values
+        AssertUtils::throwsException(function() { $this->sut->saveDomain(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain(null); }, '/domainName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain(''); }, '/domainName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain([]); }, '/domainName must be a non empty string/');
+
+        // Test ok values
+        $this->assertFalse($this->db->tableExists('usr_domain'));
+        $this->assertTrue($this->sut->saveDomain('domain1'));
+        $this->assertTrue($this->db->tableExists('usr_domain'));
+        $this->assertSame(['', 'domain1'], $this->db->tableGetColumnValues('usr_domain', 'name'));
+        $this->assertSame(['The default root users domain', ''], $this->db->tableGetColumnValues('usr_domain', 'description'));
+
+        $this->assertTrue($this->sut->saveDomain('domain1', 'description1'));
+        $this->assertSame(['', 'domain1'], $this->db->tableGetColumnValues('usr_domain', 'name'));
+        $this->assertSame(['The default root users domain', 'description1'], $this->db->tableGetColumnValues('usr_domain', 'description'));
+
+        $this->assertTrue($this->sut->saveDomain('domain1', 'description1-edited'));
+        $this->assertSame(['The default root users domain', 'description1-edited'], $this->db->tableGetColumnValues('usr_domain', 'description'));
+
+        $this->assertTrue($this->sut->saveDomain('domain2'));
+        $this->assertTrue($this->sut->saveDomain('domain3'));
+        $this->assertSame(['', 'domain1', 'domain2', 'domain3'], $this->db->tableGetColumnValues('usr_domain', 'name'));
+        $this->assertSame(['The default root users domain', 'description1-edited', '', ''], $this->db->tableGetColumnValues('usr_domain', 'description'));
+
+        // Test wrong values
+        // Test exceptions
+        AssertUtils::throwsException(function() { $this->sut->saveDomain('   '); }, '/domainName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain(1345345); }, '/domainName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain([1,2,3,4,5]); }, '/domainName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain('domain1', 12345); }, '/description must be a string/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain('domain1', [1,2,3,4,5]); }, '/description must be a string/');
+    }
+
+
+    /** test */
+    public function testIsDomain(){
+
+        // Test empty values
+        AssertUtils::throwsException(function() { $this->sut->isDomain(); }, '/Too few arguments to function/');
+        $this->assertTrue($this->sut->isDomain(''));
+        AssertUtils::throwsException(function() { $this->sut->isDomain(null); }, '/domainName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->isDomain([]); }, '/domainName must be a non empty string/');
+
+        // Test ok values
+        $this->assertTrue($this->sut->saveDomain('D1'));
+        $this->assertTrue($this->sut->saveDomain('D2'));
+        $this->assertTrue($this->sut->saveDomain('D3'));
+        $this->assertTrue($this->sut->saveDomain('D3/sub'));
+        $this->assertTrue($this->sut->isDomain(''));
+        $this->assertTrue($this->sut->isDomain('D1'));
+        $this->assertTrue($this->sut->isDomain('D2'));
+        $this->assertTrue($this->sut->isDomain('D3'));
+        $this->assertTrue($this->sut->isDomain('D3/sub'));
+
+        // Test wrong values
+        $this->assertFalse($this->sut->isDomain('nonexistant1'));
+        $this->assertFalse($this->sut->isDomain('nonexistant2'));
+
+        // Test exceptions
+        AssertUtils::throwsException(function() { $this->sut->isDomain(1234); }, '/domainName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->isDomain([1234]); }, '/domainName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->isDomain('         '); }, '/domainName must be a non empty string/');
+    }
+
+
+    /** test */
+    public function testSetDomain(){
+
+        // Test empty values
+        $this->assertSame('', $this->sut->setDomain(''));
+        AssertUtils::throwsException(function() { $this->sut->setDomain(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->setDomain(null); }, '/domainName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->setDomain([]); }, '/domainName must be a non empty string/');
+
+        // Test ok values
+        $this->assertTrue($this->sut->saveDomain('D1'));
+        $this->assertTrue($this->sut->saveDomain('D2'));
+        $this->assertTrue($this->sut->saveDomain('D3'));
+        $this->assertTrue($this->sut->saveDomain('D3/sub'));
+        $this->assertSame('', $this->sut->setDomain(''));
+        $this->assertSame('D1', $this->sut->setDomain('D1'));
+        $this->assertSame('D2', $this->sut->setDomain('D2'));
+        $this->assertSame('D3', $this->sut->setDomain('D3'));
+        $this->assertSame('D3/sub', $this->sut->setDomain('D3/sub'));
+
+        // Test wrong values
+        AssertUtils::throwsException(function() { $this->sut->setDomain('nonexistant1'); }, '/Domain does not exist nonexistant1/');
+        AssertUtils::throwsException(function() { $this->sut->setDomain('nonexistant2'); }, '/Domain does not exist nonexistant2/');
+
+        // Test exceptions
+        AssertUtils::throwsException(function() { $this->sut->setDomain(1234); }, '/domainName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->setDomain([1234]); }, '/domainName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->setDomain('         '); }, '/domainName must be a non empty string/');
+    }
+
+
     /**
      * test
      */
-    public function testDecodePassword(){
+    public function testSaveUser(){
+
+        // Test empty values
+        AssertUtils::throwsException(function() { $this->sut->saveUser(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->saveUser(null); }, '/Argument 1 passed to .* must be an instance of .*User/');
+        AssertUtils::throwsException(function() { $this->sut->saveUser(''); }, '/Argument 1 passed to .* must be an instance of .*User/');
+        AssertUtils::throwsException(function() { $this->sut->saveUser([]); }, '/Argument 1 passed to .* must be an instance of .*User/');
+
+        // Test ok values
+        $user = new User();
+        $user->userName = 'user';
+        $user->password = 'psw';
+        $this->sut->saveUser($user);
+        $this->assertSame(['user'], $this->db->tableGetColumnValues('usr_user', 'username'));
+        $this->assertSame(['psw'], $this->db->tableGetColumnValues('usr_user', 'password'));
+
+        $user = new User();
+        $user->userName = 'user2';
+        $user->password = 'psw2';
+        $this->sut->saveUser($user);
+        $this->assertSame(['user', 'user2'], $this->db->tableGetColumnValues('usr_user', 'username'));
+        $this->assertSame(['psw', 'psw2'], $this->db->tableGetColumnValues('usr_user', 'password'));
+
+        // Test wrong values
+        $user = new User();
+        $user->userName = 'user';
+        $user->password = 'psw';
+        AssertUtils::throwsException(function() use ($user) { $this->sut->saveUser($user); }, '/Duplicate entry \'user\'/');
+
+        $user = new User();
+        $user->domain = 'different domain';
+        $user->userName = 'user';
+        $user->password = 'psw';
+        $this->sut->saveUser($user);
+
+        // Test exceptions
+        AssertUtils::throwsException(function() { $this->sut->saveUser('string'); }, '/Argument 1 passed to .* must be an instance of .*User/');
+        AssertUtils::throwsException(function() { $this->sut->saveUser(1345345); }, '/Argument 1 passed to .* must be an instance of .*User/');
+        AssertUtils::throwsException(function() { $this->sut->saveUser([1,2,3,4,5]); }, '/Argument 1 passed to .* must be an instance of .*User/');
+    }
+
+
+    /**
+     * test
+     */
+    public function testIsUser(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        $user = new User();
+        $user->userName = 'user';
+        $user->password = 'psw';
+        $this->sut->saveUser($user);
+        $this->assertTrue($this->sut->isUser('user'));
+        // TODO
+
+        // Test wrong values
+        $this->assertFalse($this->sut->isUser('non existant'));
+        // TODO
+
+        // Test exceptions
+        // TODO
+    }
+
+
+    /** test */
+    public function testSetUserPassword(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /** test */
+    public function testSaveRole(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /** test */
+    public function testSetRoleToUsers(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /** test */
+    public function testDeleteRole(){
 
         // Test empty values
         // TODO
@@ -160,76 +404,6 @@ class UsersManagerTest extends TestCase {
     /**
      * test
      */
-    public function testIsUser(){
-
-        // Test empty values
-        // TODO
-
-        // Test ok values
-        $user = new User();
-        $user->userName = 'user';
-        $user->password = 'psw';
-        $this->sut->save($user);
-        $this->assertTrue($this->sut->isUser('user'));
-        // TODO
-
-        // Test wrong values
-        $this->assertFalse($this->sut->isUser('non existant'));
-        // TODO
-
-        // Test exceptions
-        // TODO
-    }
-
-
-    /**
-     * test
-     */
-    public function testSave(){
-
-        // Test empty values
-        AssertUtils::throwsException(function() { $this->sut->save(); }, '/Too few arguments to function/');
-        AssertUtils::throwsException(function() { $this->sut->save(null); }, '/Argument 1 passed to .* must be an instance of .*User/');
-        AssertUtils::throwsException(function() { $this->sut->save(''); }, '/Argument 1 passed to .* must be an instance of .*User/');
-        AssertUtils::throwsException(function() { $this->sut->save([]); }, '/Argument 1 passed to .* must be an instance of .*User/');
-
-        // Test ok values
-        $user = new User();
-        $user->userName = 'user';
-        $user->password = 'psw';
-        $this->sut->save($user);
-        $this->assertSame(['user'], $this->db->tableGetColumnValues('usr_user', 'username'));
-        $this->assertSame(['psw'], $this->db->tableGetColumnValues('usr_user', 'password'));
-
-        $user = new User();
-        $user->userName = 'user2';
-        $user->password = 'psw2';
-        $this->sut->save($user);
-        $this->assertSame(['user', 'user2'], $this->db->tableGetColumnValues('usr_user', 'username'));
-        $this->assertSame(['psw', 'psw2'], $this->db->tableGetColumnValues('usr_user', 'password'));
-
-        // Test wrong values
-        $user = new User();
-        $user->userName = 'user';
-        $user->password = 'psw';
-        AssertUtils::throwsException(function() use ($user) { $this->sut->save($user); }, '/Duplicate entry \'user\'/');
-
-        $user = new User();
-        $user->domain = 'different domain';
-        $user->userName = 'user';
-        $user->password = 'psw';
-        $this->sut->save($user);
-
-        // Test exceptions
-        AssertUtils::throwsException(function() { $this->sut->save('string'); }, '/Argument 1 passed to .* must be an instance of .*User/');
-        AssertUtils::throwsException(function() { $this->sut->save(1345345); }, '/Argument 1 passed to .* must be an instance of .*User/');
-        AssertUtils::throwsException(function() { $this->sut->save([1,2,3,4,5]); }, '/Argument 1 passed to .* must be an instance of .*User/');
-    }
-
-
-    /**
-     * test
-     */
     public function testSaveUserMail(){
 
         // Test empty values
@@ -238,7 +412,7 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->saveUserMail(null, null); }, '/must be of the type string, null given/');
         AssertUtils::throwsException(function() { $this->sut->saveUserMail(null, null, null); }, '/must be of the type string, null given/');
         AssertUtils::throwsException(function() { $this->sut->saveUserMail(''); }, '/Too few arguments to function/');
-        AssertUtils::throwsException(function() { $this->sut->saveUserMail('', ''); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->saveUserMail('', ''); }, '/Trying to add an email account to a non existing user:  on domain /');
         AssertUtils::throwsException(function() { $this->sut->saveUserMail('', '', ''); }, '/Trying to add an email account to a non existing user:  on domain $/');
         AssertUtils::throwsException(function() { $this->sut->saveUserMail('', '', []); }, '/must be of the type string, array given/');
 
@@ -246,24 +420,24 @@ class UsersManagerTest extends TestCase {
         $user = new User();
         $user->userName = 'user';
         $user->password = 'psw';
-        $this->sut->save($user);
-        $this->sut->saveUserMail('user', '', 'test@email.com');
+        $this->sut->saveUser($user);
+        $this->sut->saveUserMail('user', 'test@email.com');
         $this->assertSame([['userdbid' => '1', 'mail' => 'test@email.com', 'isverified' => '0', 'comments' => '', 'data' => '']],
             $this->db->tableGetRows('usr_user_mail', ['userdbid' => 1]));
 
-        $this->sut->saveUserMail('user', '', 'test@email.com', '', 'data1');
+        $this->sut->saveUserMail('user', 'test@email.com', '', 'data1');
         $this->assertSame(1, count($this->db->tableGetRows('usr_user_mail', ['userdbid' => 1])));
 
-        $this->sut->saveUserMail('user', '', 'test2@email2.com', 'comments2');
+        $this->sut->saveUserMail('user', 'test2@email2.com', 'comments2');
         $this->assertSame([
             ['userdbid' => '1', 'mail' => 'test2@email2.com', 'isverified' => '0', 'comments' => 'comments2', 'data' => ''],
             ['userdbid' => '1', 'mail' => 'test@email.com', 'isverified' => '0', 'comments' => '', 'data' => 'data1']
         ], $this->db->tableGetRows('usr_user_mail', ['userdbid' => 1]));
 
-        $this->sut->saveUserMail('user', '', 'test2@email2.com');
+        $this->sut->saveUserMail('user', 'test2@email2.com');
         $this->assertSame(2, count($this->db->tableGetRows('usr_user_mail', ['userdbid' => 1])));
 
-        $this->sut->saveUserMail('user', '', 'test3@email3.com', 'comments3', 'data3');
+        $this->sut->saveUserMail('user', 'test3@email3.com', 'comments3', 'data3');
         $this->assertSame([
             ['userdbid' => '1', 'mail' => 'test2@email2.com', 'isverified' => '0', 'comments' => '', 'data' => ''],
             ['userdbid' => '1', 'mail' => 'test3@email3.com', 'isverified' => '0', 'comments' => 'comments3', 'data' => 'data3'],
@@ -271,10 +445,10 @@ class UsersManagerTest extends TestCase {
         ], $this->db->tableGetRows('usr_user_mail', ['userdbid' => 1]));
 
         // Test wrong values
-        AssertUtils::throwsException(function() { $this->sut->saveUserMail('nonexistantuser', '', 'test@email.com', 'comments', 'data'); }, '/Trying to add an email account to a non existing user: nonexistantuser on domain /');
-        AssertUtils::throwsException(function() { $this->sut->saveUserMail('user', 'nonexistantdomain', 'test@email.com'); }, '/Trying to add an email account to a non existing user: user on domain nonexistantdomain/');
-        AssertUtils::throwsException(function() { $this->sut->saveUserMail('user', '', ''); }, '/Invalid mail/');
-        AssertUtils::throwsException(function() { $this->sut->saveUserMail('user', '', '         '); }, '/Invalid mail/');
+        AssertUtils::throwsException(function() { $this->sut->saveUserMail('nonexistantuser', 'test@email.com', 'comments', 'data'); }, '/Trying to add an email account to a non existing user: nonexistantuser on domain /');
+        AssertUtils::throwsException(function() { $this->sut->saveUserMail('user', ''); }, '/Invalid mail/');
+        AssertUtils::throwsException(function() { $this->sut->saveUserMail('user', '         '); }, '/Invalid mail/');
+        AssertUtils::throwsException(function() { (new UsersManager($this->dbObjectsManager, 'nonexistantdomain'))->saveUserMail('user', 'test@email.com'); }, '/Trying to add an email account to a non existing user: user on domain nonexistantdomain/');
         // TODO
 
         // Test exceptions
@@ -312,25 +486,23 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->isUserMailVerified(); }, '/Too few arguments to function/');
         AssertUtils::throwsException(function() { $this->sut->isUserMailVerified(null); }, '/must be of the type string, null given/');
         AssertUtils::throwsException(function() { $this->sut->isUserMailVerified(null, null); }, '/must be of the type string, null given/');
-        AssertUtils::throwsException(function() { $this->sut->isUserMailVerified(null, null, null); }, '/must be of the type string, null given/');
         AssertUtils::throwsException(function() { $this->sut->isUserMailVerified(''); }, '/Too few arguments to function/');
-        AssertUtils::throwsException(function() { $this->sut->isUserMailVerified('', ''); }, '/Too few arguments to function/');
-        AssertUtils::throwsException(function() { $this->sut->isUserMailVerified('', '', ''); }, '/Invalid mail/');
-        AssertUtils::throwsException(function() { $this->sut->isUserMailVerified('', '', []); }, '/must be of the type string, array given/');
+        AssertUtils::throwsException(function() { $this->sut->isUserMailVerified('', ''); }, '/Invalid mail/');
+        AssertUtils::throwsException(function() { $this->sut->isUserMailVerified('', []); }, '/must be of the type string, array given/');
 
         // Test ok values
         $user = new User();
         $user->userName = 'user';
         $user->password = 'psw';
-        $this->sut->save($user);
-        $this->sut->saveUserMail('user', '', 'test@email.com');
-        $this->assertFalse($this->sut->isUserMailVerified('user', '', 'test@email.com'));
+        $this->sut->saveUser($user);
+        $this->sut->saveUserMail('user', 'test@email.com');
+        $this->assertFalse($this->sut->isUserMailVerified('user', 'test@email.com'));
         // TODO
 
         // Test wrong values
-        AssertUtils::throwsException(function() { $this->sut->isUserMailVerified('nonexistantuser', '', 'nonexistantmail'); }, '/Non existing user: nonexistantuser on domain /');
-        AssertUtils::throwsException(function() { $this->sut->isUserMailVerified('', '', 'nonexistantmail'); }, '/Non existing user:  on domain /');
-        AssertUtils::throwsException(function() { $this->sut->isUserMailVerified('user', '', 'nonexistantmail'); }, '/Non existing mail: nonexistantmail on user: user on domain /');
+        AssertUtils::throwsException(function() { $this->sut->isUserMailVerified('nonexistantuser', 'nonexistantmail'); }, '/Non existing user: nonexistantuser on domain /');
+        AssertUtils::throwsException(function() { $this->sut->isUserMailVerified('', 'nonexistantmail'); }, '/Non existing user:  on domain /');
+        AssertUtils::throwsException(function() { $this->sut->isUserMailVerified('user', 'nonexistantmail'); }, '/Non existing mail: nonexistantmail on user: user on domain /');
         // TODO
 
         // Test exceptions
@@ -350,43 +522,43 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->setUserMailVerified(null, null, null); }, '/must be of the type string, null given/');
         AssertUtils::throwsException(function() { $this->sut->setUserMailVerified(''); }, '/Too few arguments to function/');
         AssertUtils::throwsException(function() { $this->sut->setUserMailVerified('', ''); }, '/Too few arguments to function/');
-        AssertUtils::throwsException(function() { $this->sut->setUserMailVerified('', '', '', false); }, '/Invalid mail/');
-        AssertUtils::throwsException(function() { $this->sut->setUserMailVerified('', '', []); }, '/must be of the type string, array given/');
+        AssertUtils::throwsException(function() { $this->sut->setUserMailVerified('', '', false); }, '/Invalid mail/');
+        AssertUtils::throwsException(function() { $this->sut->setUserMailVerified('', []); }, '/must be of the type string, array given/');
 
         // Test ok values
         $user = new User();
         $user->userName = 'user';
         $user->password = 'psw';
-        $this->sut->save($user);
-        $this->sut->saveUserMail('user', '', 'test@email.com');
+        $this->sut->saveUser($user);
+        $this->sut->saveUserMail('user', 'test@email.com');
 
-        $this->assertFalse($this->sut->isUserMailVerified('user', '', 'test@email.com'));
-        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test@email.com', true));
-        $this->assertTrue($this->sut->isUserMailVerified('user', '', 'test@email.com'));
+        $this->assertFalse($this->sut->isUserMailVerified('user', 'test@email.com'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', 'test@email.com', true));
+        $this->assertTrue($this->sut->isUserMailVerified('user', 'test@email.com'));
 
         $user = new User();
         $user->userName = 'user2';
         $user->password = 'psw2';
-        $this->sut->save($user);
-        $this->sut->saveUserMail('user2', '', 'test2@email2.com');
+        $this->sut->saveUser($user);
+        $this->sut->saveUserMail('user2', 'test2@email2.com');
 
-        $this->assertFalse($this->sut->isUserMailVerified('user2', '', 'test2@email2.com'));
-        $this->assertTrue($this->sut->setUserMailVerified('user2', '', 'test2@email2.com', true));
-        $this->assertTrue($this->sut->isUserMailVerified('user', '', 'test@email.com'));
-        $this->assertTrue($this->sut->isUserMailVerified('user2', '', 'test2@email2.com'));
+        $this->assertFalse($this->sut->isUserMailVerified('user2', 'test2@email2.com'));
+        $this->assertTrue($this->sut->setUserMailVerified('user2', 'test2@email2.com', true));
+        $this->assertTrue($this->sut->isUserMailVerified('user', 'test@email.com'));
+        $this->assertTrue($this->sut->isUserMailVerified('user2', 'test2@email2.com'));
 
-        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test@email.com', false));
-        $this->assertTrue($this->sut->setUserMailVerified('user2', '', 'test2@email2.com', false));
-        $this->assertFalse($this->sut->isUserMailVerified('user', '', 'test@email.com'));
-        $this->assertFalse($this->sut->isUserMailVerified('user2', '', 'test2@email2.com'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', 'test@email.com', false));
+        $this->assertTrue($this->sut->setUserMailVerified('user2', 'test2@email2.com', false));
+        $this->assertFalse($this->sut->isUserMailVerified('user', 'test@email.com'));
+        $this->assertFalse($this->sut->isUserMailVerified('user2', 'test2@email2.com'));
 
-        $this->assertTrue($this->sut->setUserMailVerified('user2', '', 'test2@email2.com', false));
-        $this->assertFalse($this->sut->isUserMailVerified('user2', '', 'test2@email2.com'));
+        $this->assertTrue($this->sut->setUserMailVerified('user2', 'test2@email2.com', false));
+        $this->assertFalse($this->sut->isUserMailVerified('user2', 'test2@email2.com'));
 
         // Test wrong values
-        AssertUtils::throwsException(function() { $this->sut->setUserMailVerified('nonexistantuser', '', 'nonexistantmail', true); }, '/Non existing user: nonexistantuser on domain /');
-        AssertUtils::throwsException(function() { $this->sut->setUserMailVerified('', '', 'nonexistantmail', true); }, '/Non existing user:  on domain /');
-        AssertUtils::throwsException(function() { $this->sut->setUserMailVerified('user', '', 'nonexistantmail', true); }, '/Non existing mail: nonexistantmail on user: user on domain /');
+        AssertUtils::throwsException(function() { $this->sut->setUserMailVerified('nonexistantuser', 'nonexistantmail', true); }, '/Non existing user: nonexistantuser on domain /');
+        AssertUtils::throwsException(function() { $this->sut->setUserMailVerified('', 'nonexistantmail', true); }, '/Non existing user:  on domain /');
+        AssertUtils::throwsException(function() { $this->sut->setUserMailVerified('user', 'nonexistantmail', true); }, '/Non existing mail: nonexistantmail on user: user on domain /');
         // TODO
 
         // Test exceptions
@@ -403,74 +575,72 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->getUserMails(); }, '/Too few arguments to function/');
         AssertUtils::throwsException(function() { $this->sut->getUserMails(null); }, '/must be of the type string, null given/');
         AssertUtils::throwsException(function() { $this->sut->getUserMails(null, null); }, '/must be of the type string, null given/');
-        AssertUtils::throwsException(function() { $this->sut->getUserMails(null, null, null); }, '/must be of the type string, null given/');
-        AssertUtils::throwsException(function() { $this->sut->getUserMails(''); }, '/Too few arguments to function/');
-        AssertUtils::throwsException(function() { $this->sut->getUserMails('', ''); }, '/Non existing user:  on domain /');
-        AssertUtils::throwsException(function() { $this->sut->getUserMails('', '', ''); }, '/filter must be VERIFIED, NONVERIFIED or ALL/');
-        AssertUtils::throwsException(function() { $this->sut->getUserMails('', '', []); }, '/filter must be VERIFIED, NONVERIFIED or ALL/');
+        AssertUtils::throwsException(function() { $this->sut->getUserMails(''); }, '/Non existing user:  on domain/');
+        AssertUtils::throwsException(function() { $this->sut->getUserMails('', ''); }, '/filter must be VERIFIED, NONVERIFIED or ALL/');
+        AssertUtils::throwsException(function() { $this->sut->getUserMails('', []); }, '/filter must be VERIFIED, NONVERIFIED or ALL/');
 
         // Test ok values
         $user = new User();
         $user->userName = 'user';
         $user->password = 'psw';
-        $this->sut->save($user);
-        $this->sut->saveUserMail('user', '', 'test@email.com');
-        $this->sut->saveUserMail('user', '', 'test2@email2.com');
-        $this->sut->saveUserMail('user', '', 'test3@email3.com');
+        $this->sut->saveUser($user);
+        $this->sut->saveUserMail('user', 'test@email.com');
+        $this->sut->saveUserMail('user', 'test2@email2.com');
+        $this->sut->saveUserMail('user', 'test3@email3.com');
 
         // Get verified and non verified emails
         $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => false], ['mail' => 'test3@email3.com', 'isverified' => false],
-            ['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user', ''));
+            ['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user'));
         $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => false], ['mail' => 'test3@email3.com', 'isverified' => false],
-            ['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user', '', 'NONVERIFIED'));
+            ['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user', 'NONVERIFIED'));
 
         // get only verified emails
-        $this->assertSame([], $this->sut->getUserMails('user', '', 'VERIFIED'));
-        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test2@email2.com', true));
-        $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => true]], $this->sut->getUserMails('user', '', 'VERIFIED'));
-        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test3@email3.com', true));
+        $this->assertSame([], $this->sut->getUserMails('user', 'VERIFIED'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', 'test2@email2.com', true));
+        $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => true]], $this->sut->getUserMails('user', 'VERIFIED'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', 'test3@email3.com', true));
         $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => true], ['mail' => 'test3@email3.com', 'isverified' => true]],
-            $this->sut->getUserMails('user', '', 'VERIFIED'));
-        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test@email.com', true));
+            $this->sut->getUserMails('user', 'VERIFIED'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', 'test@email.com', true));
         $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => true], ['mail' => 'test3@email3.com', 'isverified' => true],
-            ['mail' => 'test@email.com', 'isverified' => true]], $this->sut->getUserMails('user', '', 'VERIFIED'));
-        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test@email.com', false));
+            ['mail' => 'test@email.com', 'isverified' => true]], $this->sut->getUserMails('user', 'VERIFIED'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', 'test@email.com', false));
         $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => true], ['mail' => 'test3@email3.com', 'isverified' => true]],
-            $this->sut->getUserMails('user', '', 'VERIFIED'));
+            $this->sut->getUserMails('user', 'VERIFIED'));
 
         // Get only non verified emails
-        $this->assertSame([['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user', '', 'NONVERIFIED'));
-        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test2@email2.com', false));
-        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test3@email3.com', false));
-        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test@email.com', false));
+        $this->assertSame([['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user', 'NONVERIFIED'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', 'test2@email2.com', false));
+        $this->assertTrue($this->sut->setUserMailVerified('user', 'test3@email3.com', false));
+        $this->assertTrue($this->sut->setUserMailVerified('user', 'test@email.com', false));
         $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => false], ['mail' => 'test3@email3.com', 'isverified' => false],
-            ['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user', '', 'NONVERIFIED'));
-        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test2@email2.com', true));
+            ['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user', 'NONVERIFIED'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', 'test2@email2.com', true));
         $this->assertSame([['mail' => 'test3@email3.com', 'isverified' => false], ['mail' => 'test@email.com', 'isverified' => false]],
-            $this->sut->getUserMails('user', '', 'NONVERIFIED'));
-        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test3@email3.com', true));
-        $this->assertSame([['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user', '', 'NONVERIFIED'));
-        $this->assertTrue($this->sut->setUserMailVerified('user', '', 'test@email.com', true));
-        $this->assertSame([], $this->sut->getUserMails('user', '', 'NONVERIFIED'));
+            $this->sut->getUserMails('user', 'NONVERIFIED'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', 'test3@email3.com', true));
+        $this->assertSame([['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user', 'NONVERIFIED'));
+        $this->assertTrue($this->sut->setUserMailVerified('user', 'test@email.com', true));
+        $this->assertSame([], $this->sut->getUserMails('user', 'NONVERIFIED'));
 
         // Check that emails are not mixed between users
         $user = new User();
         $user->userName = 'user2';
         $user->password = 'psw2';
-        $this->sut->save($user);
-        $this->sut->saveUserMail('user2', '', 'user@email.com');
-        $this->sut->saveUserMail('user2', '', 'user2@email2.com');
-        $this->sut->saveUserMail('user2', '', 'user3@email3.com');
+        $this->sut->saveUser($user);
+        $this->sut->saveUserMail('user2', 'user@email.com');
+        $this->sut->saveUserMail('user2', 'user2@email2.com');
+        $this->sut->saveUserMail('user2', 'user3@email3.com');
         $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => true], ['mail' => 'test3@email3.com', 'isverified' => true],
-            ['mail' => 'test@email.com', 'isverified' => true]], $this->sut->getUserMails('user', ''));
+            ['mail' => 'test@email.com', 'isverified' => true]], $this->sut->getUserMails('user'));
         $this->assertSame([['mail' => 'user2@email2.com', 'isverified' => false], ['mail' => 'user3@email3.com', 'isverified' => false],
-            ['mail' => 'user@email.com', 'isverified' => false]], $this->sut->getUserMails('user2', ''));
+            ['mail' => 'user@email.com', 'isverified' => false]], $this->sut->getUserMails('user2'));
 
         // Test wrong values
         // Test exceptions
-        AssertUtils::throwsException(function() { $this->sut->getUserMails('', '', 'INVALIDFILTER'); }, '/filter must be VERIFIED, NONVERIFIED or ALL/');
-        AssertUtils::throwsException(function() { $this->sut->getUserMails('nonexistantuser', ''); }, '/Non existing user: nonexistantuser on domain /');
-        AssertUtils::throwsException(function() { $this->sut->getUserMails('', '', 'ALL'); }, '/Non existing user:  on domain /');
+        AssertUtils::throwsException(function() { $this->sut->getUserMails('', 'INVALIDFILTER'); }, '/filter must be VERIFIED, NONVERIFIED or ALL/');
+        AssertUtils::throwsException(function() { $this->sut->getUserMails('nonexistantuser'); }, '/Non existing user: nonexistantuser on domain /');
+        AssertUtils::throwsException(function() { $this->sut->getUserMails('', 'ALL'); }, '/Non existing user:  on domain /');
     }
 
 
@@ -483,45 +653,50 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->deleteUserMails(); }, '/Too few arguments to function/');
         AssertUtils::throwsException(function() { $this->sut->deleteUserMails(null); }, '/must be of the type string, null given/');
         AssertUtils::throwsException(function() { $this->sut->deleteUserMails(null, null); }, '/must be of the type string, null given/');
-        AssertUtils::throwsException(function() { $this->sut->deleteUserMails(null, null, null); }, '/must be of the type string, null given/');
         AssertUtils::throwsException(function() { $this->sut->deleteUserMails(''); }, '/Too few arguments to function/');
-        AssertUtils::throwsException(function() { $this->sut->deleteUserMails('', ''); }, '/Too few arguments to function/');
-        AssertUtils::throwsException(function() { $this->sut->deleteUserMails('', '', ''); }, '/must be of the type array, string given/');
-        AssertUtils::throwsException(function() { $this->sut->deleteUserMails('', '', []); }, '/Non existing user:  on domain /');
+        AssertUtils::throwsException(function() { $this->sut->deleteUserMails('', ''); }, '/must be of the type array, string given/');
+        AssertUtils::throwsException(function() { $this->sut->deleteUserMails('', []); }, '/Non existing user:  on domain /');
 
         // Test ok values
         $user = new User();
         $user->userName = 'user';
         $user->password = 'psw';
-        $this->sut->save($user);
-        $this->sut->saveUserMail('user', '', 'test@email.com');
-        $this->sut->saveUserMail('user', '', 'test2@email2.com');
-        $this->sut->saveUserMail('user', '', 'test3@email3.com');
-        $this->assertSame(3, count($this->sut->getUserMails('user', '')));
-        $this->assertSame(1, $this->sut->deleteUserMails('user', '', ['test@email.com']));
+        $this->sut->saveUser($user);
+        $this->sut->saveUserMail('user', 'test@email.com');
+        $this->sut->saveUserMail('user', 'test2@email2.com');
+        $this->sut->saveUserMail('user', 'test3@email3.com');
+        $this->assertSame(3, count($this->sut->getUserMails('user')));
+        $this->assertSame(1, $this->sut->deleteUserMails('user', ['test@email.com']));
         $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => false], ['mail' => 'test3@email3.com', 'isverified' => false]],
-            $this->sut->getUserMails('user', ''));
-        $this->assertSame(1, $this->sut->deleteUserMails('user', '', ['test2@email2.com']));
-        $this->assertSame([['mail' => 'test3@email3.com', 'isverified' => false]], $this->sut->getUserMails('user', ''));
-        $this->assertSame(1, $this->sut->deleteUserMails('user', '', ['test3@email3.com']));
-        $this->assertSame([], $this->sut->getUserMails('user', ''));
+            $this->sut->getUserMails('user'));
+        $this->assertSame(1, $this->sut->deleteUserMails('user', ['test2@email2.com']));
+        $this->assertSame([['mail' => 'test3@email3.com', 'isverified' => false]], $this->sut->getUserMails('user'));
+        $this->assertSame(1, $this->sut->deleteUserMails('user', ['test3@email3.com']));
+        $this->assertSame([], $this->sut->getUserMails('user'));
 
-        $this->sut->saveUserMail('user', '', 'test@email.com');
-        $this->sut->saveUserMail('user', '', 'test2@email2.com');
-        $this->sut->saveUserMail('user', '', 'test3@email3.com');
-        $this->assertSame(3, count($this->sut->getUserMails('user', '')));
-        $this->assertSame(3, $this->sut->deleteUserMails('user', '', ['test2@email2.com', 'test3@email3.com', 'test@email.com']));
-        $this->assertSame([], $this->sut->getUserMails('user', ''));
+        $this->sut->saveUserMail('user', 'test@email.com');
+        $this->sut->saveUserMail('user', 'test2@email2.com');
+        $this->sut->saveUserMail('user', 'test3@email3.com');
+        $this->assertSame(3, count($this->sut->getUserMails('user')));
+        $this->assertSame(3, $this->sut->deleteUserMails('user', ['test2@email2.com', 'test3@email3.com', 'test@email.com']));
+        $this->assertSame([], $this->sut->getUserMails('user'));
+
+        $this->sut->saveUserMail('user', 'test@email.com');
+        $this->sut->saveUserMail('user', 'test2@email2.com');
+        $this->sut->saveUserMail('user', 'test3@email3.com');
+        $this->assertSame(3, count($this->sut->getUserMails('user')));
+        $this->assertSame(3, $this->sut->deleteUserMails('user', []));
+        $this->assertSame([], $this->sut->getUserMails('user'));
 
         // Test wrong values
-        $this->assertSame(0, $this->sut->deleteUserMails('user', '', ['nonexistant@mail.com']));
-        $this->assertSame(0, $this->sut->deleteUserMails('user', '', ['nonexistant@mail.com', 'nomail']));
-        AssertUtils::throwsException(function() { $this->sut->deleteUserMails('user', '', [1234, 'nonexistant@mail.com', 'nomail']); }, '/Invalid mail: 1234/');
+        $this->assertSame(0, $this->sut->deleteUserMails('user', ['nonexistant@mail.com']));
+        $this->assertSame(0, $this->sut->deleteUserMails('user', ['nonexistant@mail.com', 'nomail']));
+        AssertUtils::throwsException(function() { $this->sut->deleteUserMails('user', [1234, 'nonexistant@mail.com', 'nomail']); }, '/Invalid mail: 1234/');
 
         // Test exceptions
-        AssertUtils::throwsException(function() { $this->sut->deleteUserMails('', '', 123); }, '/must be of the type array, int given/');
-        AssertUtils::throwsException(function() { $this->sut->deleteUserMails('nonexistantuser', '', []); }, '/Non existing user: nonexistantuser on domain /');
-        AssertUtils::throwsException(function() { $this->sut->deleteUserMails('', '', []); }, '/Non existing user:  on domain /');
+        AssertUtils::throwsException(function() { $this->sut->deleteUserMails('', 123); }, '/must be of the type array, int given/');
+        AssertUtils::throwsException(function() { $this->sut->deleteUserMails('nonexistantuser', []); }, '/Non existing user: nonexistantuser on domain /');
+        AssertUtils::throwsException(function() { $this->sut->deleteUserMails('', []); }, '/Non existing user:  on domain /');
     }
 
 
@@ -541,7 +716,7 @@ class UsersManagerTest extends TestCase {
         $user = new User();
         $user->userName = 'user';
         $user->password = 'psw';
-        $this->sut->save($user);
+        $this->sut->saveUser($user);
         $login1Result = $this->sut->login('user', 'psw');
         $this->assertTrue(strlen($login1Result[0]) > 100);
         $this->assertSame('user', $login1Result[1]->userName);
@@ -551,7 +726,7 @@ class UsersManagerTest extends TestCase {
         $user = new User();
         $user->userName = 'user2';
         $user->password = 'psw2';
-        $this->sut->save($user);
+        $this->sut->saveUser($user);
         $login2Result = $this->sut->login('user2', 'psw2');
         $this->assertTrue(strlen($login2Result[0]) > 100);
         $this->assertSame('user2', $login2Result[1]->userName);
@@ -629,14 +804,14 @@ class UsersManagerTest extends TestCase {
         $user = new User();
         $user->userName = 'user';
         $user->password = 'psw';
-        $this->sut->save($user);
+        $this->sut->saveUser($user);
         $token1 = $this->sut->login('user', 'psw')[0];
         $this->assertTrue($this->sut->isTokenValid($token1));
 
         $user = new User();
         $user->userName = 'user2';
         $user->password = 'psw2';
-        $this->sut->save($user);
+        $this->sut->saveUser($user);
         $token2 = $this->sut->login('user2', 'psw2')[0];
         $this->assertTrue($this->sut->isTokenValid($token1));
         $this->assertTrue($this->sut->isTokenValid($token2));
@@ -711,12 +886,12 @@ class UsersManagerTest extends TestCase {
         $user = new User();
         $user->userName = 'user';
         $user->password = 'psw';
-        $this->sut->save($user);
+        $this->sut->saveUser($user);
 
         $user = new User();
         $user->userName = 'user2';
         $user->password = 'psw2';
-        $this->sut->save($user);
+        $this->sut->saveUser($user);
 
         $token = $this->sut->login('user', 'psw')[0];
         $this->assertSame([$token], $this->db->tableGetColumnValues('usr_token', 'token'));
