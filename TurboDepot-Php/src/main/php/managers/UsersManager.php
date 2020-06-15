@@ -162,11 +162,10 @@ class UsersManager extends BaseStrictClass{
         $db = $this->_databaseObjectsManager->getDataBaseManager();
         $tableName = $this->_databaseObjectsManager->tablesPrefix.'domain';
 
-        $rowToAdd = ['name' => $domainName, 'description' => $description];
-
         try {
 
-            $db->tableAddOrUpdateRow($tableName, ['name' => $domainName], $rowToAdd);
+            $db->tableAddOrUpdateRow($tableName, ['name' => $domainName],
+                ['name' => $domainName, 'description' => $description]);
 
         } catch (Throwable $e) {
 
@@ -266,7 +265,15 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Save the provided password for the specified user. It will be stored with a one way encryption method so
+     * after this method is called the password won't be able to be recovered any more from db.
+     *
+     * @param string $userName The name for an existing user to which we want to set the password value
+     * @param string $password The non encrypted password string to save for the user. It will be one way encrypted on db
+     *
+     * @throws UnexpectedValueException
+     *
+     * @return boolean true if the password was correctly set
      */
     public function setUserPassword(string $userName, string $password){
 
@@ -274,11 +281,10 @@ class UsersManager extends BaseStrictClass{
         $tableName = $this->_databaseObjectsManager->tablesPrefix.'userobject_password';
         $userDbId = $this->_getUserDBId($userName);
 
-        $rowToAdd = ['userdbid' => $userDbId, 'password' => password_hash($password, PASSWORD_BCRYPT)];
-
         try {
 
-            $db->tableAddOrUpdateRow($tableName, ['userdbid' => $userDbId], $rowToAdd);
+            $db->tableAddOrUpdateRow($tableName, ['userdbid' => $userDbId],
+                ['userdbid' => $userDbId, 'password' => password_hash($password, PASSWORD_BCRYPT)]);
 
         } catch (Throwable $e) {
 
@@ -290,6 +296,8 @@ class UsersManager extends BaseStrictClass{
 
             throw new UnexpectedValueException('Could not set user password: '.$e->getMessage());
         }
+
+        return true;
     }
 
 
@@ -349,11 +357,10 @@ class UsersManager extends BaseStrictClass{
         $tableName = $this->_databaseObjectsManager->tablesPrefix.'userobject_mail';
         $userDbId = $this->_getUserDBId($userName);
 
-        $rowToAdd = ['userdbid' => $userDbId, 'mail' => $mail, 'isverified' => 0, 'comments' => $comments, 'data' => $data];
-
         try {
 
-            $db->tableAddOrUpdateRow($tableName, ['userdbid' => $userDbId, 'mail' => $mail], $rowToAdd);
+            $db->tableAddOrUpdateRow($tableName, ['userdbid' => $userDbId, 'mail' => $mail],
+                ['userdbid' => $userDbId, 'mail' => $mail, 'isverified' => 0, 'comments' => $comments, 'data' => $data]);
 
         } catch (Throwable $e) {
 

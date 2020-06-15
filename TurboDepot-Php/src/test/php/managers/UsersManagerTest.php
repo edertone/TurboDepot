@@ -326,21 +326,37 @@ class UsersManagerTest extends TestCase {
     /** test */
     public function testSetUserPassword(){
 
+        $tableName = $this->dbObjectsManager->tablesPrefix.'userobject_password';
+
         // Test empty values
-        // TODO
+        AssertUtils::throwsException(function() { $this->sut->setUserPassword(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->setUserPassword(null); }, '/Argument 1 passed to .* must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->setUserPassword(''); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->setUserPassword([]); }, '/Argument 1 passed to .* must be of the type string, array given/');
+        AssertUtils::throwsException(function() { $this->sut->setUserPassword('', null); }, '/Argument 2 passed to .* must be of the type string, null given/');
 
         // Test ok values
         $user = new UserObject();
         $user->userName = 'user';
         $this->sut->saveUser($user);
-        $this->sut->setUserPassword($user->userName, 'psw');
-        // TODO
+        $this->assertTrue($this->sut->setUserPassword($user->userName, 'psw'));
+
+        $user = new UserObject();
+        $user->userName = 'user2';
+        $this->sut->saveUser($user);
+        $this->assertTrue($this->sut->setUserPassword($user->userName, 'psw2'));
+        $this->assertSame(2, $this->db->tableCountRows($tableName));
 
         // Test wrong values
-        // TODO
-
         // Test exceptions
-        // TODO
+        AssertUtils::throwsException(function() { $this->sut->setUserPassword('nonexistantuser', 'psw'); }, '/Non existing user: nonexistantuser on domain /');
+        AssertUtils::throwsException(function() { $this->sut->setUserPassword(12341234, 'psw'); }, '/Non existing user: 12341234 on domain/');
+        AssertUtils::throwsException(function() { $this->sut->setUserPassword('user', [345345]); }, '/Argument 2 .* must be of the type string, array given/');
+
+        // Create an invalid table for the user passwords so an exception is thrown when trying to save
+        $this->db->tableDelete($tableName);
+        $this->db->tableCreate($tableName, ['userdbid bigint NOT NULL'], ['userdbid']);
+        AssertUtils::throwsException(function() use ($user) { $this->sut->setUserPassword($user->userName, 'psw'); }, '/Could not set user password: .*Unknown column .password./');
     }
 
 
@@ -848,6 +864,7 @@ class UsersManagerTest extends TestCase {
         $this->assertSame([$token2], $this->db->tableGetColumnValues('usr_token', 'token'));
 
         // Validate that a token expiry time does not get recycled when it gets correctly validated if token recycle is false
+        $this->sut->tokenLifeTime = 3;
         $this->sut->isTokenLifeTimeRecycled = false;
         $token4 = $this->sut->login('user', 'psw')[0];
         $this->assertTrue($this->sut->isTokenValid($token4));
@@ -855,7 +872,7 @@ class UsersManagerTest extends TestCase {
         sleep(1);
         $this->assertTrue($this->sut->isTokenValid($token4));
         $this->assertSame($token4, $this->db->tableGetColumnValues('usr_token', 'token')[1]);
-        sleep(1);
+        sleep(2);
         $this->assertSame($token4, $this->db->tableGetColumnValues('usr_token', 'token')[1]);
         $this->assertFalse($this->sut->isTokenValid($token4));
         $this->assertSame([$token2], $this->db->tableGetColumnValues('usr_token', 'token'));
