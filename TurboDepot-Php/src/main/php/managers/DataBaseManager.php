@@ -925,24 +925,6 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
-     * Get the total number of rows for a given table
-     *
-     * @param string $tableName The name for the table we want to count
-     *
-     * @return int The total number of table rows
-     */
-    public function tableCountRows($tableName){
-
-        if(($result = $this->query('select count(1) as c FROM '.$tableName)) !== false){
-
-            return (int)$result[0]['c'];
-        }
-
-        throw new UnexpectedValueException('Could not count table rows: '.$this->_lastError);
-    }
-
-
-    /**
      * Update all the values for an existing single row on the specified database table
      *
      * @param string $tableName The name for the table we want to update
@@ -982,6 +964,47 @@ class DataBaseManager extends BaseStrictClass {
         }
 
         throw new UnexpectedValueException('Could not update row on table '.$tableName.' for '.$sqlKey.' '.$this->_lastError);
+    }
+
+
+    /**
+     * Look for a row that contains the specified column values and update it with the provided row data or add a new row
+     * if the key values are not found on the specified table.
+     *
+     * @param string $tableName The name for the table we want to update or add a new row
+     * @param array $keyValues Associative array with key/value pairs (column names / values) that must exist on the row to be updated. if not
+     *        found, a new row will be added
+     * @param array $rowValues An associative array where each key is the column name and each value the column value. This row data will be updated on
+     *        the provided table if the keyValues are found, or a new row will be added to the table otherwise
+     *
+     * @return boolean True if the row was correctly added or updated
+     */
+    public function tableAddOrUpdateRow($tableName, array $keyValues, array $rowValues){
+
+        if(count($this->tableGetRows($tableName, $keyValues)) === 1){
+
+            return $this->tableUpdateRow($tableName, $keyValues, $rowValues);
+        }
+
+        return $this->tableAddRows($tableName, [$rowValues]);
+    }
+
+
+    /**
+     * Get the total number of rows for a given table
+     *
+     * @param string $tableName The name for the table we want to count
+     *
+     * @return int The total number of table rows
+     */
+    public function tableCountRows($tableName){
+
+        if(($result = $this->query('select count(1) as c FROM '.$tableName)) !== false){
+
+            return (int)$result[0]['c'];
+        }
+
+        throw new UnexpectedValueException('Could not count table rows: '.$this->_lastError);
     }
 
 

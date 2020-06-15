@@ -18,7 +18,7 @@ use DateTimeZone;
 use UnexpectedValueException;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
 use org\turbocommons\src\main\php\utils\ConversionUtils;
-use org\turbodepot\src\main\php\model\User;
+use org\turbodepot\src\main\php\model\UserObject;
 use org\turbocommons\src\main\php\utils\StringUtils;
 
 
@@ -166,14 +166,7 @@ class UsersManager extends BaseStrictClass{
 
         try {
 
-            if(count($db->tableGetRows($tableName, ['name' => $domainName])) === 1){
-
-                $db->tableUpdateRow($tableName, ['name' => $domainName], $rowToAdd);
-
-            }else{
-
-                $db->tableAddRows($tableName, [$rowToAdd]);
-            }
+            $db->tableAddOrUpdateRow($tableName, ['name' => $domainName], $rowToAdd);
 
         } catch (Throwable $e) {
 
@@ -208,8 +201,15 @@ class UsersManager extends BaseStrictClass{
 
         StringUtils::forceNonEmptyString($domainName, 'domainName');
 
-        return count($this->_databaseObjectsManager->getDataBaseManager()
-            ->tableGetRows($this->_databaseObjectsManager->tablesPrefix.'domain', ['name' => $domainName])) === 1;
+        try {
+
+            return count($this->_databaseObjectsManager->getDataBaseManager()
+                ->tableGetRows($this->_databaseObjectsManager->tablesPrefix.'domain', ['name' => $domainName])) === 1;
+
+        } catch (Throwable $e) {
+
+            return false;
+        }
     }
 
 
@@ -236,11 +236,16 @@ class UsersManager extends BaseStrictClass{
     /**
      * Save to database the provided user instance or update it if it already exists
      *
-     * @param User $user The User instance that we want to save
+     * @param UserObject $user The User instance that we want to save
      *
      * @return int An int containing the dbId value for the user that's been saved.
      */
-    public function saveUser(User $user){
+    public function saveUser(UserObject $user){
+
+        if($user->domain !== $this->_domain){
+
+            throw new UnexpectedValueException('Saving a user with a domain ('.$user->domain.') that doesn\'t match the current one ('.$this->_domain.')');
+        }
 
         return $this->_databaseObjectsManager->save($user);
     }
@@ -255,7 +260,7 @@ class UsersManager extends BaseStrictClass{
      */
     public function isUser(string $userName){
 
-        return count($this->_databaseObjectsManager->getByPropertyValues(User::class,
+        return count($this->_databaseObjectsManager->getByPropertyValues(UserObject::class,
             ['userName' => $userName, 'domain' => $this->_domain])) === 1;
     }
 
@@ -265,7 +270,26 @@ class UsersManager extends BaseStrictClass{
      */
     public function setUserPassword(string $userName, string $password){
 
-        // TODO
+        $db = $this->_databaseObjectsManager->getDataBaseManager();
+        $tableName = $this->_databaseObjectsManager->tablesPrefix.'userobject_password';
+        $userDbId = $this->_getUserDBId($userName);
+
+        $rowToAdd = ['userdbid' => $userDbId, 'password' => password_hash($password, PASSWORD_BCRYPT)];
+
+        try {
+
+            $db->tableAddOrUpdateRow($tableName, ['userdbid' => $userDbId], $rowToAdd);
+
+        } catch (Throwable $e) {
+
+            if(!$db->tableExists($tableName) && $db->tableCreate($tableName,
+                ['userdbid bigint NOT NULL', 'password varchar(500) NOT NULL'], ['userdbid'])){
+
+                return $this->setUserPassword($userName, $password);
+            }
+
+            throw new UnexpectedValueException('Could not set user password: '.$e->getMessage());
+        }
     }
 
 
@@ -322,21 +346,14 @@ class UsersManager extends BaseStrictClass{
         StringUtils::forceNonEmptyString($mail, '', 'Invalid mail');
 
         $db = $this->_databaseObjectsManager->getDataBaseManager();
-        $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mail';
+        $tableName = $this->_databaseObjectsManager->tablesPrefix.'userobject_mail';
         $userDbId = $this->_getUserDBId($userName);
 
         $rowToAdd = ['userdbid' => $userDbId, 'mail' => $mail, 'isverified' => 0, 'comments' => $comments, 'data' => $data];
 
         try {
 
-            if(count($db->tableGetRows($tableName, ['userdbid' => $userDbId, 'mail' => $mail])) === 1){
-
-                $db->tableUpdateRow($tableName, ['userdbid' => $userDbId, 'mail' => $mail], $rowToAdd);
-
-            }else{
-
-                $db->tableAddRows($tableName, [$rowToAdd]);
-            }
+            $db->tableAddOrUpdateRow($tableName, ['userdbid' => $userDbId, 'mail' => $mail], $rowToAdd);
 
         } catch (Throwable $e) {
 
@@ -403,7 +420,7 @@ class UsersManager extends BaseStrictClass{
         if($this->isUserMailVerified($userName, $mail) !== $isVerified){
 
             $db = $this->_databaseObjectsManager->getDataBaseManager();
-            $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mail';
+            $tableName = $this->_databaseObjectsManager->tablesPrefix.'userobject_mail';
 
             $db->tableUpdateRow($tableName, ['userdbid' => $this->_getUserDBId($userName), 'mail' => $mail],
                 ['isverified' => $isVerified ? 1 : 0]);
@@ -433,7 +450,7 @@ class UsersManager extends BaseStrictClass{
         }
 
         $db = $this->_databaseObjectsManager->getDataBaseManager();
-        $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mail';
+        $tableName = $this->_databaseObjectsManager->tablesPrefix.'userobject_mail';
 
         $result = [];
 
@@ -465,7 +482,7 @@ class UsersManager extends BaseStrictClass{
 
         $result = 0;
         $db = $this->_databaseObjectsManager->getDataBaseManager();
-        $tableName = $this->_databaseObjectsManager->tablesPrefix.'user_mail';
+        $tableName = $this->_databaseObjectsManager->tablesPrefix.'userobject_mail';
         $userDBId = $this->_getUserDBId($userName);
 
         if(count($mails) <= 0){
@@ -498,7 +515,7 @@ class UsersManager extends BaseStrictClass{
      */
     private function _getUserDBId(string $userName){
 
-        $user = $this->_databaseObjectsManager->getByPropertyValues(User::class, ['userName' => $userName, 'domain' => $this->_domain]);
+        $user = $this->_databaseObjectsManager->getByPropertyValues(UserObject::class, ['userName' => $userName, 'domain' => $this->_domain]);
 
         if(count($user) < 1){
 
@@ -524,18 +541,29 @@ class UsersManager extends BaseStrictClass{
      * @param string $userName The username for the user we want to login
      * @param string $password The password for the user we want to login
      *
-     * @return User[]|string[] An empty array if login failed or an array with two elements if
+     * @return UserObject[]|string[] An empty array if login failed or an array with two elements if
      *         the login succeeded: First element will be a string with the user token and second element will be the User instance for the
      *         requested user.
      */
     public function login(string $userName, string $password){
 
-        $user = $this->_databaseObjectsManager->getByPropertyValues(User::class,
-            ['userName' => $userName, 'password' => $password, 'domain' => $this->_domain]);
+        $user = $this->_databaseObjectsManager->getByPropertyValues(UserObject::class,
+            ['userName' => $userName, 'domain' => $this->_domain]);
 
         if(count($user) === 1){
 
-            return [$this->createToken($user[0]), $user[0]];
+            $dbPassword = $this->_databaseObjectsManager->getDataBaseManager()
+                ->tableGetRows($this->_databaseObjectsManager->tablesPrefix.'userobject_password', ['userdbid' => $user[0]->getDbId()]);
+
+            if(!$dbPassword){
+
+                throw new UnexpectedValueException('Specified user does not have a stored password: '.$userName);
+            }
+
+            if(count($dbPassword) === 1 && password_verify($password, $dbPassword[0]['password'])){
+
+                return [$this->createToken($user[0]), $user[0]];
+            }
         }
 
         return [];
@@ -545,11 +573,11 @@ class UsersManager extends BaseStrictClass{
     /**
      * Generate a token string for the provided user and stores it on database so it can be later verified
      *
-     * @param User $user An instance of the user fo which we want to create a token.
+     * @param UserObject $user An instance of the user fo which we want to create a token.
      *
      * @return string
      */
-    private function createToken(User $user){
+    private function createToken(UserObject $user){
 
         $expiryDate = (new DateTime('+'.$this->tokenLifeTime.' seconds', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
 
@@ -594,7 +622,7 @@ class UsersManager extends BaseStrictClass{
      *
      * @param string $encodedCredentials The user and password credentials as they are encoded by UsersManager::encodeUserAndPassword() method
      *
-     * @return User[]|string[] See UsersManager::login()
+     * @return UserObject[]|string[] See UsersManager::login()
      */
     public function loginFromEncodedCredentials(string $encodedCredentials){
 

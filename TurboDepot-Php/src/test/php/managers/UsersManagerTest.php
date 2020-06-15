@@ -14,7 +14,7 @@ namespace org\turbodepot\src\test\php\managers;
 use PHPUnit\Framework\TestCase;
 use org\turbodepot\src\main\php\managers\UsersManager;
 use org\turbotesting\src\main\php\utils\AssertUtils;
-use org\turbodepot\src\main\php\model\User;
+use org\turbodepot\src\main\php\model\UserObject;
 
 
 /**
@@ -267,30 +267,29 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->saveUser([]); }, '/Argument 1 passed to .* must be an instance of .*User/');
 
         // Test ok values
-        $user = new User();
+        $user = new UserObject();
         $user->userName = 'user';
-        $user->password = 'psw';
         $this->sut->saveUser($user);
-        $this->assertSame(['user'], $this->db->tableGetColumnValues('usr_user', 'username'));
-        $this->assertSame(['psw'], $this->db->tableGetColumnValues('usr_user', 'password'));
+        $this->assertSame(['user'], $this->db->tableGetColumnValues('usr_userobject', 'username'));
 
-        $user = new User();
+        $user = new UserObject();
         $user->userName = 'user2';
-        $user->password = 'psw2';
         $this->sut->saveUser($user);
-        $this->assertSame(['user', 'user2'], $this->db->tableGetColumnValues('usr_user', 'username'));
-        $this->assertSame(['psw', 'psw2'], $this->db->tableGetColumnValues('usr_user', 'password'));
+        $this->assertSame(['user', 'user2'], $this->db->tableGetColumnValues('usr_userobject', 'username'));
 
         // Test wrong values
-        $user = new User();
+        $user = new UserObject();
         $user->userName = 'user';
-        $user->password = 'psw';
         AssertUtils::throwsException(function() use ($user) { $this->sut->saveUser($user); }, '/Duplicate entry \'user\'/');
 
-        $user = new User();
+        $user = new UserObject();
         $user->domain = 'different domain';
         $user->userName = 'user';
-        $user->password = 'psw';
+        AssertUtils::throwsException(function() use ($user) { $this->sut->saveUser($user); }, '/Saving a user with a domain .different domain. that doesn\'t match the current one ../');
+        AssertUtils::throwsException(function() use ($user) { $this->sut->setDomain('different domain'); }, '/Domain does not exist different domain/');
+
+        $this->sut->saveDomain('different domain');
+        $this->sut->setDomain('different domain');
         $this->sut->saveUser($user);
 
         // Test exceptions
@@ -309,9 +308,8 @@ class UsersManagerTest extends TestCase {
         // TODO
 
         // Test ok values
-        $user = new User();
+        $user = new UserObject();
         $user->userName = 'user';
-        $user->password = 'psw';
         $this->sut->saveUser($user);
         $this->assertTrue($this->sut->isUser('user'));
         // TODO
@@ -332,6 +330,10 @@ class UsersManagerTest extends TestCase {
         // TODO
 
         // Test ok values
+        $user = new UserObject();
+        $user->userName = 'user';
+        $this->sut->saveUser($user);
+        $this->sut->setUserPassword($user->userName, 'psw');
         // TODO
 
         // Test wrong values
@@ -339,8 +341,6 @@ class UsersManagerTest extends TestCase {
 
         // Test exceptions
         // TODO
-
-        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 
@@ -417,32 +417,31 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->saveUserMail('', '', []); }, '/must be of the type string, array given/');
 
         // Test ok values
-        $user = new User();
+        $user = new UserObject();
         $user->userName = 'user';
-        $user->password = 'psw';
         $this->sut->saveUser($user);
         $this->sut->saveUserMail('user', 'test@email.com');
         $this->assertSame([['userdbid' => '1', 'mail' => 'test@email.com', 'isverified' => '0', 'comments' => '', 'data' => '']],
-            $this->db->tableGetRows('usr_user_mail', ['userdbid' => 1]));
+            $this->db->tableGetRows('usr_userobject_mail', ['userdbid' => 1]));
 
         $this->sut->saveUserMail('user', 'test@email.com', '', 'data1');
-        $this->assertSame(1, count($this->db->tableGetRows('usr_user_mail', ['userdbid' => 1])));
+        $this->assertSame(1, count($this->db->tableGetRows('usr_userobject_mail', ['userdbid' => 1])));
 
         $this->sut->saveUserMail('user', 'test2@email2.com', 'comments2');
         $this->assertSame([
             ['userdbid' => '1', 'mail' => 'test2@email2.com', 'isverified' => '0', 'comments' => 'comments2', 'data' => ''],
             ['userdbid' => '1', 'mail' => 'test@email.com', 'isverified' => '0', 'comments' => '', 'data' => 'data1']
-        ], $this->db->tableGetRows('usr_user_mail', ['userdbid' => 1]));
+        ], $this->db->tableGetRows('usr_userobject_mail', ['userdbid' => 1]));
 
         $this->sut->saveUserMail('user', 'test2@email2.com');
-        $this->assertSame(2, count($this->db->tableGetRows('usr_user_mail', ['userdbid' => 1])));
+        $this->assertSame(2, count($this->db->tableGetRows('usr_userobject_mail', ['userdbid' => 1])));
 
         $this->sut->saveUserMail('user', 'test3@email3.com', 'comments3', 'data3');
         $this->assertSame([
             ['userdbid' => '1', 'mail' => 'test2@email2.com', 'isverified' => '0', 'comments' => '', 'data' => ''],
             ['userdbid' => '1', 'mail' => 'test3@email3.com', 'isverified' => '0', 'comments' => 'comments3', 'data' => 'data3'],
             ['userdbid' => '1', 'mail' => 'test@email.com', 'isverified' => '0', 'comments' => '', 'data' => 'data1']
-        ], $this->db->tableGetRows('usr_user_mail', ['userdbid' => 1]));
+        ], $this->db->tableGetRows('usr_userobject_mail', ['userdbid' => 1]));
 
         // Test wrong values
         AssertUtils::throwsException(function() { $this->sut->saveUserMail('nonexistantuser', 'test@email.com', 'comments', 'data'); }, '/Trying to add an email account to a non existing user: nonexistantuser on domain /');
@@ -491,9 +490,8 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->isUserMailVerified('', []); }, '/must be of the type string, array given/');
 
         // Test ok values
-        $user = new User();
+        $user = new UserObject();
         $user->userName = 'user';
-        $user->password = 'psw';
         $this->sut->saveUser($user);
         $this->sut->saveUserMail('user', 'test@email.com');
         $this->assertFalse($this->sut->isUserMailVerified('user', 'test@email.com'));
@@ -526,9 +524,8 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->setUserMailVerified('', []); }, '/must be of the type string, array given/');
 
         // Test ok values
-        $user = new User();
+        $user = new UserObject();
         $user->userName = 'user';
-        $user->password = 'psw';
         $this->sut->saveUser($user);
         $this->sut->saveUserMail('user', 'test@email.com');
 
@@ -536,9 +533,8 @@ class UsersManagerTest extends TestCase {
         $this->assertTrue($this->sut->setUserMailVerified('user', 'test@email.com', true));
         $this->assertTrue($this->sut->isUserMailVerified('user', 'test@email.com'));
 
-        $user = new User();
+        $user = new UserObject();
         $user->userName = 'user2';
-        $user->password = 'psw2';
         $this->sut->saveUser($user);
         $this->sut->saveUserMail('user2', 'test2@email2.com');
 
@@ -580,9 +576,8 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->getUserMails('', []); }, '/filter must be VERIFIED, NONVERIFIED or ALL/');
 
         // Test ok values
-        $user = new User();
+        $user = new UserObject();
         $user->userName = 'user';
-        $user->password = 'psw';
         $this->sut->saveUser($user);
         $this->sut->saveUserMail('user', 'test@email.com');
         $this->sut->saveUserMail('user', 'test2@email2.com');
@@ -624,9 +619,8 @@ class UsersManagerTest extends TestCase {
         $this->assertSame([], $this->sut->getUserMails('user', 'NONVERIFIED'));
 
         // Check that emails are not mixed between users
-        $user = new User();
+        $user = new UserObject();
         $user->userName = 'user2';
-        $user->password = 'psw2';
         $this->sut->saveUser($user);
         $this->sut->saveUserMail('user2', 'user@email.com');
         $this->sut->saveUserMail('user2', 'user2@email2.com');
@@ -658,9 +652,8 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->deleteUserMails('', []); }, '/Non existing user:  on domain /');
 
         // Test ok values
-        $user = new User();
+        $user = new UserObject();
         $user->userName = 'user';
-        $user->password = 'psw';
         $this->sut->saveUser($user);
         $this->sut->saveUserMail('user', 'test@email.com');
         $this->sut->saveUserMail('user', 'test2@email2.com');
@@ -713,24 +706,22 @@ class UsersManagerTest extends TestCase {
         $this->assertSame([], $this->sut->login('', ''));
 
         // Test ok values
-        $user = new User();
+        $user = new UserObject();
         $user->userName = 'user';
-        $user->password = 'psw';
         $this->sut->saveUser($user);
+        $this->sut->setUserPassword($user->userName, 'psw');
         $login1Result = $this->sut->login('user', 'psw');
         $this->assertTrue(strlen($login1Result[0]) > 100);
         $this->assertSame('user', $login1Result[1]->userName);
-        $this->assertSame('psw', $login1Result[1]->password);
         $this->assertSame(1, $login1Result[1]->getDbId());
 
-        $user = new User();
+        $user = new UserObject();
         $user->userName = 'user2';
-        $user->password = 'psw2';
         $this->sut->saveUser($user);
+        $this->sut->setUserPassword($user->userName, 'psw2');
         $login2Result = $this->sut->login('user2', 'psw2');
         $this->assertTrue(strlen($login2Result[0]) > 100);
         $this->assertSame('user2', $login2Result[1]->userName);
-        $this->assertSame('psw2', $login2Result[1]->password);
         $this->assertSame(2, $login2Result[1]->getDbId());
 
         $this->assertSame([$login1Result[0], $login2Result[0]], $this->db->tableGetColumnValues('usr_token', 'token'));
@@ -761,6 +752,11 @@ class UsersManagerTest extends TestCase {
 
         // Test wrong values
         $this->assertSame([], $this->sut->login('invalid user', 'invalid token'));
+
+        $user = new UserObject();
+        $user->userName = 'user3';
+        $this->sut->saveUser($user);
+        AssertUtils::throwsException(function() { $this->sut->login('user3', 'psw'); }, '/Specified user does not have a stored password: user3/');
         // TODO
 
         // Test exceptions
@@ -801,17 +797,17 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->isTokenValid([]); }, '/Argument 1 passed to .*isTokenValid.* must be of the type string, array given/');
 
         // Test ok values
-        $user = new User();
+        $user = new UserObject();
         $user->userName = 'user';
-        $user->password = 'psw';
         $this->sut->saveUser($user);
+        $this->sut->setUserPassword($user->userName, 'psw');
         $token1 = $this->sut->login('user', 'psw')[0];
         $this->assertTrue($this->sut->isTokenValid($token1));
 
-        $user = new User();
+        $user = new UserObject();
         $user->userName = 'user2';
-        $user->password = 'psw2';
         $this->sut->saveUser($user);
+        $this->sut->setUserPassword($user->userName, 'psw2');
         $token2 = $this->sut->login('user2', 'psw2')[0];
         $this->assertTrue($this->sut->isTokenValid($token1));
         $this->assertTrue($this->sut->isTokenValid($token2));
@@ -883,15 +879,15 @@ class UsersManagerTest extends TestCase {
         $this->assertFalse($this->sut->logout([]));
 
         // Test ok values
-        $user = new User();
+        $user = new UserObject();
         $user->userName = 'user';
-        $user->password = 'psw';
         $this->sut->saveUser($user);
+        $this->sut->setUserPassword($user->userName, 'psw');
 
-        $user = new User();
+        $user = new UserObject();
         $user->userName = 'user2';
-        $user->password = 'psw2';
         $this->sut->saveUser($user);
+        $this->sut->setUserPassword($user->userName, 'psw2');
 
         $token = $this->sut->login('user', 'psw')[0];
         $this->assertSame([$token], $this->db->tableGetColumnValues('usr_token', 'token'));

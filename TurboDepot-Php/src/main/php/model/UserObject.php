@@ -15,16 +15,15 @@ use org\turbodepot\src\main\php\model\DataBaseObject;
 
 
 /**
- * User
+ * UserObject
  */
-final class User extends DataBaseObject{
+final class UserObject extends DataBaseObject{
 
 
     protected function setup(){
 
         $this->_types['domain'] = [250, self::NOT_NULL, self::STRING];
         $this->_types['userName'] = [100, self::NOT_NULL, self::STRING];
-        $this->_types['password'] = [100, self::NOT_NULL, self::STRING];
         $this->_types['data'] = [5000, self::NOT_NULL, self::STRING];
 
         $this->_uniqueIndices[] = ['domain', 'userName'];
@@ -32,12 +31,12 @@ final class User extends DataBaseObject{
 
 
     /**
-    * The domain in which the user resides.
-    * Domains are like "folders" or "zones" that let us keep some users isolated from others. Users from
-    * one domain won't be related to users of anoter domain in any way. We can use this feature to store different application
+     * The domain in which the user resides.
+     * Domains are like "folders" or "zones" that let us keep some users isolated from others. Users from
+     * one domain won't be related to users of anoter domain in any way. We can use this feature to store different application
      * users on the same database for example.
      *
-     * Note that the empty "" domain is also a valid domain
+     * Note that the empty "" domain is also a valid domain which exists by default
      *
      * @var string
      */
@@ -51,11 +50,8 @@ final class User extends DataBaseObject{
     public $userName = '';
 
 
-    /**
-     * The password that is used for login
-     * @var string
-     */
-    public $password = '';
+    // TODO - implement this flag that should completely disable this user when set to false
+    // public $isEnabled = true;
 
 
     /**
