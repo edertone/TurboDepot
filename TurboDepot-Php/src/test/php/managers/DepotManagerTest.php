@@ -11,10 +11,10 @@
 
 namespace org\turbodepot\src\test\php\managers;
 
-use stdClass;
 use PHPUnit\Framework\TestCase;
-use org\turbodepot\src\main\php\managers\FilesManager;
+use stdClass;
 use org\turbodepot\src\main\php\managers\DepotManager;
+use org\turbodepot\src\main\php\managers\FilesManager;
 use org\turbotesting\src\main\php\utils\AssertUtils;
 
 
@@ -333,6 +333,8 @@ class DepotManagerTest extends TestCase {
      */
     public function testGetUsersManager(){
 
+        $dbObjectsManager = DataBaseManagerTest::createAndConnectToTestingMariaDb();
+
         // Test empty values
         AssertUtils::throwsException(function(){ $this->sut->getUsersManager(); }, '/Could not find a valid database source for usersManager on turbodepot setup/');
 
@@ -343,7 +345,7 @@ class DepotManagerTest extends TestCase {
 
         $this->setup->sources->mariadb[0]->name = 'tmp_db_source';
         $this->setup->sources->mariadb[0]->host = $dbSetup->host;
-        $this->setup->sources->mariadb[0]->database = '';
+        $this->setup->sources->mariadb[0]->database = $dbSetup->dbName;
         $this->setup->sources->mariadb[0]->user = $dbSetup->user;
         $this->setup->sources->mariadb[0]->password = $dbSetup->psw;
 
@@ -372,6 +374,8 @@ class DepotManagerTest extends TestCase {
         $this->sut = new DepotManager($this->setup);
 
         AssertUtils::throwsException(function(){ $this->sut->getUsersManager(); }, '/Could not find a valid database source for usersManager on turbodepot setup/');
+
+        DataBaseManagerTest::deleteAndDisconnectFromTestingMariaDb($dbObjectsManager);
     }
 
 

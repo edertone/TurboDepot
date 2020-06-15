@@ -68,11 +68,26 @@ class UsersManager extends BaseStrictClass{
     public function __construct(DataBaseObjectsManager $databaseObjectsManager, string $domain = ''){
 
         $this->_databaseObjectsManager = $databaseObjectsManager;
-        $this->_domain = $domain;
 
         if(!$this->_databaseObjectsManager->getDataBaseManager()->isConnected()){
 
             throw new UnexpectedValueException('No active connection to database available for the provided DataBaseObjectsManager');
+        }
+
+        try {
+
+            $this->setDomain($domain);
+
+        } catch (Throwable $e) {
+
+            if($domain === ''){
+
+                $this->saveDomain($domain);
+
+            }else{
+
+                throw $e;
+            }
         }
     }
 
@@ -156,7 +171,11 @@ class UsersManager extends BaseStrictClass{
      */
     public function saveDomain($domainName, $description = ''){
 
-        StringUtils::forceNonEmptyString($domainName, 'domainName');
+        if($domainName !== ''){
+
+            StringUtils::forceNonEmptyString($domainName, 'domainName');
+        }
+
         StringUtils::forceString($description, 'description');
 
         $db = $this->_databaseObjectsManager->getDataBaseManager();
@@ -172,12 +191,15 @@ class UsersManager extends BaseStrictClass{
             if(!$db->tableExists($tableName) && $db->tableCreate($tableName,
                 ['name varchar(250) NOT NULL', 'description varchar(5000) NOT NULL'], ['name'])){
 
-                    $db->tableAddRows($tableName, [['name' => '', 'description' => 'The default root users domain']]);
+                if($domainName !== ''){
 
-                    return $this->saveDomain($domainName, $description);
+                    $db->tableAddRows($tableName, [['name' => '', 'description' => 'The default root users domain']]);
                 }
 
-                throw new UnexpectedValueException('Could not add domain '.$domainName.' to db');
+                return $this->saveDomain($domainName, $description);
+            }
+
+            throw new UnexpectedValueException('Could not add domain '.$domainName.' to db: '.$e->getMessage());
         }
 
         return true;
@@ -193,12 +215,10 @@ class UsersManager extends BaseStrictClass{
      */
     public function isDomain($domainName){
 
-        if($domainName === ''){
+        if($domainName !== ''){
 
-            return true;
+            StringUtils::forceNonEmptyString($domainName, 'domainName');
         }
-
-        StringUtils::forceNonEmptyString($domainName, 'domainName');
 
         try {
 

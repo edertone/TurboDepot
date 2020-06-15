@@ -15,6 +15,7 @@ use PHPUnit\Framework\TestCase;
 use org\turbodepot\src\main\php\managers\UsersManager;
 use org\turbotesting\src\main\php\utils\AssertUtils;
 use org\turbodepot\src\main\php\model\UserObject;
+use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 
 
 /**
@@ -82,15 +83,16 @@ class UsersManagerTest extends TestCase {
         // TODO
 
         // Test ok values
-        // TODO
+        $this->assertSame(1, $this->db->tableCountRows('usr_domain'));
+
+        $this->sut->saveDomain('domain1');
+        $this->sut = new UsersManager($this->dbObjectsManager, 'domain1');
 
         // Test wrong values
-        // TODO
-
         // Test exceptions
+        AssertUtils::throwsException(function() { new UsersManager($this->dbObjectsManager, 'nonexistantdomain'); }, '/Domain does not exist nonexistantdomain/');
+        AssertUtils::throwsException(function() { new UsersManager(new DataBaseObjectsManager()); }, '/No active connection to database available for the provided DataBaseObjectsManager/');
         // TODO
-
-        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 
@@ -161,27 +163,28 @@ class UsersManagerTest extends TestCase {
         // Test empty values
         AssertUtils::throwsException(function() { $this->sut->saveDomain(); }, '/Too few arguments to function/');
         AssertUtils::throwsException(function() { $this->sut->saveDomain(null); }, '/domainName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveDomain(''); }, '/domainName must be a non empty string/');
         AssertUtils::throwsException(function() { $this->sut->saveDomain([]); }, '/domainName must be a non empty string/');
+        $this->assertTrue($this->sut->saveDomain('', 'default domain'));
 
         // Test ok values
-        $this->assertFalse($this->db->tableExists('usr_domain'));
+        $this->assertSame(1, $this->db->tableCountRows('usr_domain'));
+        $this->assertTrue($this->db->tableExists('usr_domain'));
         $this->assertTrue($this->sut->saveDomain('domain1'));
         $this->assertTrue($this->db->tableExists('usr_domain'));
         $this->assertSame(['', 'domain1'], $this->db->tableGetColumnValues('usr_domain', 'name'));
-        $this->assertSame(['The default root users domain', ''], $this->db->tableGetColumnValues('usr_domain', 'description'));
+        $this->assertSame(['default domain', ''], $this->db->tableGetColumnValues('usr_domain', 'description'));
 
         $this->assertTrue($this->sut->saveDomain('domain1', 'description1'));
         $this->assertSame(['', 'domain1'], $this->db->tableGetColumnValues('usr_domain', 'name'));
-        $this->assertSame(['The default root users domain', 'description1'], $this->db->tableGetColumnValues('usr_domain', 'description'));
+        $this->assertSame(['default domain', 'description1'], $this->db->tableGetColumnValues('usr_domain', 'description'));
 
         $this->assertTrue($this->sut->saveDomain('domain1', 'description1-edited'));
-        $this->assertSame(['The default root users domain', 'description1-edited'], $this->db->tableGetColumnValues('usr_domain', 'description'));
+        $this->assertSame(['default domain', 'description1-edited'], $this->db->tableGetColumnValues('usr_domain', 'description'));
 
         $this->assertTrue($this->sut->saveDomain('domain2'));
         $this->assertTrue($this->sut->saveDomain('domain3'));
         $this->assertSame(['', 'domain1', 'domain2', 'domain3'], $this->db->tableGetColumnValues('usr_domain', 'name'));
-        $this->assertSame(['The default root users domain', 'description1-edited', '', ''], $this->db->tableGetColumnValues('usr_domain', 'description'));
+        $this->assertSame(['default domain', 'description1-edited', '', ''], $this->db->tableGetColumnValues('usr_domain', 'description'));
 
         // Test wrong values
         // Test exceptions
@@ -463,8 +466,8 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->saveUserMail('nonexistantuser', 'test@email.com', 'comments', 'data'); }, '/Trying to add an email account to a non existing user: nonexistantuser on domain /');
         AssertUtils::throwsException(function() { $this->sut->saveUserMail('user', ''); }, '/Invalid mail/');
         AssertUtils::throwsException(function() { $this->sut->saveUserMail('user', '         '); }, '/Invalid mail/');
-        AssertUtils::throwsException(function() { (new UsersManager($this->dbObjectsManager, 'nonexistantdomain'))->saveUserMail('user', 'test@email.com'); }, '/Trying to add an email account to a non existing user: user on domain nonexistantdomain/');
-        // TODO
+        AssertUtils::throwsException(function() { (new UsersManager($this->dbObjectsManager, 'nonexistantdomain'))->saveUserMail('user', 'test@email.com'); }, '/Domain does not exist nonexistantdomain/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain('nonexistantdomain'); (new UsersManager($this->dbObjectsManager, 'nonexistantdomain'))->saveUserMail('user', 'test@email.com'); }, '/Trying to add an email account to a non existing user: user on domain nonexistantdomain/');
 
         // Test exceptions
         // TODO
@@ -848,6 +851,7 @@ class UsersManagerTest extends TestCase {
 
         // Validate that a token expiry time gets recycled when it gets correctly validated, and then when it
         // expires it gets removed from db
+        $this->sut->tokenLifeTime = 3;
         $token3 = $this->sut->login('user', 'psw')[0];
         $this->assertNotSame($token1, $token3);
         $this->assertTrue($this->sut->isTokenValid($token3));
@@ -858,7 +862,7 @@ class UsersManagerTest extends TestCase {
         sleep(1);
         $this->assertTrue($this->sut->isTokenValid($token3));
         $this->assertSame($token3, $this->db->tableGetColumnValues('usr_token', 'token')[1]);
-        sleep(2);
+        sleep(3);
         $this->assertSame($token3, $this->db->tableGetColumnValues('usr_token', 'token')[1]);
         $this->assertFalse($this->sut->isTokenValid($token3));
         $this->assertSame([$token2], $this->db->tableGetColumnValues('usr_token', 'token'));
