@@ -1139,6 +1139,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             }
 
             $propertyExpectedType = $this->_getTypeFromObjectProperty($object, $classProperty);
+            $propertyExpectedTypeIsArray = in_array(DataBaseObject::ARRAY, $propertyExpectedType, true);
             $propertyValuesToCheck = [$object->{$classProperty}];
             $isMultilanProperty = in_array($classProperty, $objectMultiLanProperties, true);
 
@@ -1158,7 +1159,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
                 if($propertyValuesToCheck[$i] === null){
 
-                    if(in_array(DataBaseObject::NOT_NULL, $propertyExpectedType, true) || in_array(DataBaseObject::ARRAY, $propertyExpectedType, true)){
+                    if(in_array(DataBaseObject::NOT_NULL, $propertyExpectedType, true) || $propertyExpectedTypeIsArray){
 
                         throw new UnexpectedValueException('NULL value is not accepted by '.$classProperty.' property'.$multilanErrorTag);
                     }
@@ -1167,6 +1168,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 }
 
                 $propertyValueType = $this->_getTypeFromValue($propertyValuesToCheck[$i]);
+
+                if($propertyExpectedTypeIsArray && !is_array($propertyValuesToCheck[$i])){
+
+                    throw new UnexpectedValueException($classProperty.' must be an array');
+                }
 
                 // Check that property type matches expected one (note that double types are able to store int values and datetime types string values)
                 // Property type must be valid based on the object defined restrictions and it must fit the expected precision

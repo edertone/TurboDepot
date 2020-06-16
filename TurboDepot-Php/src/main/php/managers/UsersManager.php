@@ -44,7 +44,15 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * An instance of the DataBaseObjectsManager class that is used by this class to interact with db
+     * The users domain on which this instance is currently operating
+     *
+     * @var string
+     */
+    private $_domain = '';
+
+
+    /**
+     * An instance of the DataBaseObjectsManager class that is used by this class to interact with db objects
      *
      * @var DataBaseObjectsManager
      */
@@ -52,11 +60,45 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * The users domain on which this instance is currently operating
-     *
+     * An instance of the DataBaseManager class that is used by this class to interact with db
+     * @var DataBaseManager
+     */
+    private $_db;
+
+
+    /**
+     * The name of the domains table
      * @var string
      */
-    private $_domain = '';
+    private $_tableDomain;
+
+
+    /**
+     * The name of the roles table
+     * @var string
+     */
+    private $_tableRole;
+
+
+    /**
+     * The name of the password table
+     * @var string
+     */
+    private $_tableUserPsw;
+
+
+    /**
+     * The name of the mail table
+     * @var string
+     */
+    private $_tableUserMail;
+
+
+    /**
+     * The name of the token table
+     * @var string
+     */
+    private $_tableToken;
 
 
     /**
@@ -68,8 +110,14 @@ class UsersManager extends BaseStrictClass{
     public function __construct(DataBaseObjectsManager $databaseObjectsManager, string $domain = ''){
 
         $this->_databaseObjectsManager = $databaseObjectsManager;
+        $this->_db = $this->_databaseObjectsManager->getDataBaseManager();
+        $this->_tableDomain = $this->_databaseObjectsManager->tablesPrefix.'domain';
+        $this->_tableRole = $this->_databaseObjectsManager->tablesPrefix.'role';
+        $this->_tableUserPsw = $this->_databaseObjectsManager->tablesPrefix.'userobject_password';
+        $this->_tableUserMail = $this->_databaseObjectsManager->tablesPrefix.'userobject_mail';
+        $this->_tableToken = $this->_databaseObjectsManager->tablesPrefix.'token';
 
-        if(!$this->_databaseObjectsManager->getDataBaseManager()->isConnected()){
+        if(!$this->_db->isConnected()){
 
             throw new UnexpectedValueException('No active connection to database available for the provided DataBaseObjectsManager');
         }
@@ -178,28 +226,25 @@ class UsersManager extends BaseStrictClass{
 
         StringUtils::forceString($description, 'description');
 
-        $db = $this->_databaseObjectsManager->getDataBaseManager();
-        $tableName = $this->_databaseObjectsManager->tablesPrefix.'domain';
-
         try {
 
-            $db->tableAddOrUpdateRow($tableName, ['name' => $domainName],
+            $this->_db->tableAddOrUpdateRow($this->_tableDomain, ['name' => $domainName],
                 ['name' => $domainName, 'description' => $description]);
 
         } catch (Throwable $e) {
 
-            if(!$db->tableExists($tableName) && $db->tableCreate($tableName,
+            if(!$this->_db->tableExists($this->_tableDomain) && $this->_db->tableCreate($this->_tableDomain,
                 ['name varchar(250) NOT NULL', 'description varchar(5000) NOT NULL'], ['name'])){
 
                 if($domainName !== ''){
 
-                    $db->tableAddRows($tableName, [['name' => '', 'description' => 'The default root users domain']]);
+                    $this->_db->tableAddRows($this->_tableDomain, [['name' => '', 'description' => 'The default root users domain']]);
                 }
 
                 return $this->saveDomain($domainName, $description);
             }
 
-            throw new UnexpectedValueException('Could not add domain '.$domainName.' to db: '.$e->getMessage());
+            throw new UnexpectedValueException('Could not save domain '.$domainName.' to db: '.$e->getMessage());
         }
 
         return true;
@@ -222,8 +267,7 @@ class UsersManager extends BaseStrictClass{
 
         try {
 
-            return count($this->_databaseObjectsManager->getDataBaseManager()
-                ->tableGetRows($this->_databaseObjectsManager->tablesPrefix.'domain', ['name' => $domainName])) === 1;
+            return count($this->_db->tableGetRows($this->_tableDomain, ['name' => $domainName])) === 1;
 
         } catch (Throwable $e) {
 
@@ -266,7 +310,32 @@ class UsersManager extends BaseStrictClass{
             throw new UnexpectedValueException('Saving a user with a domain ('.$user->domain.') that doesn\'t match the current one ('.$this->_domain.')');
         }
 
-        return $this->_databaseObjectsManager->save($user);
+        // make sure the provided roles exist on the current domain
+        if(is_array($user->roles)){
+
+            foreach ($user->roles as $role) {
+
+                if(!$this->isRole($role)){
+
+                    throw new UnexpectedValueException('role '.$role.' does not exist on domain '.$this->_domain);
+                }
+            }
+        }
+
+        try {
+
+            return $this->_databaseObjectsManager->save($user);
+
+        } catch (Throwable $e) {
+
+            if($this->isUser($user->userName)){
+
+                throw new UnexpectedValueException('User '.$user->userName.' already exists on domain '.$this->_domain);
+
+            }
+
+            throw $e;
+        }
     }
 
 
@@ -297,18 +366,16 @@ class UsersManager extends BaseStrictClass{
      */
     public function setUserPassword(string $userName, string $password){
 
-        $db = $this->_databaseObjectsManager->getDataBaseManager();
-        $tableName = $this->_databaseObjectsManager->tablesPrefix.'userobject_password';
         $userDbId = $this->_getUserDBId($userName);
 
         try {
 
-            $db->tableAddOrUpdateRow($tableName, ['userdbid' => $userDbId],
+            $this->_db->tableAddOrUpdateRow($this->_tableUserPsw, ['userdbid' => $userDbId],
                 ['userdbid' => $userDbId, 'password' => password_hash($password, PASSWORD_BCRYPT)]);
 
         } catch (Throwable $e) {
 
-            if(!$db->tableExists($tableName) && $db->tableCreate($tableName,
+            if(!$this->_db->tableExists($this->_tableUserPsw) && $this->_db->tableCreate($this->_tableUserPsw,
                 ['userdbid bigint NOT NULL', 'password varchar(500) NOT NULL'], ['userdbid'])){
 
                 return $this->setUserPassword($userName, $password);
@@ -322,20 +389,58 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Save to database the specified users role for the currently active domain or update it if already exists.
+     *
+     * @param string $roleName The name for the role we want to save or update
+     * @param string $description The description we want to set to the role
+     *
+     * @throws UnexpectedValueException
+     *
+     * @return boolean True if the role was correctly saved
      */
-    public function saveRole($name, $description = ''){
+    public function saveRole($roleName, $description = ''){
 
-        // TODO
+        StringUtils::forceNonEmptyString($roleName, 'roleName');
+        StringUtils::forceString($description, 'description');
+
+        try {
+
+            $this->_db->tableAddOrUpdateRow($this->_tableRole, ['domain' => $this->_domain, 'name' => $roleName],
+                ['domain' => $this->_domain, 'name' => $roleName, 'description' => $description]);
+
+        } catch (Throwable $e) {
+
+            if(!$this->_db->tableExists($this->_tableRole) && $this->_db->tableCreate($this->_tableRole,
+                ['domain varchar(250) NOT NULL', 'name varchar(250) NOT NULL', 'description varchar(5000) NOT NULL'], ['domain', 'name'])){
+
+                $this->_db->tableAddForeignKey($this->_tableRole, $this->_tableRole.'_'.$this->_tableDomain.'_fk',
+                    ['domain'], $this->_tableDomain, ['name']);
+
+                return $this->saveRole($roleName, $description);
+            }
+
+            throw new UnexpectedValueException('Could not save role '.$roleName.' to db: '.$e->getMessage());
+        }
+
+        return true;
     }
 
 
     /**
      * TODO
      */
-    public function setRoleToUsers($roleName, array $userNames){
+    public function isRole(string $roleName){
 
-        // TODO
+        StringUtils::forceNonEmptyString($roleName, 'roleName');
+
+        try {
+
+            return count($this->_db->tableGetRows($this->_tableRole, ['name' => $roleName, 'domain' => $this->_domain])) === 1;
+
+        } catch (Throwable $e) {
+
+            return false;
+        }
     }
 
 
@@ -373,18 +478,16 @@ class UsersManager extends BaseStrictClass{
 
         StringUtils::forceNonEmptyString($mail, '', 'Invalid mail');
 
-        $db = $this->_databaseObjectsManager->getDataBaseManager();
-        $tableName = $this->_databaseObjectsManager->tablesPrefix.'userobject_mail';
         $userDbId = $this->_getUserDBId($userName);
 
         try {
 
-            $db->tableAddOrUpdateRow($tableName, ['userdbid' => $userDbId, 'mail' => $mail],
+            $this->_db->tableAddOrUpdateRow($this->_tableUserMail, ['userdbid' => $userDbId, 'mail' => $mail],
                 ['userdbid' => $userDbId, 'mail' => $mail, 'isverified' => 0, 'comments' => $comments, 'data' => $data]);
 
         } catch (Throwable $e) {
 
-            if(!$db->tableExists($tableName) && $db->tableCreate($tableName,
+            if(!$this->_db->tableExists($this->_tableUserMail) && $this->_db->tableCreate($this->_tableUserMail,
                 ['userdbid bigint NOT NULL', 'mail varchar(250) NOT NULL', 'isverified tinyint(1) NOT NULL', 'comments varchar(5000) NOT NULL',
                  'data varchar(25000) NOT NULL'], ['userdbid', 'mail'])){
 
@@ -446,10 +549,7 @@ class UsersManager extends BaseStrictClass{
 
         if($this->isUserMailVerified($userName, $mail) !== $isVerified){
 
-            $db = $this->_databaseObjectsManager->getDataBaseManager();
-            $tableName = $this->_databaseObjectsManager->tablesPrefix.'userobject_mail';
-
-            $db->tableUpdateRow($tableName, ['userdbid' => $this->_getUserDBId($userName), 'mail' => $mail],
+            $this->_db->tableUpdateRow($this->_tableUserMail, ['userdbid' => $this->_getUserDBId($userName), 'mail' => $mail],
                 ['isverified' => $isVerified ? 1 : 0]);
         }
 
@@ -476,12 +576,9 @@ class UsersManager extends BaseStrictClass{
             throw new UnexpectedValueException('filter must be VERIFIED, NONVERIFIED or ALL');
         }
 
-        $db = $this->_databaseObjectsManager->getDataBaseManager();
-        $tableName = $this->_databaseObjectsManager->tablesPrefix.'userobject_mail';
-
         $result = [];
 
-        foreach ($db->tableGetRows($tableName, ['userdbid' => $this->_getUserDBId($userName)]) as $row) {
+        foreach ($this->_db->tableGetRows($this->_tableUserMail, ['userdbid' => $this->_getUserDBId($userName)]) as $row) {
 
             if($filter === 'ALL' ||
                ($filter === 'VERIFIED' && $row['isverified'] === '1') ||
@@ -496,7 +593,7 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Delete the provided list of emails for the specified User
+     * Delete the provided list of emails from the specified User (on the currently active domain)
      *
      * @param string $userName The username for the user from which we want to delete the mail accounts
      * @param array $mails List of emails to delete. If an empty array is provided, ALL the emails linked to the user will be deleted
@@ -508,13 +605,11 @@ class UsersManager extends BaseStrictClass{
     public function deleteUserMails(string $userName, array $mails){
 
         $result = 0;
-        $db = $this->_databaseObjectsManager->getDataBaseManager();
-        $tableName = $this->_databaseObjectsManager->tablesPrefix.'userobject_mail';
         $userDBId = $this->_getUserDBId($userName);
 
         if(count($mails) <= 0){
 
-            return $db->tableDeleteRows($tableName, ['userdbid' => $userDBId]);
+            return $this->_db->tableDeleteRows($this->_tableUserMail, ['userdbid' => $userDBId]);
         }
 
         foreach ($mails as $mail) {
@@ -524,7 +619,7 @@ class UsersManager extends BaseStrictClass{
                 throw new UnexpectedValueException('Invalid mail: '.$mail);
             }
 
-            $result += $db->tableDeleteRows($tableName, ['userdbid' => $userDBId, 'mail' => $mail]);
+            $result += $this->_db->tableDeleteRows($this->_tableUserMail, ['userdbid' => $userDBId, 'mail' => $mail]);
         }
 
         return $result;
@@ -556,7 +651,7 @@ class UsersManager extends BaseStrictClass{
     /**
      * TODO
      */
-    public function saveOperation($operation){
+    public function saveOperation($operation, $description = ''){
 
         // TODO
     }
@@ -579,8 +674,8 @@ class UsersManager extends BaseStrictClass{
 
         if(count($user) === 1){
 
-            $dbPassword = $this->_databaseObjectsManager->getDataBaseManager()
-                ->tableGetRows($this->_databaseObjectsManager->tablesPrefix.'userobject_password', ['userdbid' => $user[0]->getDbId()]);
+            $dbPassword = $this->_db->tableGetRows($this->_databaseObjectsManager
+                ->tablesPrefix.'userobject_password', ['userdbid' => $user[0]->getDbId()]);
 
             if(!$dbPassword){
 
@@ -611,11 +706,8 @@ class UsersManager extends BaseStrictClass{
         $token = base64_encode(StringUtils::generateRandom(75, 75).
             StringUtils::limitLen(md5($user->userName).md5($expiryDate), 25));
 
-        $db = $this->_databaseObjectsManager->getDataBaseManager();
-        $tableName = $this->_databaseObjectsManager->tablesPrefix.'token';
-
         // If a token for the given user already exists, we will simply recycle it and return it
-        $existingTokens = $db->tableGetRows($tableName, ['userdbid' => $user->getDbId()]);
+        $existingTokens = $this->_db->tableGetRows($this->_tableToken, ['userdbid' => $user->getDbId()]);
 
         if($existingTokens !== false && count($existingTokens) === 1 && $this->isTokenValid($existingTokens[0]['token'])){
 
@@ -624,17 +716,17 @@ class UsersManager extends BaseStrictClass{
 
         try {
 
-            $db->tableAddRows($tableName, [['token' => $token, 'userdbid' => $user->getDbId(), 'expires' => $expiryDate]]);
+            $this->_db->tableAddRows($this->_tableToken, [['token' => $token, 'userdbid' => $user->getDbId(), 'expires' => $expiryDate]]);
 
         } catch (Throwable $e) {
 
-            if(!$db->tableExists($tableName) && $db->tableCreate($tableName,
-               ['token varchar(150) NOT NULL', 'userdbid bigint NOT NULL', 'expires '.$db->getSQLDateTimeType(false)])){
+            if(!$this->_db->tableExists($this->_tableToken) && $this->_db->tableCreate($this->_tableToken,
+               ['token varchar(150) NOT NULL', 'userdbid bigint NOT NULL', 'expires '.$this->_db->getSQLDateTimeType(false)])){
 
                 return $this->createToken($user);
             }
 
-            throw new UnexpectedValueException('Could not create '.$tableName.' table: '.$e->getMessage());
+            throw new UnexpectedValueException('Could not create '.$this->_tableToken.' table: '.$e->getMessage());
         }
 
         return $token;
@@ -669,9 +761,7 @@ class UsersManager extends BaseStrictClass{
 
         StringUtils::forceNonEmptyString($token, '', 'token must have a value');
 
-        $db = $this->_databaseObjectsManager->getDataBaseManager();
-        $tableName = $this->_databaseObjectsManager->tablesPrefix.'token';
-        $tokenData = $db->tableGetRows($tableName, ['token' => $token]);
+        $tokenData = $this->_db->tableGetRows($this->_tableToken, ['token' => $token]);
 
         if(count($tokenData) === 1){
 
@@ -681,13 +771,13 @@ class UsersManager extends BaseStrictClass{
 
                     $newExpiryDate = (new DateTime('+'.$this->tokenLifeTime.' seconds', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
 
-                    $db->tableUpdateRow($tableName, ['token' => $tokenData[0]['token']], ['expires' => $newExpiryDate]);
+                    $this->_db->tableUpdateRow($this->_tableToken, ['token' => $tokenData[0]['token']], ['expires' => $newExpiryDate]);
                 }
 
                 return true;
             }
 
-            if($db->tableDeleteRows($tableName, ['token' => $tokenData[0]['token']]) === 0){
+            if($this->_db->tableDeleteRows($this->_tableToken, ['token' => $tokenData[0]['token']]) === 0){
 
                 throw new UnexpectedValueException('Could not delete expired token from db');
             }
@@ -712,18 +802,14 @@ class UsersManager extends BaseStrictClass{
             return false;
         }
 
-        $db = $this->_databaseObjectsManager->getDataBaseManager();
-        $tableName = $this->_databaseObjectsManager->tablesPrefix.'token';
-
         // Purge the provided token
-        if($db->tableDeleteRows($tableName, ['token' => $token]) === 0){
+        if($this->_db->tableDeleteRows($this->_tableToken, ['token' => $token]) === 0){
 
             return false;
         }
 
         // Purge all the other possibly expired tokens
-        $this->_databaseObjectsManager->getDataBaseManager()->query('DELETE FROM '
-            .$this->_databaseObjectsManager->tablesPrefix.'token WHERE expires < NOW()');
+        $this->_db->query('DELETE FROM '.$this->_databaseObjectsManager->tablesPrefix.'token WHERE expires < NOW()');
 
         return true;
     }

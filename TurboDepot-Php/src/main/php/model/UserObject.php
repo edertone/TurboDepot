@@ -11,8 +11,6 @@
 
 namespace org\turbodepot\src\main\php\model;
 
-use org\turbodepot\src\main\php\model\DataBaseObject;
-
 
 /**
  * UserObject
@@ -23,6 +21,7 @@ final class UserObject extends DataBaseObject{
     protected function setup(){
 
         $this->_types['domain'] = [250, self::NOT_NULL, self::STRING];
+        $this->_types['roles'] = [250, self::NOT_NULL, self::ARRAY, self::STRING];
         $this->_types['userName'] = [100, self::NOT_NULL, self::STRING];
         $this->_types['data'] = [5000, self::NOT_NULL, self::STRING];
 
@@ -41,6 +40,13 @@ final class UserObject extends DataBaseObject{
      * @var string
      */
     public $domain = '';
+
+
+    /**
+     * List of roles that are applied to this user, sorted by preference
+     * @var string
+     */
+    public $roles = [];
 
 
     /**

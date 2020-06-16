@@ -283,7 +283,7 @@ class UsersManagerTest extends TestCase {
         // Test wrong values
         $user = new UserObject();
         $user->userName = 'user';
-        AssertUtils::throwsException(function() use ($user) { $this->sut->saveUser($user); }, '/Duplicate entry \'user\'/');
+        AssertUtils::throwsException(function() use ($user) { $this->sut->saveUser($user); }, '/User user already exists on domain/');
 
         $user = new UserObject();
         $user->domain = 'different domain';
@@ -294,6 +294,19 @@ class UsersManagerTest extends TestCase {
         $this->sut->saveDomain('different domain');
         $this->sut->setDomain('different domain');
         $this->sut->saveUser($user);
+
+        $this->sut->setDomain('');
+        $user = new UserObject();
+        $user->userName = 'user3';
+        $user->roles = 'hello';
+        AssertUtils::throwsException(function() use ($user) { $this->sut->saveUser($user); }, '/roles must be an array/');
+
+        $user->roles = ['hello'];
+        AssertUtils::throwsException(function() use ($user) { $this->sut->saveUser($user); }, '/role hello does not exist on domain /');
+
+        $user = new UserObject();
+        $user->userName = 'user';
+        AssertUtils::throwsException(function() use ($user) { $this->sut->saveUser($user); }, '/User user already exists on domain /');
 
         // Test exceptions
         AssertUtils::throwsException(function() { $this->sut->saveUser('string'); }, '/Argument 1 passed to .* must be an instance of .*User/');
@@ -367,37 +380,37 @@ class UsersManagerTest extends TestCase {
     public function testSaveRole(){
 
         // Test empty values
-        // TODO
+        AssertUtils::throwsException(function() { $this->sut->saveRole(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole(null); }, '/roleName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole([]); }, '/roleName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole(''); }, '/roleName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole('   '); }, '/roleName must be a non empty string/');
 
         // Test ok values
-        // TODO
+        $this->assertFalse($this->db->tableExists('usr_role'));
+        $this->assertTrue($this->sut->saveRole('role1'));
+        $this->assertTrue($this->db->tableExists('usr_role'));
+        $this->assertSame([''], $this->db->tableGetColumnValues('usr_role', 'domain'));
+        $this->assertSame(['role1'], $this->db->tableGetColumnValues('usr_role', 'name'));
+        $this->assertSame([''], $this->db->tableGetColumnValues('usr_role', 'description'));
 
-        // Test wrong values
-        // TODO
+        $this->sut->saveDomain('new domain');
+        $this->sut->setDomain('new domain');
+        $this->assertTrue($this->sut->saveRole('role2', 'description 2'));
+        $this->assertSame(['', 'new domain'], $this->db->tableGetColumnValues('usr_role', 'domain'));
+        $this->assertSame(['role1', 'role2'], $this->db->tableGetColumnValues('usr_role', 'name'));
+        $this->assertSame(['', 'description 2'], $this->db->tableGetColumnValues('usr_role', 'description'));
 
-        // Test exceptions
-        // TODO
+        $this->assertTrue($this->sut->saveRole('role2', 'description 2 edited'));
+        $this->assertSame(['', 'description 2 edited'], $this->db->tableGetColumnValues('usr_role', 'description'));
 
-        $this->markTestIncomplete('This test has not been implemented yet.');
-    }
-
-
-    /** test */
-    public function testSetRoleToUsers(){
-
-        // Test empty values
-        // TODO
-
-        // Test ok values
-        // TODO
-
-        // Test wrong values
-        // TODO
-
-        // Test exceptions
-        // TODO
-
-        $this->markTestIncomplete('This test has not been implemented yet.');
+//         // Test wrong values
+//         // Test exceptions
+        AssertUtils::throwsException(function() { $this->sut->saveRole('   '); }, '/roleName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole(1345345); }, '/roleName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole([1,2,3,4,5]); }, '/roleName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole('domain1', 12345); }, '/description must be a string/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole('domain1', [1,2,3,4,5]); }, '/description must be a string/');
     }
 
 

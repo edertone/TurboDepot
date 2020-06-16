@@ -751,7 +751,7 @@ class DataBaseManager extends BaseStrictClass {
      * @param string $fkName The name we want to set to the new foreign key
      * @param array $fkColumns The colums that are affected by the new foreign key
      * @param string $refTable The name for the table that is referenced by this foreign key (the one that contains pk values that must exist on our table)
-     * @param array $refColumns The colums on the referenced table that are affected by the new foreign key
+     * @param array $refColumns The colums on the referenced table that are referenced by the new foreign key
      * @param string $onDelete What to do when a delete happens (by default CASCADE)
      * @param string $onUpdate What to do when an update happens (by default CASCADE)
      *

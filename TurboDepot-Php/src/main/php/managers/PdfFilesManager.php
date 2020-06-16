@@ -209,7 +209,6 @@ class PdfFilesManager {
             throw new UnexpectedValueException('Ghostscript failed '.$gsQueryResult);
         }
 
-        // Check that
         if(strlen($imageData) < 500 && strpos($imageData, 'No pages will be processed') !== false){
 
             throw new UnexpectedValueException('Ghostscript failed '.$imageData);
@@ -291,7 +290,7 @@ class PdfFilesManager {
 
 
     /**
-     * Performs maximum possible optimization to a specified pdf document, by appliyng the pdftk command line tool. We should place this tool on our project storage/binary folder
+     * Performs maximum possible optimization to a specified pdf document, by appliyng the pdftk command line tool. We should place this tool on our project storage/executable folder
      * pdftk is free and can be downloaded from: https://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/
      *
      * VERY IMPORTANT:

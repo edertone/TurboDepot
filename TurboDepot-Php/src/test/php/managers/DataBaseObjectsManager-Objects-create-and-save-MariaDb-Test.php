@@ -1071,7 +1071,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $object = new CustomerTyped();
         $object->emails = 12;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/emails.*does not match STRING.75./s');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/emails must be an array/');
 
         $object = new CustomerTyped();
         $object->emails = [12, 123];
@@ -1084,6 +1084,10 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object = new CustomerTyped();
         $object->boolArray = ['string', 'string'];
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/boolArray.*string.*does not match BOOL.1./s');
+
+        $object = new CustomerTyped();
+        $object->intArray = 'string';
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/intArray must be an array/');
 
         $object = new CustomerTyped();
         $object->intArray = ['string', 'string'];
