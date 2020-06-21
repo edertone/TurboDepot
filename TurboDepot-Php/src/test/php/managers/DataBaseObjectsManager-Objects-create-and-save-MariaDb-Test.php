@@ -27,7 +27,6 @@ use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWith
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongArrayMultilanProperty;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongArrayTypeSize;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongDateTypeSize;
-use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongEmptyNonTypedArrayProperty;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongExtendedDbCreationDateProperty;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongExtendedDbDeletedProperty;
 use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWithWrongExtendedDbIdProperty;
@@ -479,13 +478,12 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongMethods()); }, '/Method is not allowed for DataBaseObject class org.*ObjectWithWrongMethods: methodThatCantBeHere/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongPropThatStartsWithUnderscore()); }, '/Properties starting with _ are forbidden, but found: _name/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNullNonTypedProperty()); }, '/Could not detect property age type: Could not detect type from NULL/');
-        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongEmptyNonTypedArrayProperty()); }, '/Could not detect property emails type: Could not detect type from array/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongTypeHasDuplicateValues()); }, '/Duplicate value <STRING> found on _types for name property/');
         AssertUtils::throwsException(function() { new ObjectWithWrongNonExistantTypedProperty(); }, '/Cannot define type for nonexistant cause it does not exist on class/');
 
         // Add an unexpected column to the customer table and make sure saving fails
         $this->assertTrue($this->db->tableAddColumn($objectTableName, 'unexpected', 'bigint'));
-        AssertUtils::throwsException(function() { $this->sut->save(new Customer()); }, '/<unexpected> exists on <td_customer> table and must exist as a basic property on object being saved/');
+        AssertUtils::throwsException(function() { $this->sut->save(new Customer()); }, '/<td_customer> table contains a column which must exist as a basic property on object being saved.*<unexpected> exists on <td_customer> but not on provided tableDef/');
 
         // All exceptions must have not created any database object
         $this->assertSame(4, $this->db->tableCountRows($objectTableName));
@@ -788,7 +786,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object->doubleArray = [10.0, 100.454, 0.254676];
         $this->assertSame(1, $this->sut->save($object));
 
-        $this->assertSame(14, count($this->sut->getDataBaseManager()->getQueryHistory()));
+        $this->assertSame(10, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
         $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)',
             'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(40) NOT NULL',
@@ -871,7 +869,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $object = new CustomerWithArrayProps();
         $object->name = ['storing an array into a non array prop'];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<name> exists on <td_customerwitharrayprops> table and must exist as a basic property on object being saved/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<td_customerwitharrayprops> table contains a column which must exist as a basic property on object being saved.*<name> exists on <td_customerwitharrayprops> but not on provided tableDef/');
 
         $object = new CustomerWithArrayProps();
         $object->name = 'this customer has array typed properties';
@@ -905,7 +903,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object->name = 'customer';
         $this->assertSame(1, $this->sut->save($object));
 
-        $this->assertSame(10, count($this->sut->getDataBaseManager()->getQueryHistory()));
+        $this->assertSame(6, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
         $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)',
             'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(20) NOT NULL',
@@ -914,9 +912,8 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
             'setup' => 'tinyint(1)'
             ], $this->db->tableGetColumnDataTypes($objectTableName));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'value' => 'varchar(75)'], $this->db->tableGetColumnDataTypes($objectTableName.'_emails'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_emails'));
         $this->assertSame([], $this->db->tableGetColumnValues($objectTableName.'_emails', 'dbid'));
-        $this->assertSame([], $this->db->tableGetColumnValues($objectTableName.'_emails', 'value'));
 
         // Update the object by modifying some properties values
         $object->birthDate = '2019-12-01 12:00:01+00:00';
@@ -1176,65 +1173,65 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(2, $this->sut->save($object));
 
         $this->assertSame($objectMainTableTypes, $this->db->tableGetColumnDataTypes($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20)', 'en_US' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20)', 'en_us' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
         $this->assertSame(['1', '2'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'dbid'));
         $this->assertSame([null, null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', '_'));
-        $this->assertSame([null, null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_US'));
+        $this->assertSame([null, null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_us'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20) NOT NULL', 'en_US' => 'varchar(20) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalizednotnull'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20) NOT NULL', 'en_us' => 'varchar(20) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalizednotnull'));
         $this->assertSame(['1', '2'], $this->db->tableGetColumnValues($objectTableName.'_namelocalizednotnull', 'dbid'));
         $this->assertSame(['', ''], $this->db->tableGetColumnValues($objectTableName.'_namelocalizednotnull', '_'));
-        $this->assertSame(['', ''], $this->db->tableGetColumnValues($objectTableName.'_namelocalizednotnull', 'en_US'));
+        $this->assertSame(['', ''], $this->db->tableGetColumnValues($objectTableName.'_namelocalizednotnull', 'en_us'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'datetime', 'en_US' => 'datetime'], $this->db->tableGetColumnDataTypes($objectTableName.'_birthdatelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'datetime', 'en_us' => 'datetime'], $this->db->tableGetColumnDataTypes($objectTableName.'_birthdatelocalized'));
         $this->assertSame(['1', '2'], $this->db->tableGetColumnValues($objectTableName.'_birthdatelocalized', 'dbid'));
         $this->assertSame([null, null], $this->db->tableGetColumnValues($objectTableName.'_birthdatelocalized', '_'));
-        $this->assertSame([null, null], $this->db->tableGetColumnValues($objectTableName.'_birthdatelocalized', 'en_US'));
+        $this->assertSame([null, null], $this->db->tableGetColumnValues($objectTableName.'_birthdatelocalized', 'en_us'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'smallint(6)', 'en_US' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_agelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'smallint(6)', 'en_us' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_agelocalized'));
         $this->assertSame(['1', '2'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'dbid'));
         $this->assertSame(['0', null], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', '_'));
-        $this->assertSame([null, '0'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'en_US'));
+        $this->assertSame([null, '0'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'en_us'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'tinyint(1)', 'en_US' => 'tinyint(1)'], $this->db->tableGetColumnDataTypes($objectTableName.'_setuplocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'tinyint(1)', 'en_us' => 'tinyint(1)'], $this->db->tableGetColumnDataTypes($objectTableName.'_setuplocalized'));
         $this->assertSame(['1', '2'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'dbid'));
         $this->assertSame(['0', null], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', '_'));
-        $this->assertSame([null, '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'en_US'));
+        $this->assertSame([null, '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'en_us'));
 
         // Test saving a third empty instance to the database with a list of the 2 previously saved locales plus a new one
         $object = new CustomerLocalized(['en_US', '', 'es_ES']);
         $this->assertSame(3, $this->sut->save($object));
 
         $this->assertSame($objectMainTableTypes, $this->db->tableGetColumnDataTypes($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20)', 'en_US' => 'varchar(20)', 'es_ES' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20)', 'en_us' => 'varchar(20)', 'es_es' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
         $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'dbid'));
         $this->assertSame([null, null, null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', '_'));
-        $this->assertSame([null, null, null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_US'));
-        $this->assertSame([null, null, null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'es_ES'));
+        $this->assertSame([null, null, null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_us'));
+        $this->assertSame([null, null, null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'es_es'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20) NOT NULL', 'en_US' => 'varchar(20) NOT NULL', 'es_ES' => 'varchar(20) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalizednotnull'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20) NOT NULL', 'en_us' => 'varchar(20) NOT NULL', 'es_es' => 'varchar(20) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalizednotnull'));
         $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($objectTableName.'_namelocalizednotnull', 'dbid'));
         $this->assertSame(['', '', ''], $this->db->tableGetColumnValues($objectTableName.'_namelocalizednotnull', '_'));
-        $this->assertSame(['', '', ''], $this->db->tableGetColumnValues($objectTableName.'_namelocalizednotnull', 'en_US'));
-        $this->assertSame(['', '', ''], $this->db->tableGetColumnValues($objectTableName.'_namelocalizednotnull', 'es_ES'));
+        $this->assertSame(['', '', ''], $this->db->tableGetColumnValues($objectTableName.'_namelocalizednotnull', 'en_us'));
+        $this->assertSame(['', '', ''], $this->db->tableGetColumnValues($objectTableName.'_namelocalizednotnull', 'es_es'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'datetime', 'en_US' => 'datetime', 'es_ES' => 'datetime'], $this->db->tableGetColumnDataTypes($objectTableName.'_birthdatelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'datetime', 'en_us' => 'datetime', 'es_es' => 'datetime'], $this->db->tableGetColumnDataTypes($objectTableName.'_birthdatelocalized'));
         $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($objectTableName.'_birthdatelocalized', 'dbid'));
         $this->assertSame([null, null, null], $this->db->tableGetColumnValues($objectTableName.'_birthdatelocalized', '_'));
-        $this->assertSame([null, null, null], $this->db->tableGetColumnValues($objectTableName.'_birthdatelocalized', 'en_US'));
-        $this->assertSame([null, null, null], $this->db->tableGetColumnValues($objectTableName.'_birthdatelocalized', 'es_ES'));
+        $this->assertSame([null, null, null], $this->db->tableGetColumnValues($objectTableName.'_birthdatelocalized', 'en_us'));
+        $this->assertSame([null, null, null], $this->db->tableGetColumnValues($objectTableName.'_birthdatelocalized', 'es_es'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'smallint(6)', 'en_US' => 'smallint(6)', 'es_ES' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_agelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'smallint(6)', 'en_us' => 'smallint(6)', 'es_es' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_agelocalized'));
         $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'dbid'));
         $this->assertSame(['0', null, '0'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', '_'));
-        $this->assertSame([null, '0', '0'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'en_US'));
-        $this->assertSame([null, null, '0'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'es_ES'));
+        $this->assertSame([null, '0', '0'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'en_us'));
+        $this->assertSame([null, null, '0'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'es_es'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'tinyint(1)', 'en_US' => 'tinyint(1)', 'es_ES' => 'tinyint(1)'], $this->db->tableGetColumnDataTypes($objectTableName.'_setuplocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'tinyint(1)', 'en_us' => 'tinyint(1)', 'es_es' => 'tinyint(1)'], $this->db->tableGetColumnDataTypes($objectTableName.'_setuplocalized'));
         $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'dbid'));
         $this->assertSame(['0', null, '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', '_'));
-        $this->assertSame([null, '0', '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'en_US'));
-        $this->assertSame([null, null, '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'es_ES'));
+        $this->assertSame([null, '0', '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'en_us'));
+        $this->assertSame([null, null, '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'es_es'));
 
         // TODO - It's been finally decided to not destroy locale columns from multi locale props tables, cause they are not annoying even if not used. Test that this happens as expected
         // TODO - test saving several objects, modifying the same object on already saved locale values, etc..
@@ -1285,7 +1282,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object->setupLocalized = false;
         $this->assertSame(1, $this->sut->save($object));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
         $this->assertSame(['William'], $this->db->tableGetColumnValues($objectTableName, 'name'));
         $this->assertSame(['William USA'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_US'));
 
@@ -1301,7 +1298,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object->setupLocalized = false;
         $this->assertSame(2, $this->sut->save($object));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'varchar(20)', 'es_ES' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'varchar(20)', 'es_es' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
         $this->assertSame(['William', 'Guillermo'], $this->db->tableGetColumnValues($objectTableName, 'name'));
         $this->assertSame(['William USA', null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_US'));
         $this->assertSame([null, 'Guillermo ES'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'es_ES'));
@@ -1318,7 +1315,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object->setupLocalized = false;
         $this->assertSame(3, $this->sut->save($object));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'varchar(20)', 'es_ES' => 'varchar(20)', 'fr_FR' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'varchar(20)', 'es_es' => 'varchar(20)', 'fr_fr' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
         $this->assertSame(['William', 'Guillermo', 'Wilanceau'], $this->db->tableGetColumnValues($objectTableName, 'name'));
         $this->assertSame(['William USA', null, null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_US'));
         $this->assertSame([null, 'Guillermo ES', null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'es_ES'));
@@ -1326,9 +1323,175 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
     }
 
 
-    /**
-     * test
-     */
+    /** test */
+    public function testSave_Object_with_table_that_exists_with_a_single_valid_column(){
+
+        $object = new Customer();
+        $object->name = 'cust1';
+        $objectTableName = $this->sut->getTableNameFromObject($object);
+
+        $this->assertFalse($this->db->tableExists($objectTableName));
+        $this->db->tableCreate($objectTableName, ['dbid bigint(20) unsigned NOT NULL AUTO_INCREMENT'], ['dbid']);
+        $this->assertTrue($this->db->tableExists($objectTableName));
+
+        $this->assertSame('cust1', $this->sut->getByDbId(Customer::class, $this->sut->save($object))->name);
+    }
+
+
+    /** test */
+    public function testSave_Object_with_table_that_exists_with_half_the_amount_of_valid_columns(){
+
+        $object = new Customer();
+        $object->name = 'cust1';
+        $objectTableName = $this->sut->getTableNameFromObject($object);
+        $this->assertFalse($this->db->tableExists($objectTableName));
+        $dbid = $this->sut->save($object);
+        $this->assertTrue($this->db->tableExists($objectTableName));
+
+        $this->db->tableDeleteColumns($objectTableName, ['name', 'commercialname', 'age', 'debt']);
+        $this->assertFalse(in_array('commercialname', $this->db->tableGetColumnNames($objectTableName), true));
+        $this->assertFalse(in_array('age', $this->db->tableGetColumnNames($objectTableName), true));
+        $this->assertFalse(in_array('debt', $this->db->tableGetColumnNames($objectTableName), true));
+
+        $dbid = $this->sut->save($object);
+        $this->assertTrue(in_array('commercialname', $this->db->tableGetColumnNames($objectTableName), true));
+        $this->assertTrue(in_array('age', $this->db->tableGetColumnNames($objectTableName), true));
+        $this->assertTrue(in_array('debt', $this->db->tableGetColumnNames($objectTableName), true));
+        $this->assertSame('cust1', $this->sut->getByDbId(Customer::class, $dbid)->name);
+    }
+
+
+    /** test */
+    public function testSave_Object_with_table_that_exists_with_all_the_columns_except_one(){
+
+        $object = new Customer();
+        $object->name = 'cust1';
+        $objectTableName = $this->sut->getTableNameFromObject($object);
+        $this->assertFalse($this->db->tableExists($objectTableName));
+        $dbid = $this->sut->save($object);
+        $this->assertTrue($this->db->tableExists($objectTableName));
+
+        $this->db->tableDeleteColumns($objectTableName, ['debt']);
+        $this->assertTrue(in_array('commercialname', $this->db->tableGetColumnNames($objectTableName), true));
+        $this->assertTrue(in_array('age', $this->db->tableGetColumnNames($objectTableName), true));
+        $this->assertFalse(in_array('debt', $this->db->tableGetColumnNames($objectTableName), true));
+
+        $dbid = $this->sut->save($object);
+        $this->assertTrue(in_array('commercialname', $this->db->tableGetColumnNames($objectTableName), true));
+        $this->assertTrue(in_array('age', $this->db->tableGetColumnNames($objectTableName), true));
+        $this->assertTrue(in_array('debt', $this->db->tableGetColumnNames($objectTableName), true));
+        $this->assertSame('cust1', $this->sut->getByDbId(Customer::class, $dbid)->name);
+    }
+
+
+    /** test */
+    public function testSave_Object_with_table_that_exists_with_one_extra_column_that_is_not_found_on_the_object(){
+
+        $object = new Customer();
+        $object->name = 'cust1';
+        $objectTableName = $this->sut->getTableNameFromObject($object);
+        $this->assertFalse($this->db->tableExists($objectTableName));
+        $this->sut->save($object);
+        $this->assertTrue($this->db->tableExists($objectTableName));
+
+        $this->assertTrue($this->db->tableAddColumn($objectTableName, 'invalid', $this->db->getSQLTypeFromValue('hello')));
+        $this->assertTrue(in_array('invalid', $this->db->tableGetColumnNames($objectTableName), true));
+
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); },
+            '/<td_customer> table contains a column which must exist as a basic property.*<invalid> exists on <td_customer> but not on provided tableDef.*/');
+
+        $this->sut->isColumnDeletedWhenMissingOnObject = true;
+
+        $this->assertSame('cust1', $this->sut->getByDbId(Customer::class, $this->sut->save($object))->name);
+        $this->assertTrue(in_array('commercialname', $this->db->tableGetColumnNames($objectTableName), true));
+        $this->assertFalse(in_array('invalid', $this->db->tableGetColumnNames($objectTableName), true));
+    }
+
+
+    /** test */
+    public function testSave_Object_with_table_that_exists_with_three_extra_columns_that_are_not_found_on_the_object(){
+
+        $object = new Customer();
+        $object->name = 'cust1';
+        $objectTableName = $this->sut->getTableNameFromObject($object);
+        $this->assertFalse($this->db->tableExists($objectTableName));
+        $this->sut->save($object);
+        $this->assertTrue($this->db->tableExists($objectTableName));
+
+        $this->assertTrue($this->db->tableAddColumn($objectTableName, 'invalid', $this->db->getSQLTypeFromValue('hello')));
+        $this->assertTrue($this->db->tableAddColumn($objectTableName, 'invalid2', $this->db->getSQLTypeFromValue('hello2')));
+        $this->assertTrue($this->db->tableAddColumn($objectTableName, 'invalid3', $this->db->getSQLTypeFromValue('hello3')));
+        $this->assertTrue(in_array('invalid', $this->db->tableGetColumnNames($objectTableName), true));
+        $this->assertTrue(in_array('invalid2', $this->db->tableGetColumnNames($objectTableName), true));
+        $this->assertTrue(in_array('invalid3', $this->db->tableGetColumnNames($objectTableName), true));
+
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); },
+            '/<td_customer> table contains a column which must exist as a basic property.*<invalid> exists on <td_customer> but not on provided tableDef.*/');
+
+        $this->sut->isColumnDeletedWhenMissingOnObject = true;
+
+        $this->assertSame('cust1', $this->sut->getByDbId(Customer::class, $this->sut->save($object))->name);
+        $this->assertTrue(in_array('commercialname', $this->db->tableGetColumnNames($objectTableName), true));
+        $this->assertTrue(in_array('age', $this->db->tableGetColumnNames($objectTableName), true));
+        $this->assertFalse(in_array('invalid', $this->db->tableGetColumnNames($objectTableName), true));
+        $this->assertFalse(in_array('invalid2', $this->db->tableGetColumnNames($objectTableName), true));
+        $this->assertFalse(in_array('invalid3', $this->db->tableGetColumnNames($objectTableName), true));
+    }
+
+
+    /** test */
+    public function testSave_Object_with_table_that_exists_with_a_primary_key_that_is_not_the_same_as_the_object_one(){
+
+        // TODO
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /** test */
+    public function testSave_Object_with_table_that_exists_with_a_foreign_key_that_is_not_the_same_as_the_object_one(){
+
+        // TODO
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /** test */
+    public function testSave_Object_with_table_that_has_a_column_with_a_different_type_than_the_one_on_the_object_property(){
+
+        $object = new CustomerTyped();
+        $object->name = 'cust1';
+        $objectTableName = $this->sut->getTableNameFromObject($object);
+        $this->assertFalse($this->db->tableExists($objectTableName));
+        $this->sut->save($object);
+        $this->assertTrue($this->db->tableExists($objectTableName));
+
+        $this->assertTrue($this->db->tableDeleteColumns($objectTableName, ['age']));
+        $this->assertTrue($this->db->tableAddColumn($objectTableName, 'age', $this->db->getSQLTypeFromValue('hello')));
+
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); },
+        '/td_customertyped column age data type expected: varchar.5. but received: smallint/');
+    }
+
+
+    /** test */
+    public function testSave_Object_with_table_that_has_a_column_with_a_different_type_size_than_the_one_on_the_object_property(){
+
+        $object = new CustomerTyped();
+        $object->name = 'cust1';
+        $objectTableName = $this->sut->getTableNameFromObject($object);
+        $this->assertFalse($this->db->tableExists($objectTableName));
+        $this->sut->save($object);
+        $this->assertTrue($this->db->tableExists($objectTableName));
+
+        $this->assertTrue($this->db->tableDeleteColumns($objectTableName, ['name']));
+        $this->assertTrue($this->db->tableAddColumn($objectTableName, 'name', $this->db->getSQLTypeFromValue('hello')));
+
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); },
+            '/td_customertyped column name data type expected: varchar.5. but received: varchar.20. NOT NULL/');
+    }
+
+
+    /** test */
     public function testSave_update_object_by_adding_non_typed_prop_that_did_not_exist_previously(){
 
         $object = new ObjectToAlter();
@@ -1369,7 +1532,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\altered\removedNonTypedProperty\ObjectToAlter();
         $object->name = 'Peter';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<city> exists on <td_objecttoalter> table and must exist as a basic property on object being saved/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<td_objecttoalter> table contains a column which must exist as a basic property on object being saved.*<city> exists on <td_objecttoalter> but not on provided tableDef/');
 
         // Delete the city column from table and check that object can be saved correctly
         $this->db->tableDeleteColumns($objectTableName, ['city']);
@@ -1393,7 +1556,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\altered\renamedNonTypedProperty\ObjectToAlter();
         $object->name = 'Peter';
         $object->cityRenamed = 'New York 2';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<city> exists on <td_objecttoalter> table and must exist as a basic property on object being saved/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<td_objecttoalter> table contains a column which must exist as a basic property on object being saved.*<city> exists on <td_objecttoalter> but not on provided tableDef/');
 
         // Delete the city column from table and check that object can be saved and cityrenamed column's been created
         $this->db->tableDeleteColumns($objectTableName, ['city']);
@@ -1447,7 +1610,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\altered\removedSimpleTypedProperty\ObjectToAlter();
         $object->city = 'Chicago';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<name> exists on <td_objecttoalter> table and must exist as a basic property on object being saved/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<td_objecttoalter> table contains a column which must exist as a basic property on object being saved.*<name> exists on <td_objecttoalter> but not on provided tableDef/');
     }
 
 
@@ -1465,7 +1628,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object = new \org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\altered\renamedTypedProperty\ObjectToAlter();
         $object->nameRenamed = 'Renamed name';
         $object->city = 'New York City 2';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<name> exists on <td_objecttoalter> table and must exist as a basic property on object being saved/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/<td_objecttoalter> table contains a column which must exist as a basic property on object being saved.*<name> exists on <td_objecttoalter> but not on provided tableDef/');
 
         // Delete the name column from table and check that object can be saved and nameRenamed column's been created
         $this->db->tableDeleteColumns($objectTableName, ['name']);
@@ -1575,13 +1738,11 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));
         $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['city']));
         $this->assertFalse(isset($this->db->tableGetColumnDataTypes($objectTableName)['namelocalized']));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'es_ES' => 'varchar(400)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'es_es' => 'varchar(400)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
     }
 
 
-    /**
-     * test
-     */
+    /** test */
     public function testSave_Object_With_Multi_Language_Properties_update_object_by_removing_multilan_prop_that_did_exist_previously(){
 
         // TODO - And what happens with the previously existing property table?? should it be removed also??? or what!
@@ -1602,9 +1763,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
     }
 
 
-    /**
-     * test
-     */
+    /** test */
     public function testSave_Object_With_Multi_Language_Properties_update_object_by_renaming_multilan_prop_that_did_exist_previously(){
 
         // TODO - And what happens with the previously existing property table?? should it be removed also??? or what!
@@ -1625,9 +1784,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
     }
 
 
-    /**
-     * test
-     */
+    /** test */
     public function testSave_Object_With_Multi_Language_Properties_set_values_for_two_locales_back_to_first_one_and_save(){
 
         $object = new CustomerLocalized(['en_US', 'es_ES']);
@@ -1640,7 +1797,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $this->assertSame(1, $this->sut->save($object));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'varchar(20)', 'es_ES' => 'varchar(20)'],
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'varchar(20)', 'es_es' => 'varchar(20)'],
             $this->db->tableGetColumnDataTypes($objectTableName.'_nameLocalized'));
 
         $this->assertSame(['modified'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_US'));
@@ -1794,13 +1951,13 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_name'));
         $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_setup'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'smallint(6)', 'es_ES' => 'smallint(6)', 'fr_FR' => 'smallint(6)', 'en_GB' => 'smallint(6)'],
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'smallint(6)', 'es_es' => 'smallint(6)', 'fr_fr' => 'smallint(6)', 'en_gb' => 'smallint(6)'],
             $this->db->tableGetColumnDataTypes($objectTableName.'_agelocalized'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'varchar(20)', 'es_ES' => 'varchar(20)', 'fr_FR' => 'varchar(20)', 'en_GB' => 'varchar(20)'],
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'varchar(20)', 'es_es' => 'varchar(20)', 'fr_fr' => 'varchar(20)', 'en_gb' => 'varchar(20)'],
             $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'tinyint(1)', 'es_ES' => 'tinyint(1)', 'fr_FR' => 'tinyint(1)', 'en_GB' => 'tinyint(1)'],
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'tinyint(1)', 'es_es' => 'tinyint(1)', 'fr_fr' => 'tinyint(1)', 'en_gb' => 'tinyint(1)'],
             $this->db->tableGetColumnDataTypes($objectTableName.'_setuplocalized'));
 
         $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'dbid'));
@@ -1845,13 +2002,13 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_name'));
         $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_setup'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'smallint(6)', 'es_ES' => 'smallint(6)', 'fr_FR' => 'smallint(6)', 'en_GB' => 'smallint(6)'],
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'smallint(6)', 'es_es' => 'smallint(6)', 'fr_fr' => 'smallint(6)', 'en_gb' => 'smallint(6)'],
             $this->db->tableGetColumnDataTypes($objectTableName.'_agelocalized'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'varchar(20)', 'es_ES' => 'varchar(20)', 'fr_FR' => 'varchar(20)', 'en_GB' => 'varchar(20)'],
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'varchar(20)', 'es_es' => 'varchar(20)', 'fr_fr' => 'varchar(20)', 'en_gb' => 'varchar(20)'],
             $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_US' => 'tinyint(1)', 'es_ES' => 'tinyint(1)', 'fr_FR' => 'tinyint(1)', 'en_GB' => 'tinyint(1)'],
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'tinyint(1)', 'es_es' => 'tinyint(1)', 'fr_fr' => 'tinyint(1)', 'en_gb' => 'tinyint(1)'],
             $this->db->tableGetColumnDataTypes($objectTableName.'_setuplocalized'));
 
         $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'dbid'));

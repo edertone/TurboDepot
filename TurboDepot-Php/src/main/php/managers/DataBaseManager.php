@@ -11,9 +11,10 @@
 
 namespace org\turbodepot\src\main\php\managers;
 
+use Throwable;
 use UnexpectedValueException;
-use org\turbocommons\src\main\php\model\BaseStrictClass;
 use org\turbocommons\src\main\php\utils\StringUtils;
+use org\turbocommons\src\main\php\model\BaseStrictClass;
 
 
 /**
@@ -92,7 +93,7 @@ class DataBaseManager extends BaseStrictClass {
     /**
      * @see DataBaseManager::isAnyTransactionActive
      */
-    private $_isAnyTransactionActive = false;
+    private $_transactionsCounter = 0;
 
 
     /**
@@ -695,6 +696,11 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function tableCreate($tableName, array $columns, array $primaryKey = [], array $uniqueIndices = [], array $indices = []){
 
+        if(count($columns) <= 0){
+
+            throw new UnexpectedValueException('at least one column is expected');
+        }
+
         if($this->_engine === self::MYSQL){
 
             if(count($primaryKey) > 0){
@@ -773,6 +779,129 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
+     * Alter a database table so it matches the definitions provided on tableDef
+     *
+     * @param string $tableName The name of a database table that will be compared to the provided table definition and modified to match it
+     * @param array $tableDef Associative array with the table definitons that will be applied to the database table. Following values are accepted as tableDef keys:
+     *        - 'primaryKey' An array with all the column names that conform the table primary key
+     *        - 'uniqueIndices' An array of arrays where each element contains all the column names for each unique index to create
+     *        - 'indices' An array of arrays where each element contains all the column names for each index to create
+     *        - 'deleteColumns' 'yes' to delete the columns that are on db table but not on tableDef, 'no' to ignore them, 'fail' (default) to throw an exception if any exist
+     *        - 'resizeColumns' True if the colum data types should be resized to fit when the tabledef value is bigger
+     *        - 'foreignKey' An array of arrays where each element will have the definition for a foreign key (elements must be the same as the $this->tableAddForeignKey() parameters in the same order)
+
+     * @return void
+     */
+    public function tableSyncFromDefinition($tableName, array $tableDef){
+
+        $tableDef['primaryKey'] = isset($tableDef['primaryKey']) ? $tableDef['primaryKey'] : [];
+        $tableDef['uniqueIndices'] = isset($tableDef['uniqueIndices']) ? $tableDef['uniqueIndices'] : [];
+        $tableDef['indices'] = isset($tableDef['indices']) ? $tableDef['indices'] : [];
+        $tableDef['deleteColumns'] = isset($tableDef['deleteColumns']) ? $tableDef['deleteColumns'] : 'fail';
+        $tableDef['resizeColumns'] = isset($tableDef['resizeColumns']) ? $tableDef['resizeColumns'] : false;
+
+        try {
+
+            if(!$this->tableExists($tableName)){
+
+                $this->tableCreate($tableName, $tableDef['columns'], $tableDef['primaryKey'], $tableDef['uniqueIndices'], $tableDef['indices']);
+
+                return;
+            }
+
+            $dbTableColumnTypes = $this->tableGetColumnDataTypes($tableName);
+            $dbTableColumnNames = array_keys($dbTableColumnTypes);
+            $tableDefColumnNames = array_map(function ($r) {return explode(' ', $r, 2)[0];}, $tableDef['columns']);
+
+            $this->transactionBegin();
+
+            // Find all the columns that do exist on the database but not on the definition and delete them if $tableDef['deleteColumns'] is true
+            foreach ($dbTableColumnNames as $dbColumn) {
+
+                if(!in_array($dbColumn, $tableDefColumnNames, true)){
+
+                    switch ($tableDef['deleteColumns']) {
+
+                        case 'yes':
+                            $this->tableDeleteColumns($tableName, [$dbColumn]);
+                            break;
+
+                        case 'no':
+                            break;
+
+                        default:
+                            throw new UnexpectedValueException('can\'t sync table: <'.$dbColumn.'> exists on <'.$tableName.'> but not on provided tableDef and deleteColumns flag is false, so data won\'t be destroyed', 3);
+                    }
+                }
+            }
+
+            // Find all the colums that do not exist on the database table and create them if missing or adapt them to fit the expected type
+            foreach ($tableDefColumnNames as $i => $tableDefColumnName) {
+
+                $tableDefColumnType = explode(' ', $tableDef['columns'][$i], 2)[1];
+
+                if(!in_array($tableDefColumnName, $dbTableColumnNames)){
+
+                    $this->tableAddColumn($tableName, $tableDefColumnName, $tableDefColumnType);
+
+                }else{
+
+                    $dbTableColumnType = $dbTableColumnTypes[$tableDefColumnName];
+                    $isDbTableColumnADate = $this->isSQLDateTimeType($dbTableColumnType);
+
+                    if(!$this->isSQLSameType($tableDefColumnType, $dbTableColumnType) &&
+                        !$this->isSQLNumericTypeCompatibleWith($dbTableColumnType, $tableDefColumnType) &&
+                        !($isDbTableColumnADate && $this->isSQLStringType($tableDefColumnType))){
+
+                        // This case cannot be automatically handled without destroying data, so exception and user must manually modify the table column
+                        throw new UnexpectedValueException($tableName.' column '.$tableDefColumnName.' data type expected: '.$dbTableColumnType.' but received: '.$tableDefColumnType, 1);
+                    }
+
+                    $valueTypeSize = $this->getSQLTypeSize($tableDefColumnType);
+                    $dbTableColumnTypeSize = $this->getSQLTypeSize($dbTableColumnType);
+
+                    if($dbTableColumnTypeSize < $valueTypeSize &&
+                        !($isDbTableColumnADate && $dbTableColumnTypeSize === 0 && ($valueTypeSize === 1 || $valueTypeSize === 25)) &&
+                        !($isDbTableColumnADate && $dbTableColumnTypeSize === 3 && ($valueTypeSize === 1 || $valueTypeSize === 29)) &&
+                        !($isDbTableColumnADate && $dbTableColumnTypeSize === 6 && ($valueTypeSize === 1 || $valueTypeSize === 32))){
+
+                        if(!$tableDef['resizeColumns']){
+
+                            throw new UnexpectedValueException($tableName.' column '.$tableDefColumnName.' data type expected: '.$dbTableColumnType.' but received: '.$tableDefColumnType, 2);
+                        }
+
+                        // Increase the size of the table column so it can fit the object value
+                        $this->query('ALTER TABLE '.$tableName.' MODIFY COLUMN '.$tableDefColumnName.' '.str_replace('('.$dbTableColumnTypeSize.')', '('.$valueTypeSize.')', $dbTableColumnType));
+                    }
+                }
+            }
+
+            if(isset($tableDef['foreignKey'])){
+
+                $tableKeyNames = array_map(function ($r) {return $r['Key_name']; }, $this->query('SHOW INDEXES IN '.$tableName));
+
+                foreach ($tableDef['foreignKey'] as $foreignKey) {
+
+                    if(!in_array($foreignKey[0], $tableKeyNames, true)){
+
+                        $this->tableAddForeignKey($tableName, $foreignKey[0], $foreignKey[1], $foreignKey[2], $foreignKey[3],
+                            isset($foreignKey[4]) ? $foreignKey[4] : 'CASCADE',  isset($foreignKey[5]) ? $foreignKey[5] : 'CASCADE');
+                    }
+                }
+            }
+
+            $this->transactionCommit();
+
+        } catch (Throwable $e) {
+
+            $this->transactionRollback();
+
+            throw $e;
+        }
+    }
+
+
+    /**
      * Get a list with all the column names from the specified table with the same order as they appear on it.
      *
      * @param string $tableName the table name
@@ -803,7 +932,7 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
-     * Obtain the list of SQL data types and precision for each one of the provided table columns
+     * Obtain the list of SQL data types and precision for each one of the columns on the provided table
      *
      * @param string $tableName The table name
      *
@@ -1059,7 +1188,7 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function tableDeleteColumns(string $tableName, array $columnNames) {
 
-        if($this->query('ALTER TABLE '.$tableName.' DROP COLUMN '.implode(', DROP COLUMN', $columnNames)) !== false){
+        if($this->query('ALTER TABLE '.$tableName.' DROP COLUMN '.implode(', DROP COLUMN ', $columnNames)) !== false){
 
             return true;
         }
@@ -1133,14 +1262,19 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function transactionBegin(){
 
-        if($this->_engine === self::MYSQL && $this->query('START TRANSACTION') !== false){
+        $this->_transactionsCounter ++;
 
-            $this->_isAnyTransactionActive = true;
+        if($this->_transactionsCounter > 1){
 
             return true;
         }
 
-        $this->_isAnyTransactionActive = false;
+        if($this->_engine === self::MYSQL && $this->query('START TRANSACTION') !== false){
+
+            return true;
+        }
+
+        $this->_transactionsCounter = 0;
 
         throw new UnexpectedValueException('Could not start transaction');
     }
@@ -1153,7 +1287,7 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function isAnyTransactionActive(){
 
-        return $this->_isAnyTransactionActive;
+        return $this->_transactionsCounter > 0;
     }
 
 
@@ -1168,7 +1302,7 @@ class DataBaseManager extends BaseStrictClass {
 
         if($this->_engine === self::MYSQL && $this->query('ROLLBACK') !== false){
 
-            $this->_isAnyTransactionActive = false;
+            $this->_transactionsCounter = 0;
 
             return true;
         }
@@ -1186,14 +1320,22 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function transactionCommit(){
 
-        if($this->_engine === self::MYSQL && $this->query('COMMIT') !== false){
+        if($this->_transactionsCounter <= 0){
 
-            $this->_isAnyTransactionActive = false;
-
-            return true;
+            throw new UnexpectedValueException('No transaction started');
         }
 
-        throw new UnexpectedValueException('Could not commit transaction');
+        $this->_transactionsCounter--;
+
+        if($this->_transactionsCounter === 0){
+
+            if($this->_engine === self::MYSQL && $this->query('COMMIT') !== false){
+
+                return true;
+            }
+
+            throw new UnexpectedValueException('Could not commit transaction');
+        }
     }
 
 
@@ -1275,7 +1417,7 @@ class DataBaseManager extends BaseStrictClass {
 
     /**
      * Given a raw php value, this method will generate a string that is ready to be used on a SQL query to represent that value.
-     * For example, a true boolean value will output 'TRUE', a null value 'NULL', a string value will be sngle qouted, etc..
+     * For example, a true boolean value will output 'TRUE', a null value 'NULL', a string value will be single qouted, etc..
      *
      * @param mixed $value
      *

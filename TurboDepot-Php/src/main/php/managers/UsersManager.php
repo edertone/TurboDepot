@@ -233,8 +233,9 @@ class UsersManager extends BaseStrictClass{
 
         } catch (Throwable $e) {
 
-            if(!$this->_db->tableExists($this->_tableDomain) && $this->_db->tableCreate($this->_tableDomain,
-                ['name varchar(250) NOT NULL', 'description varchar(5000) NOT NULL'], ['name'])){
+            if($this->_db->tableSyncFromDefinition($this->_tableDomain, [
+                'columns' => ['name varchar(250) NOT NULL', 'description varchar(5000) NOT NULL'],
+                'primaryKey' => ['name']])){
 
                 if($domainName !== ''){
 
@@ -328,10 +329,9 @@ class UsersManager extends BaseStrictClass{
 
         } catch (Throwable $e) {
 
-            if($this->isUser($user->userName)){
+            if($user->getDbId() === null && $this->isUser($user->userName)){
 
                 throw new UnexpectedValueException('User '.$user->userName.' already exists on domain '.$this->_domain);
-
             }
 
             throw $e;
@@ -375,8 +375,9 @@ class UsersManager extends BaseStrictClass{
 
         } catch (Throwable $e) {
 
-            if(!$this->_db->tableExists($this->_tableUserPsw) && $this->_db->tableCreate($this->_tableUserPsw,
-                ['userdbid bigint NOT NULL', 'password varchar(500) NOT NULL'], ['userdbid'])){
+            if($this->_db->tableSyncFromDefinition($this->_tableUserPsw, [
+                'columns' => ['userdbid bigint NOT NULL', 'password varchar(500) NOT NULL'],
+                'primaryKey' => ['userdbid']])){
 
                 return $this->setUserPassword($userName, $password);
             }
@@ -410,11 +411,10 @@ class UsersManager extends BaseStrictClass{
 
         } catch (Throwable $e) {
 
-            if(!$this->_db->tableExists($this->_tableRole) && $this->_db->tableCreate($this->_tableRole,
-                ['domain varchar(250) NOT NULL', 'name varchar(250) NOT NULL', 'description varchar(5000) NOT NULL'], ['domain', 'name'])){
-
-                $this->_db->tableAddForeignKey($this->_tableRole, $this->_tableRole.'_'.$this->_tableDomain.'_fk',
-                    ['domain'], $this->_tableDomain, ['name']);
+            if($this->_db->tableSyncFromDefinition($this->_tableRole, [
+                'columns' => ['domain varchar(250) NOT NULL', 'name varchar(250) NOT NULL', 'description varchar(5000) NOT NULL'],
+                'primaryKey' => ['domain', 'name'],
+                'foreignKey' => [$this->_tableRole.'_'.$this->_tableDomain.'_fk', ['domain'], $this->_tableDomain, ['name']]])){
 
                 return $this->saveRole($roleName, $description);
             }
@@ -427,7 +427,11 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Check if the specified role name is stored on database for the current domain
+     *
+     * @param string $roleName The role name that we want to check
+     *
+     * @return boolean True if the role exists on the current domain, false otherwise
      */
     public function isRole(string $roleName){
 
@@ -487,11 +491,12 @@ class UsersManager extends BaseStrictClass{
 
         } catch (Throwable $e) {
 
-            if(!$this->_db->tableExists($this->_tableUserMail) && $this->_db->tableCreate($this->_tableUserMail,
-                ['userdbid bigint NOT NULL', 'mail varchar(250) NOT NULL', 'isverified tinyint(1) NOT NULL', 'comments varchar(5000) NOT NULL',
-                 'data varchar(25000) NOT NULL'], ['userdbid', 'mail'])){
+            if($this->_db->tableSyncFromDefinition($this->_tableUserMail, [
+                'columns' => ['userdbid bigint NOT NULL', 'mail varchar(250) NOT NULL', 'isverified tinyint(1) NOT NULL',
+                              'comments varchar(5000) NOT NULL', 'data varchar(25000) NOT NULL'],
+                'primaryKey' => ['userdbid', 'mail']])){
 
-                 return $this->saveUserMail($userName, $mail, $comments, $data);
+                return $this->saveUserMail($userName, $mail, $comments, $data);
             }
 
             throw new UnexpectedValueException('Could not add mail accounts to '.$userName.' on domain '.$this->_domain.': '.$e->getMessage());
@@ -720,8 +725,8 @@ class UsersManager extends BaseStrictClass{
 
         } catch (Throwable $e) {
 
-            if(!$this->_db->tableExists($this->_tableToken) && $this->_db->tableCreate($this->_tableToken,
-               ['token varchar(150) NOT NULL', 'userdbid bigint NOT NULL', 'expires '.$this->_db->getSQLDateTimeType(false)])){
+            if($this->_db->tableSyncFromDefinition($this->_tableToken, [
+                'columns' => ['token varchar(150) NOT NULL', 'userdbid bigint NOT NULL', 'expires '.$this->_db->getSQLDateTimeType(false)]])){
 
                 return $this->createToken($user);
             }
