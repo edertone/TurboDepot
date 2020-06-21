@@ -794,6 +794,8 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function tableSyncFromDefinition($tableName, array $tableDef){
 
+        $isTableModified = false;
+
         $tableDef['primaryKey'] = isset($tableDef['primaryKey']) ? $tableDef['primaryKey'] : [];
         $tableDef['uniqueIndices'] = isset($tableDef['uniqueIndices']) ? $tableDef['uniqueIndices'] : [];
         $tableDef['indices'] = isset($tableDef['indices']) ? $tableDef['indices'] : [];
@@ -804,9 +806,7 @@ class DataBaseManager extends BaseStrictClass {
 
             if(!$this->tableExists($tableName)){
 
-                $this->tableCreate($tableName, $tableDef['columns'], $tableDef['primaryKey'], $tableDef['uniqueIndices'], $tableDef['indices']);
-
-                return;
+                return $this->tableCreate($tableName, $tableDef['columns'], $tableDef['primaryKey'], $tableDef['uniqueIndices'], $tableDef['indices']);
             }
 
             $dbTableColumnTypes = $this->tableGetColumnDataTypes($tableName);
@@ -844,6 +844,8 @@ class DataBaseManager extends BaseStrictClass {
 
                     $this->tableAddColumn($tableName, $tableDefColumnName, $tableDefColumnType);
 
+                    $isTableModified = true;
+
                 }else{
 
                     $dbTableColumnType = $dbTableColumnTypes[$tableDefColumnName];
@@ -872,6 +874,8 @@ class DataBaseManager extends BaseStrictClass {
 
                         // Increase the size of the table column so it can fit the object value
                         $this->query('ALTER TABLE '.$tableName.' MODIFY COLUMN '.$tableDefColumnName.' '.str_replace('('.$dbTableColumnTypeSize.')', '('.$valueTypeSize.')', $dbTableColumnType));
+
+                        $isTableModified = true;
                     }
                 }
             }
@@ -886,6 +890,8 @@ class DataBaseManager extends BaseStrictClass {
 
                         $this->tableAddForeignKey($tableName, $foreignKey[0], $foreignKey[1], $foreignKey[2], $foreignKey[3],
                             isset($foreignKey[4]) ? $foreignKey[4] : 'CASCADE',  isset($foreignKey[5]) ? $foreignKey[5] : 'CASCADE');
+
+                        $isTableModified = true;
                     }
                 }
             }
@@ -898,6 +904,8 @@ class DataBaseManager extends BaseStrictClass {
 
             throw $e;
         }
+
+        return $isTableModified;
     }
 
 

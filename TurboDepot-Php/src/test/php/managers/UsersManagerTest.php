@@ -315,9 +315,50 @@ class UsersManagerTest extends TestCase {
     }
 
 
-    /**
-     * test
-     */
+    /** test */
+    public function testSaveUser_table_does_not_exist_and_is_created(){
+
+        $this->assertFalse($this->db->tableExists('usr_userobject'));
+
+        $user = new UserObject();
+        $user->userName = 'user';
+        $this->sut->saveUser($user);
+        $this->assertTrue($this->db->tableExists('usr_userobject'));
+    }
+
+
+    /** test */
+    public function testSaveUser_table_exists_with_one_column_and_missing_columns_are_created(){
+
+        AssertUtils::throwsException(function() { $this->db->tableCreate('usr_userobject', []); }, '/at least one column is expected/');
+        $this->db->tableCreate('usr_userobject', ['dbid bigint NOT NULL AUTO_INCREMENT'], ['dbid']);
+        $this->assertTrue($this->db->tableExists('usr_userobject'));
+        $this->assertFalse(in_array('username', $this->db->tableGetColumnNames('usr_userobject'), true));
+
+        $user = new UserObject();
+        $user->userName = 'user';
+        $this->assertSame(1, $this->sut->saveUser($user));
+        $this->assertTrue($this->db->tableExists('usr_userobject'));
+        $this->assertTrue(in_array('username', $this->db->tableGetColumnNames('usr_userobject'), true));
+        $this->assertSame(8, count($this->db->tableGetColumnNames('usr_userobject')));
+    }
+
+
+    /** test */
+    public function testSaveUser_table_exists_with_more_columns_than_expected_and_error_is_thrown(){
+
+        $user = new UserObject();
+        $user->userName = 'user';
+        $this->sut->saveUser($user);
+        $this->assertTrue($this->db->tableExists('usr_userobject'));
+        $this->assertTrue($this->db->tableAddColumn('usr_userobject', 'extraone', $this->db->getSQLTypeFromValue('hello')));
+
+        AssertUtils::throwsException(function() use ($user) { $this->sut->saveUser($user); },
+            '/<usr_userobject> table contains a column which must exist as a basic property on object being saved: .*<extraone> exists on <usr_userobject> but not on provided tableDef.*/');
+    }
+
+
+    /** test */
     public function testIsUser(){
 
         // Test empty values
@@ -369,10 +410,14 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->setUserPassword(12341234, 'psw'); }, '/Non existing user: 12341234 on domain/');
         AssertUtils::throwsException(function() { $this->sut->setUserPassword('user', [345345]); }, '/Argument 2 .* must be of the type string, array given/');
 
-        // Create an invalid table for the user passwords so an exception is thrown when trying to save
+        // Create a table with missing columns for the user passwords and verify that all missing are created
         $this->db->tableDelete($tableName);
         $this->db->tableCreate($tableName, ['userdbid bigint NOT NULL'], ['userdbid']);
-        AssertUtils::throwsException(function() use ($user) { $this->sut->setUserPassword($user->userName, 'psw'); }, '/Could not set user password: .*Unknown column .password./');
+        $this->assertFalse(in_array('password', $this->db->tableGetColumnNames($tableName), true));
+
+        $this->sut->setUserPassword($user->userName, 'psw');
+        $this->assertSame(2, count($this->db->tableGetColumnNames($tableName)));
+        $this->assertTrue(in_array('password', $this->db->tableGetColumnNames($tableName), true));
     }
 
 
