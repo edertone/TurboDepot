@@ -1152,8 +1152,10 @@ class DataBaseManager extends BaseStrictClass {
      * @param string $columnValues Associative array where keys are column names and values are column values that must be found on all the rows
      *        be returned
      *
-     * @return array An array of associative arrays with the query result data. Note that in PHP all query result values are returned as strings
-     *         which must be casted to the appropiate types by the user
+     * @return boolean|array
+     *          - False if the query generates any error (error message will be available with getLastError())<br>
+     *          - An array of associative arrays with the query result data. Note that in PHP all query result values are returned as strings
+     *            which must be casted to the appropiate types by the user
      */
     public function tableGetRows($tableName, array $columnValues){
 

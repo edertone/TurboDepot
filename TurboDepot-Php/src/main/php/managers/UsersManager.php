@@ -268,7 +268,10 @@ class UsersManager extends BaseStrictClass{
 
         try {
 
-            return count($this->_db->tableGetRows($this->_tableDomain, ['name' => $domainName])) === 1;
+            $rows = $this->_db->tableGetRows($this->_tableDomain, ['name' => $domainName]);
+
+            // is array verification is important to prevent strange warnings on some php versions when $rows is not an array
+            return is_array($rows) ? count($rows) === 1 : false;
 
         } catch (Throwable $e) {
 
@@ -305,6 +308,8 @@ class UsersManager extends BaseStrictClass{
      * @return int An int containing the dbId value for the user that's been saved.
      */
     public function saveUser(UserObject $user){
+
+        StringUtils::forceNonEmptyString($user->userName, '', 'no user name specified');
 
         if($user->domain !== $this->_domain){
 
@@ -768,7 +773,7 @@ class UsersManager extends BaseStrictClass{
 
         $tokenData = $this->_db->tableGetRows($this->_tableToken, ['token' => $token]);
 
-        if(count($tokenData) === 1){
+        if(is_array($tokenData) && count($tokenData) === 1){
 
             if(new DateTime($tokenData[0]['expires'], new DateTimeZone('UTC')) > new DateTime(null, new DateTimeZone('UTC'))){
 

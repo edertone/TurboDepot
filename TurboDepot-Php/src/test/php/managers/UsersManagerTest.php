@@ -282,6 +282,9 @@ class UsersManagerTest extends TestCase {
 
         // Test wrong values
         $user = new UserObject();
+        AssertUtils::throwsException(function() use ($user) { $this->sut->saveUser($user); }, '/no user name specified/');
+
+        $user = new UserObject();
         $user->userName = 'user';
         AssertUtils::throwsException(function() use ($user) { $this->sut->saveUser($user); }, '/User user already exists on domain/');
 

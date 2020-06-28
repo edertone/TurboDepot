@@ -11,8 +11,9 @@
 
 namespace org\turbodepot\src\main\php\managers;
 
-use UnexpectedValueException;
+use Throwable;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
+use UnexpectedValueException;
 use org\turbocommons\src\main\php\utils\StringUtils;
 
 
@@ -76,6 +77,26 @@ class DepotManager extends BaseStrictClass{
      * @var GoogleDriveManager
      */
     private $_googleDriveManager = null;
+
+
+    /**
+     * An associative array with a list of DataBaseManager instances that point to the provided database sources
+     * on the turbodepot setup. Each array key will be the turbodepot.json source name and each value will be the
+     * related DataBaseObjectsManager instance
+     *
+     * @var DataBaseManager
+     */
+    private $_dataBaseManagers = [];
+
+
+    /**
+     * An associative array with a list of DataBaseObjectsManager instances that point to the provided database sources
+     * on the turbodepot setup. Each array key will be the turbodepot.json source name and each value will be the
+     * related DataBaseObjectsManager instance
+     *
+     * @var DataBaseObjectsManager
+     */
+    private $_dataBaseObjectsManagers = [];
 
 
     /**
@@ -166,7 +187,9 @@ class DepotManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Obtain the tmp files manager instance that is available through this depot manager.
+     *
+     * @return TmpFilesManager
      */
     public function getTmpFilesManager(){
 
@@ -264,6 +287,77 @@ class DepotManager extends BaseStrictClass{
 
 
     /**
+     * Obtain a DataBaseManager instance fully initialized to operate with the specified turbodepot source.
+     *
+     * @param string $sourceName The name for a valid database source which is defined on the turbodepot setup file
+     *
+     * @see DataBaseManager
+     *
+     * @throws UnexpectedValueException
+     *
+     * @return DataBaseManager An instance that is ready to use
+     */
+    public function getDataBaseManager(string $sourceName){
+
+        if(!isset($this->_dataBaseManagers[$sourceName])){
+
+            if(($source = $this->_getSourceSetup($sourceName)) === null){
+
+                throw new UnexpectedValueException('Invalid database source name <'.$sourceName. '> review your turbodepot setup file');
+            }
+
+            $databaseManager = new DataBaseManager();
+
+            // Currently only mariadb is accepted. When more databases are allowed, we must check here to which db we are connecting
+            $databaseManager->connectMariaDb($source->host, $source->user, $source->password, $source->database);
+
+            $this->_dataBaseManagers[$sourceName] = $databaseManager;
+        }
+
+        return $this->_dataBaseManagers[$sourceName];
+    }
+
+
+    /**
+     * Obtain a DataBaseObjectsManager instance fully initialized to operate with the specified turbodepot source.
+     *
+     * @param string $sourceName The name for a valid database source which is defined on the turbodepot setup file
+     * @param string $prefix the database tables prefix that we want to use with the obtained instance. If set to null, the default one for
+     *        the DataBaseObjectsManager class will be used
+     *
+     * @see DataBaseObjectsManager::__construct
+     *
+     * @throws UnexpectedValueException
+     *
+     * @return DataBaseObjectsManager An instance that is ready to use
+     */
+    public function getDataBaseObjectsManager(string $sourceName, $prefix = null){
+
+        if(!isset($this->_dataBaseObjectsManagers[$sourceName])){
+
+            if(($source = $this->_getSourceSetup($sourceName)) === null){
+
+                throw new UnexpectedValueException('Invalid database source name <'.$sourceName. '> review your turbodepot setup file');
+            }
+
+            $databaseObjectsManager = new DataBaseObjectsManager();
+
+            if($prefix !== null){
+
+                $databaseObjectsManager->tablesPrefix = $prefix;
+            }
+
+            // Currently only mariadb is accepted. When more databases are allowed, we must check here to which db we are connecting
+            $databaseObjectsManager->connectMariaDb($source->host, $source->user, $source->password, $source->database);
+
+            $this->_dataBaseObjectsManagers[$sourceName] = $databaseObjectsManager;
+        }
+
+        return $this->_dataBaseObjectsManagers[$sourceName];
+    }
+
+
+    /**
      * Obtain the users manager instance that is available through this depot manager.
      *
      * @return UsersManager
@@ -272,16 +366,15 @@ class DepotManager extends BaseStrictClass{
 
         if($this->_usersManager === null){
 
-            if(($usersSource = $this->_getSourceSetup($this->_loadedDepotSetup->users->source, ['mariadb'])) === null){
+            try {
 
-                throw new UnexpectedValueException('Could not find a valid database source for usersManager on turbodepot setup');
+                $databaseObjectsManager = $this->getDatabaseObjectsManager($this->_loadedDepotSetup->users->source,
+                    $this->_loadedDepotSetup->users->prefix);
+
+            } catch (Throwable $e) {
+
+                throw new UnexpectedValueException('Could not initialize users manager: '.$e->getMessage());
             }
-
-            $databaseObjectsManager = new DataBaseObjectsManager();
-            $databaseObjectsManager->tablesPrefix = $this->_loadedDepotSetup->users->prefix;
-
-            // Currently only mariadb is accepted. When more databases are allowed, we must check here to which db we are connecting
-            $databaseObjectsManager->connectMariaDb($usersSource->host, $usersSource->user, $usersSource->password, $usersSource->database);
 
             $this->_usersManager = new UsersManager($databaseObjectsManager);
             $this->_usersManager->tokenLifeTime = $this->_loadedDepotSetup->users->tokenLifeTime;

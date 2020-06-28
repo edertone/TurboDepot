@@ -16,6 +16,7 @@ use stdClass;
 use org\turbodepot\src\main\php\managers\DepotManager;
 use org\turbodepot\src\main\php\managers\FilesManager;
 use org\turbotesting\src\main\php\utils\AssertUtils;
+use org\turbodepot\src\main\php\model\UserObject;
 
 
 /**
@@ -67,6 +68,8 @@ class DepotManagerTest extends TestCase {
 
         // Delete temporary folder
         $this->filesManager->deleteDirectory($this->tempFolder);
+
+        $this->setup = null;
     }
 
 
@@ -78,6 +81,27 @@ class DepotManagerTest extends TestCase {
     public static function tearDownAfterClass(){
 
         // Nothing necessary here
+    }
+
+
+    /**
+     * Aux method to initialize the maria db source on the setup that is used by the depot instance on the tests
+     */
+    private function addMariaDbSourceToDepotSetup(){
+
+        $this->setup->sources->mariadb[] = new stdclass();
+
+        $dbSetup = json_decode($this->filesManager->readFile(__DIR__.'/../../resources/managers/databaseManager/database-setup-for-testing.json'));
+
+        $this->setup->sources->mariadb[0]->name = 'tmp_db_source';
+        $this->setup->sources->mariadb[0]->host = $dbSetup->host;
+        $this->setup->sources->mariadb[0]->database = $dbSetup->dbName;
+        $this->setup->sources->mariadb[0]->user = $dbSetup->user;
+        $this->setup->sources->mariadb[0]->password = $dbSetup->psw;
+
+        $this->setup->depots[0]->users->source = 'tmp_db_source';
+
+        $this->sut = new DepotManager($this->setup);
     }
 
 
@@ -326,32 +350,68 @@ class DepotManagerTest extends TestCase {
     }
 
 
-    /**
-     * testGetUsersManager
-     *
-     * @return void
-     */
+    /** test */
+    public function testGetDataBaseManager(){
+
+        $dbObjectsManager = DataBaseManagerTest::createAndConnectToTestingMariaDb();
+        $this->addMariaDbSourceToDepotSetup();
+
+        // Test empty values
+        AssertUtils::throwsException(function(){ $this->sut->getDataBaseManager(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function(){ $this->sut->getDataBaseManager(null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function(){ $this->sut->getDataBaseManager(''); }, '/Invalid database source name <> review your turbodepot setup file/');
+        AssertUtils::throwsException(function(){ $this->sut->getDataBaseManager([]); }, '/must be of the type string, array given/');
+
+        // Test ok values
+        $this->assertSame('org\turbodepot\src\main\php\managers\DataBaseManager',
+            get_class($this->sut->getDataBaseManager('tmp_db_source')));
+
+        // Test wrong values
+        // Test exceptions
+        AssertUtils::throwsException(function(){ $this->sut->getDataBaseManager('non existant'); }, '/Invalid database source name <non existant> review your turbodepot setup file/');
+        AssertUtils::throwsException(function(){ $this->sut->getDataBaseManager(12345); }, '/Invalid database source name <12345> review your turbodepot setup file/');
+        AssertUtils::throwsException(function(){ $this->sut->getDataBaseManager([1,2,3,4]); }, '/must be of the type string, array given/');
+
+        DataBaseManagerTest::deleteAndDisconnectFromTestingMariaDb($dbObjectsManager);
+    }
+
+
+    /** test */
+    public function testGetDataBaseObjectsManager(){
+
+        $dbObjectsManager = DataBaseManagerTest::createAndConnectToTestingMariaDb();
+        $this->addMariaDbSourceToDepotSetup();
+
+        // Test empty values
+        AssertUtils::throwsException(function(){ $this->sut->getDataBaseObjectsManager(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function(){ $this->sut->getDataBaseObjectsManager(null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function(){ $this->sut->getDataBaseObjectsManager(''); }, '/Invalid database source name <> review your turbodepot setup file/');
+        AssertUtils::throwsException(function(){ $this->sut->getDataBaseObjectsManager([]); }, '/must be of the type string, array given/');
+
+        // Test ok values
+        $this->assertSame('org\turbodepot\src\main\php\managers\DataBaseObjectsManager',
+            get_class($this->sut->getDataBaseObjectsManager('tmp_db_source')));
+
+        // Test wrong values
+        // Test exceptions
+        AssertUtils::throwsException(function(){ $this->sut->getDataBaseObjectsManager('non existant'); }, '/Invalid database source name <non existant> review your turbodepot setup file/');
+        AssertUtils::throwsException(function(){ $this->sut->getDataBaseObjectsManager(12345); }, '/Invalid database source name <12345> review your turbodepot setup file/');
+        AssertUtils::throwsException(function(){ $this->sut->getDataBaseObjectsManager([1,2,3,4]); }, '/must be of the type string, array given/');
+
+        DataBaseManagerTest::deleteAndDisconnectFromTestingMariaDb($dbObjectsManager);
+    }
+
+
+    /** test */
     public function testGetUsersManager(){
 
         $dbObjectsManager = DataBaseManagerTest::createAndConnectToTestingMariaDb();
 
         // Test empty values
-        AssertUtils::throwsException(function(){ $this->sut->getUsersManager(); }, '/Could not find a valid database source for usersManager on turbodepot setup/');
+        AssertUtils::throwsException(function(){ $this->sut->getUsersManager(); }, '/Could not initialize users manager: Invalid database source name <> review your turbodepot setup file/');
 
         // Test ok values
-        $this->setup->sources->mariadb[] = new stdclass();
-
-        $dbSetup = json_decode($this->filesManager->readFile(__DIR__.'/../../resources/managers/databaseManager/database-setup-for-testing.json'));
-
-        $this->setup->sources->mariadb[0]->name = 'tmp_db_source';
-        $this->setup->sources->mariadb[0]->host = $dbSetup->host;
-        $this->setup->sources->mariadb[0]->database = $dbSetup->dbName;
-        $this->setup->sources->mariadb[0]->user = $dbSetup->user;
-        $this->setup->sources->mariadb[0]->password = $dbSetup->psw;
-
-        $this->setup->depots[0]->users->source = 'tmp_db_source';
-
-        $this->sut = new DepotManager($this->setup);
+        $this->addMariaDbSourceToDepotSetup();
 
         $this->assertSame('org\turbodepot\src\main\php\managers\UsersManager',
             get_class($this->sut->getUsersManager()));
@@ -373,7 +433,58 @@ class DepotManagerTest extends TestCase {
         $this->setup->depots[0]->users->source = 'invalid source';
         $this->sut = new DepotManager($this->setup);
 
-        AssertUtils::throwsException(function(){ $this->sut->getUsersManager(); }, '/Could not find a valid database source for usersManager on turbodepot setup/');
+        AssertUtils::throwsException(function(){ $this->sut->getUsersManager(); }, '/Could not initialize users manager: Invalid database source name <invalid source> review your turbodepot setup file/');
+
+        DataBaseManagerTest::deleteAndDisconnectFromTestingMariaDb($dbObjectsManager);
+    }
+
+
+    /** test */
+    public function testGetUsersManager_must_fail_if_no_database_exists(){
+
+        $this->addMariaDbSourceToDepotSetup();
+
+        AssertUtils::throwsException(function(){ $this->sut->getUsersManager(); }, '/Unknown database .data_base_objects_manager_test./');
+    }
+
+
+    /** test */
+    public function testGetUsersManager_must_create_users_tables_structure_if_database_is_empty(){
+
+        $dbObjectsManager = DataBaseManagerTest::createAndConnectToTestingMariaDb();
+
+        $this->addMariaDbSourceToDepotSetup();
+        $db = $this->sut->getDataBaseManager('tmp_db_source');
+
+        $this->assertFalse($db->tableExists('usr_domain'));
+
+        $this->assertSame('org\turbodepot\src\main\php\managers\UsersManager',
+            get_class($this->sut->getUsersManager()));
+
+        $this->assertTrue($db->tableExists('usr_domain'));
+        $this->assertFalse($db->tableExists('usr_token'));
+        $this->assertFalse($db->tableExists('usr_userobject'));
+
+        $this->assertFalse($this->sut->getUsersManager()->isTokenValid('invalidtoken'));
+        $this->assertFalse($db->tableExists('usr_token'));
+
+        $this->assertSame([], $this->sut->getUsersManager()->login('user1', 'psw1'));
+
+        $user = new UserObject();
+        $user->userName = 'user1';
+        $this->sut->getUsersManager()->saveUser($user);
+
+        $this->assertTrue($db->tableExists('usr_domain'));
+        $this->assertFalse($db->tableExists('usr_token'));
+        $this->assertTrue($db->tableExists('usr_userobject'));
+        AssertUtils::throwsException(function(){ $this->sut->getUsersManager()->login('user1', 'psw1'); }, '/Specified user does not have a stored password: user1/');
+
+        $this->sut->getUsersManager()->setUserPassword('user1', 'psw1');
+        $this->assertSame(2, count($this->sut->getUsersManager()->login('user1', 'psw1')));
+
+        $this->assertTrue($db->tableExists('usr_domain'));
+        $this->assertTrue($db->tableExists('usr_token'));
+        $this->assertTrue($db->tableExists('usr_userobject'));
 
         DataBaseManagerTest::deleteAndDisconnectFromTestingMariaDb($dbObjectsManager);
     }
