@@ -102,6 +102,13 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
+     * Text to be used as the description for the default empty users domain the first time it is created by this class
+     * @var string
+     */
+    private $_emptyDomainDescription = 'The default root users domain';
+
+
+    /**
      * Manages a fully featured user system engine
      *
      * @param DataBaseObjectsManager $databaseObjectsManager A DataBaseObjectsManager instance which is fully initialized against a valid database and ready
@@ -130,7 +137,7 @@ class UsersManager extends BaseStrictClass{
 
             if($domain === ''){
 
-                $this->saveDomain($domain);
+                $this->saveDomain($domain, $this->_emptyDomainDescription);
 
             }else{
 
@@ -217,7 +224,7 @@ class UsersManager extends BaseStrictClass{
      *
      * @return boolean True if the domain was correctly saved
      */
-    public function saveDomain($domainName, $description = ''){
+    public function saveDomain($domainName, $description){
 
         if($domainName !== ''){
 
@@ -239,7 +246,7 @@ class UsersManager extends BaseStrictClass{
 
                 if($domainName !== ''){
 
-                    $this->_db->tableAddRows($this->_tableDomain, [['name' => '', 'description' => 'The default root users domain']]);
+                    $this->_db->tableAddRows($this->_tableDomain, [['name' => '', 'description' => $this->_emptyDomainDescription]]);
                 }
 
                 return $this->saveDomain($domainName, $description);

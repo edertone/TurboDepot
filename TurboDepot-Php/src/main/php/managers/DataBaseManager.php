@@ -1118,7 +1118,9 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function tableAddOrUpdateRow($tableName, array $keyValues, array $rowValues){
 
-        if(count($this->tableGetRows($tableName, $keyValues)) === 1){
+        $rows = $this->tableGetRows($tableName, $keyValues);
+
+        if(is_array($rows) && count($rows) === 1){
 
             return $this->tableUpdateRow($tableName, $keyValues, $rowValues);
         }

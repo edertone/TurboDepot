@@ -84,8 +84,9 @@ class UsersManagerTest extends TestCase {
 
         // Test ok values
         $this->assertSame(1, $this->db->tableCountRows('usr_domain'));
+        $this->assertSame(['The default root users domain'], $this->db->tableGetColumnValues('usr_domain', 'description'));
 
-        $this->sut->saveDomain('domain1');
+        $this->sut->saveDomain('domain1', '');
         $this->sut = new UsersManager($this->dbObjectsManager, 'domain1');
 
         // Test wrong values
@@ -162,14 +163,14 @@ class UsersManagerTest extends TestCase {
 
         // Test empty values
         AssertUtils::throwsException(function() { $this->sut->saveDomain(); }, '/Too few arguments to function/');
-        AssertUtils::throwsException(function() { $this->sut->saveDomain(null); }, '/domainName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveDomain([]); }, '/domainName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain(null, null); }, '/domainName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain([], []); }, '/domainName must be a non empty string/');
         $this->assertTrue($this->sut->saveDomain('', 'default domain'));
 
         // Test ok values
         $this->assertSame(1, $this->db->tableCountRows('usr_domain'));
         $this->assertTrue($this->db->tableExists('usr_domain'));
-        $this->assertTrue($this->sut->saveDomain('domain1'));
+        $this->assertTrue($this->sut->saveDomain('domain1', ''));
         $this->assertTrue($this->db->tableExists('usr_domain'));
         $this->assertSame(['', 'domain1'], $this->db->tableGetColumnValues('usr_domain', 'name'));
         $this->assertSame(['default domain', ''], $this->db->tableGetColumnValues('usr_domain', 'description'));
@@ -181,16 +182,16 @@ class UsersManagerTest extends TestCase {
         $this->assertTrue($this->sut->saveDomain('domain1', 'description1-edited'));
         $this->assertSame(['default domain', 'description1-edited'], $this->db->tableGetColumnValues('usr_domain', 'description'));
 
-        $this->assertTrue($this->sut->saveDomain('domain2'));
-        $this->assertTrue($this->sut->saveDomain('domain3'));
+        $this->assertTrue($this->sut->saveDomain('domain2', ''));
+        $this->assertTrue($this->sut->saveDomain('domain3', ''));
         $this->assertSame(['', 'domain1', 'domain2', 'domain3'], $this->db->tableGetColumnValues('usr_domain', 'name'));
         $this->assertSame(['default domain', 'description1-edited', '', ''], $this->db->tableGetColumnValues('usr_domain', 'description'));
 
         // Test wrong values
         // Test exceptions
-        AssertUtils::throwsException(function() { $this->sut->saveDomain('   '); }, '/domainName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveDomain(1345345); }, '/domainName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveDomain([1,2,3,4,5]); }, '/domainName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain('   ', ''); }, '/domainName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain(1345345, ''); }, '/domainName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain([1,2,3,4,5], ''); }, '/domainName must be a non empty string/');
         AssertUtils::throwsException(function() { $this->sut->saveDomain('domain1', 12345); }, '/description must be a string/');
         AssertUtils::throwsException(function() { $this->sut->saveDomain('domain1', [1,2,3,4,5]); }, '/description must be a string/');
     }
@@ -206,10 +207,10 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->isDomain([]); }, '/domainName must be a non empty string/');
 
         // Test ok values
-        $this->assertTrue($this->sut->saveDomain('D1'));
-        $this->assertTrue($this->sut->saveDomain('D2'));
-        $this->assertTrue($this->sut->saveDomain('D3'));
-        $this->assertTrue($this->sut->saveDomain('D3/sub'));
+        $this->assertTrue($this->sut->saveDomain('D1', ''));
+        $this->assertTrue($this->sut->saveDomain('D2', ''));
+        $this->assertTrue($this->sut->saveDomain('D3', ''));
+        $this->assertTrue($this->sut->saveDomain('D3/sub', ''));
         $this->assertTrue($this->sut->isDomain(''));
         $this->assertTrue($this->sut->isDomain('D1'));
         $this->assertTrue($this->sut->isDomain('D2'));
@@ -237,10 +238,10 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->setDomain([]); }, '/domainName must be a non empty string/');
 
         // Test ok values
-        $this->assertTrue($this->sut->saveDomain('D1'));
-        $this->assertTrue($this->sut->saveDomain('D2'));
-        $this->assertTrue($this->sut->saveDomain('D3'));
-        $this->assertTrue($this->sut->saveDomain('D3/sub'));
+        $this->assertTrue($this->sut->saveDomain('D1', ''));
+        $this->assertTrue($this->sut->saveDomain('D2', ''));
+        $this->assertTrue($this->sut->saveDomain('D3', ''));
+        $this->assertTrue($this->sut->saveDomain('D3/sub', ''));
         $this->assertSame('', $this->sut->setDomain(''));
         $this->assertSame('D1', $this->sut->setDomain('D1'));
         $this->assertSame('D2', $this->sut->setDomain('D2'));
@@ -294,7 +295,7 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() use ($user) { $this->sut->saveUser($user); }, '/Saving a user with a domain .different domain. that doesn\'t match the current one ../');
         AssertUtils::throwsException(function() use ($user) { $this->sut->setDomain('different domain'); }, '/Domain does not exist different domain/');
 
-        $this->sut->saveDomain('different domain');
+        $this->sut->saveDomain('different domain', '');
         $this->sut->setDomain('different domain');
         $this->sut->saveUser($user);
 
@@ -425,6 +426,18 @@ class UsersManagerTest extends TestCase {
 
 
     /** test */
+    public function testSetUserPassword_with_empy_db_and_without_having_saved_the_user(){
+
+        $user = new UserObject();
+        $user->userName = 'user';
+        AssertUtils::throwsException(function() use ($user) { $this->sut->setUserPassword($user->userName, 'psw'); }, '/Non existing user: user on domain/');
+
+        $this->sut->saveUser($user);
+        $this->assertTrue($this->sut->setUserPassword($user->userName, 'psw'));
+    }
+
+
+    /** test */
     public function testSaveRole(){
 
         // Test empty values
@@ -442,7 +455,7 @@ class UsersManagerTest extends TestCase {
         $this->assertSame(['role1'], $this->db->tableGetColumnValues('usr_role', 'name'));
         $this->assertSame([''], $this->db->tableGetColumnValues('usr_role', 'description'));
 
-        $this->sut->saveDomain('new domain');
+        $this->sut->saveDomain('new domain', '');
         $this->sut->setDomain('new domain');
         $this->assertTrue($this->sut->saveRole('role2', 'description 2'));
         $this->assertSame(['', 'new domain'], $this->db->tableGetColumnValues('usr_role', 'domain'));
@@ -528,7 +541,7 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->saveUserMail('user', ''); }, '/Invalid mail/');
         AssertUtils::throwsException(function() { $this->sut->saveUserMail('user', '         '); }, '/Invalid mail/');
         AssertUtils::throwsException(function() { (new UsersManager($this->dbObjectsManager, 'nonexistantdomain'))->saveUserMail('user', 'test@email.com'); }, '/Domain does not exist nonexistantdomain/');
-        AssertUtils::throwsException(function() { $this->sut->saveDomain('nonexistantdomain'); (new UsersManager($this->dbObjectsManager, 'nonexistantdomain'))->saveUserMail('user', 'test@email.com'); }, '/Trying to add an email account to a non existing user: user on domain nonexistantdomain/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain('nonexistantdomain', ''); (new UsersManager($this->dbObjectsManager, 'nonexistantdomain'))->saveUserMail('user', 'test@email.com'); }, '/Trying to add an email account to a non existing user: user on domain nonexistantdomain/');
 
         // Test exceptions
         // TODO
