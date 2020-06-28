@@ -708,9 +708,9 @@ class DataBaseManager extends BaseStrictClass {
                 $columns[] = 'PRIMARY KEY ('.implode(',', $primaryKey).')';
             }
 
-            foreach ($uniqueIndices as $uniqueIndice) {
+            foreach ($uniqueIndices as $uniqueIndex) {
 
-                $columns[] = 'UNIQUE KEY '.$tableName.'_'.implode('_', $uniqueIndice).'_uk ('.implode(',', $uniqueIndice).')';
+                $columns[] = 'UNIQUE KEY '.$tableName.'_'.implode('_', $uniqueIndex).'_uk ('.implode(',', $uniqueIndex).')';
             }
 
             foreach ($indices as $indice) {
@@ -718,7 +718,7 @@ class DataBaseManager extends BaseStrictClass {
                 $columns[] = 'INDEX '.$tableName.'_'.implode('_', $indice).' ('.implode(',', $indice).')';
             }
 
-            if($this->query('CREATE TABLE '.$tableName.' ('.implode(',', $columns).')') !== false){
+            if($this->query('CREATE TABLE '.$tableName.' ('.implode(', ', $columns).')') !== false){
 
                 return true;
             }
@@ -734,26 +734,57 @@ class DataBaseManager extends BaseStrictClass {
      * @param string $tableName The name for the table where we want to add a new column
      * @param string $columnName The name for the new column we want to add
      * @param string $type The SQL type for the data that will be stored at the new column (for example varchar(255))
+     * @param string $after If we set a column name here, the new column will be added just after it. If we leave it empty, the new column
+     *               will be added at the end of all the existing columns
      *
      * @throws UnexpectedValueException If the column cannot be added
      *
      * @return boolean True if the table was correctly added
      */
-    public function tableAddColumn($tableName, $columnName, $type){
+    public function tableAddColumn($tableName, $columnName, $type, $after = ''){
 
-        if($this->query('ALTER TABLE '.$tableName.' ADD '.$columnName.' '.$type) !== false){
+        $query = 'ALTER TABLE '.$tableName.' ADD '.$columnName.' '.$type;
+
+        if($after !== ''){
+
+            $query .= ' AFTER '.$after;
+        }
+
+        if($this->query($query) === false){
+
+            throw new UnexpectedValueException('Could not add column '.$columnName.' to table '.$tableName.': '.$this->_lastError);
+        }
+
+        return true;
+    }
+
+
+    /**
+     * Create a new unique index on the specified table
+     *
+     * @param string $tableName The name for the table where we want to add the constraint
+     * @param string $indexName The name we want to set to the new index
+     * @param array $indexColumns The colums that are affected by the new index
+     *
+     * @throws UnexpectedValueException If the index cannot be added
+     *
+     * @return boolean True if the foreign key was correctly added
+     */
+    public function tableAddUniqueIndex($tableName, $indexName, array $indexColumns){
+
+        if($this->query('ALTER TABLE '.$tableName.' ADD CONSTRAINT '.$indexName.' UNIQUE ('.implode(',', $indexColumns).')') !== false){
 
             return true;
         }
 
-        throw new UnexpectedValueException('Could not add column '.$columnName.' to table '.$tableName.': '.$this->_lastError);
+        throw new UnexpectedValueException('Could not add foreignKey '.$indexName.' to table '.$tableName.': '.$this->_lastError);
     }
 
 
     /**
      * Create a new foreign key on the specified table
      *
-     * @param string $tableName The name for the table where we want to add a new column
+     * @param string $tableName The name for the table where we want to add the constraint
      * @param string $fkName The name we want to set to the new foreign key
      * @param array $fkColumns The colums that are affected by the new foreign key
      * @param string $refTable The name for the table that is referenced by this foreign key (the one that contains pk values that must exist on our table)
@@ -782,14 +813,17 @@ class DataBaseManager extends BaseStrictClass {
      * Alter a database table so it matches the definitions provided on tableDef
      *
      * @param string $tableName The name of a database table that will be compared to the provided table definition and modified to match it
-     * @param array $tableDef Associative array with the table definitons that will be applied to the database table. Following values are accepted as tableDef keys:
-     *        - 'primaryKey' An array with all the column names that conform the table primary key
-     *        - 'uniqueIndices' An array of arrays where each element contains all the column names for each unique index to create
-     *        - 'indices' An array of arrays where each element contains all the column names for each index to create
-     *        - 'deleteColumns' 'yes' to delete the columns that are on db table but not on tableDef, 'no' to ignore them, 'fail' (default) to throw an exception if any exist
-     *        - 'resizeColumns' True if the colum data types should be resized to fit when the tabledef value is bigger
+     * @param array $tableDef Associative array with the table definitons that will be applied to the database table. Following values are accepted as tableDef keys:<br>
+     *        - 'columns' The list of columns that must exist on the table. Format is: 'column1 bigint', 'column2 varchar(255)', 'column 3 double NOT NULL' etc...<br>
+     *        - 'primaryKey' An array with all the column names that conform the table primary key<br>
+     *        - 'uniqueIndices' An array of arrays where each element contains all the column names for each unique index to create<br>
+     *        - 'indices' An array of arrays where each element contains all the column names for each index to create<br>
+     *        - 'deleteColumns' 'yes' to delete the columns that are on db table but not on tableDef, 'no' to ignore them, 'fail' (default) to throw an exception if any exist<br>
+     *        - 'resizeColumns' True if the colum data types should be resized to fit when the tabledef value is bigger<br>
      *        - 'foreignKey' An array of arrays where each element will have the definition for a foreign key (elements must be the same as the $this->tableAddForeignKey() parameters in the same order)
-
+     *
+     * @see DataBaseManager::tableAddForeignKey
+     *
      * @return void
      */
     public function tableSyncFromDefinition($tableName, array $tableDef){
@@ -799,99 +833,123 @@ class DataBaseManager extends BaseStrictClass {
         $tableDef['primaryKey'] = isset($tableDef['primaryKey']) ? $tableDef['primaryKey'] : [];
         $tableDef['uniqueIndices'] = isset($tableDef['uniqueIndices']) ? $tableDef['uniqueIndices'] : [];
         $tableDef['indices'] = isset($tableDef['indices']) ? $tableDef['indices'] : [];
+        $tableDef['foreignKey'] = isset($tableDef['foreignKey']) ? $tableDef['foreignKey'] : [];
         $tableDef['deleteColumns'] = isset($tableDef['deleteColumns']) ? $tableDef['deleteColumns'] : 'fail';
         $tableDef['resizeColumns'] = isset($tableDef['resizeColumns']) ? $tableDef['resizeColumns'] : false;
 
         try {
 
-            if(!$this->tableExists($tableName)){
-
-                return $this->tableCreate($tableName, $tableDef['columns'], $tableDef['primaryKey'], $tableDef['uniqueIndices'], $tableDef['indices']);
-            }
-
-            $dbTableColumnTypes = $this->tableGetColumnDataTypes($tableName);
-            $dbTableColumnNames = array_keys($dbTableColumnTypes);
-            $tableDefColumnNames = array_map(function ($r) {return explode(' ', $r, 2)[0];}, $tableDef['columns']);
-
             $this->transactionBegin();
 
-            // Find all the columns that do exist on the database but not on the definition and delete them if $tableDef['deleteColumns'] is true
-            foreach ($dbTableColumnNames as $dbColumn) {
+            if(!$this->tableExists($tableName)){
 
-                if(!in_array($dbColumn, $tableDefColumnNames, true)){
+                $isTableModified = $this->tableCreate($tableName, $tableDef['columns'], $tableDef['primaryKey'], [], $tableDef['indices']);
 
-                    switch ($tableDef['deleteColumns']) {
+            }else{
 
-                        case 'yes':
-                            $this->tableDeleteColumns($tableName, [$dbColumn]);
-                            break;
+                $dbTableColumnTypes = $this->tableGetColumnDataTypes($tableName);
+                $dbTableColumnNames = array_keys($dbTableColumnTypes);
+                $tableDefColumnNames = array_map(function ($r) {return explode(' ', $r, 2)[0];}, $tableDef['columns']);
 
-                        case 'no':
-                            break;
+                // Find all the columns that do exist on the database but not on the definition and delete them if $tableDef['deleteColumns'] is true
+                foreach ($dbTableColumnNames as $dbColumn) {
 
-                        default:
-                            throw new UnexpectedValueException('can\'t sync table: <'.$dbColumn.'> exists on <'.$tableName.'> but not on provided tableDef and deleteColumns flag is false, so data won\'t be destroyed', 3);
+                    if(!in_array($dbColumn, $tableDefColumnNames, true)){
+
+                        switch ($tableDef['deleteColumns']) {
+
+                            case 'yes':
+                                $this->tableDeleteColumns($tableName, [$dbColumn]);
+                                break;
+
+                            case 'no':
+                                break;
+
+                            default:
+                                throw new UnexpectedValueException('can\'t sync table: <'.$dbColumn.'> exists on <'.$tableName.'> but not on provided tableDef and deleteColumns flag is false, so data won\'t be destroyed', 3);
+                        }
+                    }
+                }
+
+                // Find all the colums that do not exist on the database table and create them if missing or adapt them to fit the expected type
+                foreach ($tableDefColumnNames as $i => $tableDefColumnName) {
+
+                    $tableDefColumnType = explode(' ', $tableDef['columns'][$i], 2)[1];
+
+                    if(!in_array($tableDefColumnName, $dbTableColumnNames)){
+
+                        $this->tableAddColumn($tableName, $tableDefColumnName, $tableDefColumnType, $tableDefColumnNames[$i - 1]);
+
+                        $isTableModified = true;
+
+                    }else{
+
+                        $dbTableColumnType = $dbTableColumnTypes[$tableDefColumnName];
+                        $isDbTableColumnADate = $this->isSQLDateTimeType($dbTableColumnType);
+
+                        if(!$this->isSQLSameType($tableDefColumnType, $dbTableColumnType) &&
+                            !$this->isSQLNumericTypeCompatibleWith($dbTableColumnType, $tableDefColumnType) &&
+                            !($isDbTableColumnADate && $this->isSQLStringType($tableDefColumnType))){
+
+                            // This case cannot be automatically handled without destroying data, so exception and user must manually modify the table column
+                            throw new UnexpectedValueException($tableName.' column '.$tableDefColumnName.' data type expected: '.$dbTableColumnType.' but received: '.$tableDefColumnType, 1);
+                        }
+
+                        $valueTypeSize = $this->getSQLTypeSize($tableDefColumnType);
+                        $dbTableColumnTypeSize = $this->getSQLTypeSize($dbTableColumnType);
+
+                        if($dbTableColumnTypeSize < $valueTypeSize &&
+                            !($isDbTableColumnADate && $dbTableColumnTypeSize === 0 && ($valueTypeSize === 1 || $valueTypeSize === 25)) &&
+                            !($isDbTableColumnADate && $dbTableColumnTypeSize === 3 && ($valueTypeSize === 1 || $valueTypeSize === 29)) &&
+                            !($isDbTableColumnADate && $dbTableColumnTypeSize === 6 && ($valueTypeSize === 1 || $valueTypeSize === 32))){
+
+                            if(!$tableDef['resizeColumns']){
+
+                                throw new UnexpectedValueException($tableName.' column '.$tableDefColumnName.' data type expected: '.$dbTableColumnType.' but received: '.$tableDefColumnType, 2);
+                            }
+
+                            // Increase the size of the table column so it can fit the object value
+                            $this->query('ALTER TABLE '.$tableName.' MODIFY COLUMN '.$tableDefColumnName.' '.str_replace('('.$dbTableColumnTypeSize.')', '('.$valueTypeSize.')', $dbTableColumnType));
+
+                            $isTableModified = true;
+                        }
                     }
                 }
             }
 
-            // Find all the colums that do not exist on the database table and create them if missing or adapt them to fit the expected type
-            foreach ($tableDefColumnNames as $i => $tableDefColumnName) {
+            // Create or update the table unique indices if necessary
+            foreach ($tableDef['uniqueIndices'] as $uniqueIndex) {
 
-                $tableDefColumnType = explode(' ', $tableDef['columns'][$i], 2)[1];
+                try {
 
-                if(!in_array($tableDefColumnName, $dbTableColumnNames)){
-
-                    $this->tableAddColumn($tableName, $tableDefColumnName, $tableDefColumnType);
+                    $this->tableAddUniqueIndex($tableName, $tableName.'_'.implode('_', $uniqueIndex).'_uk', $uniqueIndex);
 
                     $isTableModified = true;
 
-                }else{
+                } catch (Throwable $e) {
 
-                    $dbTableColumnType = $dbTableColumnTypes[$tableDefColumnName];
-                    $isDbTableColumnADate = $this->isSQLDateTimeType($dbTableColumnType);
+                    if(strpos($e->getMessage(), 'Duplicate key') === false){
 
-                    if(!$this->isSQLSameType($tableDefColumnType, $dbTableColumnType) &&
-                        !$this->isSQLNumericTypeCompatibleWith($dbTableColumnType, $tableDefColumnType) &&
-                        !($isDbTableColumnADate && $this->isSQLStringType($tableDefColumnType))){
-
-                        // This case cannot be automatically handled without destroying data, so exception and user must manually modify the table column
-                        throw new UnexpectedValueException($tableName.' column '.$tableDefColumnName.' data type expected: '.$dbTableColumnType.' but received: '.$tableDefColumnType, 1);
-                    }
-
-                    $valueTypeSize = $this->getSQLTypeSize($tableDefColumnType);
-                    $dbTableColumnTypeSize = $this->getSQLTypeSize($dbTableColumnType);
-
-                    if($dbTableColumnTypeSize < $valueTypeSize &&
-                        !($isDbTableColumnADate && $dbTableColumnTypeSize === 0 && ($valueTypeSize === 1 || $valueTypeSize === 25)) &&
-                        !($isDbTableColumnADate && $dbTableColumnTypeSize === 3 && ($valueTypeSize === 1 || $valueTypeSize === 29)) &&
-                        !($isDbTableColumnADate && $dbTableColumnTypeSize === 6 && ($valueTypeSize === 1 || $valueTypeSize === 32))){
-
-                        if(!$tableDef['resizeColumns']){
-
-                            throw new UnexpectedValueException($tableName.' column '.$tableDefColumnName.' data type expected: '.$dbTableColumnType.' but received: '.$tableDefColumnType, 2);
-                        }
-
-                        // Increase the size of the table column so it can fit the object value
-                        $this->query('ALTER TABLE '.$tableName.' MODIFY COLUMN '.$tableDefColumnName.' '.str_replace('('.$dbTableColumnTypeSize.')', '('.$valueTypeSize.')', $dbTableColumnType));
-
-                        $isTableModified = true;
+                        throw $e;
                     }
                 }
             }
 
-            if(isset($tableDef['foreignKey'])){
+            // Create or update the table foreign key if necessary
+            foreach ($tableDef['foreignKey'] as $foreignKey) {
 
-                $tableKeyNames = array_map(function ($r) {return $r['Key_name']; }, $this->query('SHOW INDEXES IN '.$tableName));
+                try {
 
-                foreach ($tableDef['foreignKey'] as $foreignKey) {
+                    $this->tableAddForeignKey($tableName, $foreignKey[0], $foreignKey[1], $foreignKey[2], $foreignKey[3],
+                        isset($foreignKey[4]) ? $foreignKey[4] : 'CASCADE',  isset($foreignKey[5]) ? $foreignKey[5] : 'CASCADE');
 
-                    if(!in_array($foreignKey[0], $tableKeyNames, true)){
+                    $isTableModified = true;
 
-                        $this->tableAddForeignKey($tableName, $foreignKey[0], $foreignKey[1], $foreignKey[2], $foreignKey[3],
-                            isset($foreignKey[4]) ? $foreignKey[4] : 'CASCADE',  isset($foreignKey[5]) ? $foreignKey[5] : 'CASCADE');
+                } catch (Throwable $e) {
 
-                        $isTableModified = true;
+                    if(strpos(strtolower($e->getMessage()), 'duplicate key') === false){
+
+                        throw $e;
                     }
                 }
             }

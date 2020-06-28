@@ -350,7 +350,7 @@ class UsersManagerTest extends TestCase {
     public function testSaveUser_table_exists_with_one_column_and_missing_columns_are_created(){
 
         AssertUtils::throwsException(function() { $this->db->tableCreate('usr_userobject', []); }, '/at least one column is expected/');
-        $this->db->tableCreate('usr_userobject', ['dbid bigint NOT NULL AUTO_INCREMENT'], ['dbid']);
+        $this->db->tableCreate('usr_userobject', ['dbid bigint unsigned NOT NULL AUTO_INCREMENT'], ['dbid']);
         $this->assertTrue($this->db->tableExists('usr_userobject'));
         $this->assertFalse(in_array('username', $this->db->tableGetColumnNames('usr_userobject'), true));
 

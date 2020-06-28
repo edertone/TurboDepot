@@ -262,7 +262,7 @@ class UsersManager extends BaseStrictClass{
             if($this->_db->tableSyncFromDefinition($this->_tableRole, [
                 'columns' => ['domain varchar(250) NOT NULL', 'name varchar(250) NOT NULL', 'description varchar(5000) NOT NULL'],
                 'primaryKey' => ['domain', 'name'],
-                'foreignKey' => [$this->_tableRole.'_'.$this->_tableDomain.'_fk', ['domain'], $this->_tableDomain, ['name']]])){
+                'foreignKey' => [[$this->_tableRole.'_'.$this->_tableDomain.'_fk', ['domain'], $this->_tableDomain, ['name']]]])){
 
                 return $this->saveRole($roleName, $description);
             }

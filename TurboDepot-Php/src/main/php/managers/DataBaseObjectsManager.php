@@ -109,11 +109,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Stores the column name and sql data type that can be used anywhere on this class to reference the dbId column on object tables.
+     * Stores the sql data type that can be used anywhere on this class to reference an autonumeric primary key column on object tables.
      * It is stored globally to improve performance instead of calculating it every time.
      * @var string
      */
-    private $_dbIdSQLColumnDefinition = '';
+    private $_autonumericPkDefinition = '';
 
 
     /**
@@ -143,7 +143,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $connection = $this->_db->connectMariaDb($host, $userName, $password, $dataBaseName);
 
-        $this->_dbIdSQLColumnDefinition = 'dbid '.$this->_db->getSQLTypeFromValue(999999999999999, false, true);
+        $this->_autonumericPkDefinition = $this->_db->getSQLTypeFromValue(999999999999999, false, true);
 
         return $connection;
     }
@@ -270,7 +270,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
                 for ($i = 0; $i < $propertyCount; $i++) {
 
-                    $rowsToAdd[] = ['dbid' => $dbId, 'value' => $object->{$property}[$i]];
+                    $rowsToAdd[] = ['dbid' => $dbId, 'arrayindex' => $i, 'value' => $object->{$property}[$i]];
                 }
 
                 $this->_db->tableAddRows($tableName.'_'.$column, $rowsToAdd);
@@ -824,42 +824,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     private function _updateTablesToFitObject(DataBaseObject $object, string $tableName){
 
-        // Sync all the array typed properties to their respective database tables
-        foreach ($this->_getArrayTypedProperties($object) as $property) {
-
-            $arrayPropTableName = $tableName.'_'.strtolower($property);
-
-            $tableDef = ['columns' => [$this->_dbIdSQLColumnDefinition],
-                         'resizeColumns' => $this->isColumnResizedWhenValueisBigger,
-                         'foreignKey' => [[$arrayPropTableName.'_dbid_fk', ['dbid'], $tableName, ['dbid']]],
-                         'deleteColumns' => 'no'];
-
-            if(count($object->{$property}) > 0){
-
-                $tableDef['columns'][] = 'value '.$this->getSQLTypeFromObjectProperty($object, $property);
-            }
-
-            $this->_db->tableSyncFromDefinition($arrayPropTableName, $tableDef);
-        }
-
-        // Sync all multi language propertiesto their respective database tables
-        foreach ($this->_getMultiLanguageTypedProperties($object) as $property) {
-
-            $multiLanPropTableName = $tableName.'_'.strtolower($property);
-
-            $tableDef = ['columns' => [$this->_dbIdSQLColumnDefinition],
-                         'resizeColumns' => $this->isColumnResizedWhenValueisBigger,
-                         'foreignKey' => [[$multiLanPropTableName.'_dbid_fk', ['dbid'], $tableName, ['dbid']]],
-                         'deleteColumns' => 'no'];
-
-            foreach ($object->getLocales() as $locale) {
-
-                $tableDef['columns'][] = ($locale === '' ? '_' : strtolower($locale)).' '.$this->getSQLTypeFromObjectProperty($object, $property);
-            }
-
-            $this->_db->tableSyncFromDefinition($multiLanPropTableName, $tableDef);
-        }
-
         // Sync all the base object properties to the object table
         $tableDef = ['primaryKey' => ['dbid'],
                      'uniqueIndices' => [['dbuuid']],
@@ -895,6 +859,43 @@ class DataBaseObjectsManager extends BaseStrictClass{
             }
 
             throw $e;
+        }
+
+        // Sync all the array typed properties to their respective database tables
+        foreach ($this->_getArrayTypedProperties($object) as $property) {
+
+            $arrayPropTableName = $tableName.'_'.strtolower($property);
+
+            $tableDef = ['uniqueIndices' => [['dbid', 'arrayindex']],
+                'columns' => ['dbid '.$this->_autonumericPkDefinition, 'arrayindex '.$this->_autonumericPkDefinition],
+                'resizeColumns' => $this->isColumnResizedWhenValueisBigger,
+                'foreignKey' => [[$arrayPropTableName.'_dbid_fk', ['dbid'], $tableName, ['dbid']]],
+                'deleteColumns' => 'no'];
+
+            if(count($object->{$property}) > 0){
+
+                $tableDef['columns'][] = 'value '.$this->getSQLTypeFromObjectProperty($object, $property);
+            }
+
+            $this->_db->tableSyncFromDefinition($arrayPropTableName, $tableDef);
+        }
+
+        // Sync all multi language propertiesto their respective database tables
+        foreach ($this->_getMultiLanguageTypedProperties($object) as $property) {
+
+            $multiLanPropTableName = $tableName.'_'.strtolower($property);
+
+            $tableDef = ['columns' => ['dbid '.$this->_autonumericPkDefinition],
+                'resizeColumns' => $this->isColumnResizedWhenValueisBigger,
+                'foreignKey' => [[$multiLanPropTableName.'_dbid_fk', ['dbid'], $tableName, ['dbid']]],
+                'deleteColumns' => 'no'];
+
+            foreach ($object->getLocales() as $locale) {
+
+                $tableDef['columns'][] = ($locale === '' ? '_' : strtolower($locale)).' '.$this->getSQLTypeFromObjectProperty($object, $property);
+            }
+
+            $this->_db->tableSyncFromDefinition($multiLanPropTableName, $tableDef);
         }
 
         return $this->convertObjectToTableData($object);
