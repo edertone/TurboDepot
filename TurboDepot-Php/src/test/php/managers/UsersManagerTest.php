@@ -97,67 +97,6 @@ class UsersManagerTest extends TestCase {
     }
 
 
-    /**
-     * test
-     */
-    public function testEncodeUserAndPassword(){
-
-        // Test empty values
-        // TODO
-
-        // Test ok values
-        // TODO
-
-        // Test wrong values
-        // TODO
-
-        // Test exceptions
-        // TODO
-
-        $this->markTestIncomplete('This test has not been implemented yet.');
-    }
-
-
-    /**
-     * test
-     */
-    public function testDecodeUserName(){
-
-        // Test empty values
-        // TODO
-
-        // Test ok values
-        // TODO
-
-        // Test wrong values
-        // TODO
-
-        // Test exceptions
-        // TODO
-
-        $this->markTestIncomplete('This test has not been implemented yet.');
-    }
-
-
-    /** test */
-    public function testDecodePassword(){
-
-        // Test empty values
-        // TODO
-
-        // Test ok values
-        // TODO
-
-        // Test wrong values
-        // TODO
-
-        // Test exceptions
-        // TODO
-
-        $this->markTestIncomplete('This test has not been implemented yet.');
-    }
-
-
     /** test */
     public function testSaveDomain(){
 
@@ -256,6 +195,82 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->setDomain(1234); }, '/domainName must be a non empty string/');
         AssertUtils::throwsException(function() { $this->sut->setDomain([1234]); }, '/domainName must be a non empty string/');
         AssertUtils::throwsException(function() { $this->sut->setDomain('         '); }, '/domainName must be a non empty string/');
+    }
+
+
+    /** test */
+    public function testSaveRole(){
+
+        // Test empty values
+        AssertUtils::throwsException(function() { $this->sut->saveRole(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole(null, null); }, '/roleName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole([], []); }, '/roleName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole('', ''); }, '/roleName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole('   ', ''); }, '/roleName must be a non empty string/');
+
+        // Test ok values
+        $this->assertFalse($this->db->tableExists('usr_role'));
+        $this->assertTrue($this->sut->saveRole('role1', ''));
+        $this->assertTrue($this->db->tableExists('usr_role'));
+        $this->assertSame([''], $this->db->tableGetColumnValues('usr_role', 'domain'));
+        $this->assertSame(['role1'], $this->db->tableGetColumnValues('usr_role', 'name'));
+        $this->assertSame([''], $this->db->tableGetColumnValues('usr_role', 'description'));
+
+        $this->sut->saveDomain('new domain', '');
+        $this->sut->setDomain('new domain');
+        $this->assertTrue($this->sut->saveRole('role2', 'description 2'));
+        $this->assertSame(['', 'new domain'], $this->db->tableGetColumnValues('usr_role', 'domain'));
+        $this->assertSame(['role1', 'role2'], $this->db->tableGetColumnValues('usr_role', 'name'));
+        $this->assertSame(['', 'description 2'], $this->db->tableGetColumnValues('usr_role', 'description'));
+
+        $this->assertTrue($this->sut->saveRole('role2', 'description 2 edited'));
+        $this->assertSame(['', 'description 2 edited'], $this->db->tableGetColumnValues('usr_role', 'description'));
+
+        //         // Test wrong values
+        //         // Test exceptions
+        AssertUtils::throwsException(function() { $this->sut->saveRole('   ', ''); }, '/roleName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole(1345345, ''); }, '/roleName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole([1,2,3,4,5], ''); }, '/roleName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole('domain1', 12345); }, '/description must be a string/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole('domain1', [1,2,3,4,5]); }, '/description must be a string/');
+    }
+
+
+    /** test */
+    public function testIsRole(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /** test */
+    public function testDeleteRole(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 
@@ -434,63 +449,6 @@ class UsersManagerTest extends TestCase {
 
         $this->sut->saveUser($user);
         $this->assertTrue($this->sut->setUserPassword($user->userName, 'psw'));
-    }
-
-
-    /** test */
-    public function testSaveRole(){
-
-        // Test empty values
-        AssertUtils::throwsException(function() { $this->sut->saveRole(); }, '/Too few arguments to function/');
-        AssertUtils::throwsException(function() { $this->sut->saveRole(null); }, '/roleName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveRole([]); }, '/roleName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveRole(''); }, '/roleName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveRole('   '); }, '/roleName must be a non empty string/');
-
-        // Test ok values
-        $this->assertFalse($this->db->tableExists('usr_role'));
-        $this->assertTrue($this->sut->saveRole('role1'));
-        $this->assertTrue($this->db->tableExists('usr_role'));
-        $this->assertSame([''], $this->db->tableGetColumnValues('usr_role', 'domain'));
-        $this->assertSame(['role1'], $this->db->tableGetColumnValues('usr_role', 'name'));
-        $this->assertSame([''], $this->db->tableGetColumnValues('usr_role', 'description'));
-
-        $this->sut->saveDomain('new domain', '');
-        $this->sut->setDomain('new domain');
-        $this->assertTrue($this->sut->saveRole('role2', 'description 2'));
-        $this->assertSame(['', 'new domain'], $this->db->tableGetColumnValues('usr_role', 'domain'));
-        $this->assertSame(['role1', 'role2'], $this->db->tableGetColumnValues('usr_role', 'name'));
-        $this->assertSame(['', 'description 2'], $this->db->tableGetColumnValues('usr_role', 'description'));
-
-        $this->assertTrue($this->sut->saveRole('role2', 'description 2 edited'));
-        $this->assertSame(['', 'description 2 edited'], $this->db->tableGetColumnValues('usr_role', 'description'));
-
-//         // Test wrong values
-//         // Test exceptions
-        AssertUtils::throwsException(function() { $this->sut->saveRole('   '); }, '/roleName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveRole(1345345); }, '/roleName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveRole([1,2,3,4,5]); }, '/roleName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveRole('domain1', 12345); }, '/description must be a string/');
-        AssertUtils::throwsException(function() { $this->sut->saveRole('domain1', [1,2,3,4,5]); }, '/description must be a string/');
-    }
-
-
-    /** test */
-    public function testDeleteRole(){
-
-        // Test empty values
-        // TODO
-
-        // Test ok values
-        // TODO
-
-        // Test wrong values
-        // TODO
-
-        // Test exceptions
-        // TODO
-
-        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 
@@ -783,6 +741,106 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->deleteUserMails('', 123); }, '/must be of the type array, int given/');
         AssertUtils::throwsException(function() { $this->sut->deleteUserMails('nonexistantuser', []); }, '/Non existing user: nonexistantuser on domain /');
         AssertUtils::throwsException(function() { $this->sut->deleteUserMails('', []); }, '/Non existing user:  on domain /');
+    }
+
+
+    /** test */
+    public function testDeleteUser(){
+
+        // TODO - borrar un user ha de borrar en cascada de totes les taules:
+        // usr_userobject, usr_userobject_password, usr_userobject_roles, usr_token, usr_userobject_mails
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /** test */
+    public function testSaveOperation(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /** test */
+    public function testEncodeUserAndPassword(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * test
+     */
+    public function testDecodeUserName(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /** test */
+    public function testDecodePassword(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 

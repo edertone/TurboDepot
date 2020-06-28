@@ -1155,9 +1155,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $tableName = $this->tablesPrefix.strtolower(StringUtils::getPathElement($class));
 
-        $data = $this->_db->tableGetRows($tableName, array_map(function ($p) {return strtolower($p);}, $propertyValues));
+        try {
 
-        if($data === false){
+            $data = $this->_db->tableGetRows($tableName, array_map(function ($p) {return strtolower($p);}, $propertyValues));
+
+        } catch (Throwable $e) {
 
             return [];
         }

@@ -148,73 +148,6 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Generate an encoded string containing a username and password, without any kind of encryption.
-     * This string is normally sent only the first time to login to the system and obtain a token which will
-     * be used later for all the required authentications.
-     *
-     * This is not a secure way to encode user and password values. It must only be used on the first login
-     * operation. The generated token must be always used!.
-     *
-     * @param string $userName A user name to encode
-     * @param string $password A password to encode
-     *
-     * @return string A raw string containing the encoded user and password values
-     */
-    public function encodeUserAndPassword($userName, $password){
-
-        // Base64 characters are all numbers, uppercase, lowercase, forward slash plus and equal sign,
-        // so we join both encoded user and psw with a coma, so we can later split them again
-        return base64_encode(ConversionUtils::stringToBase64($userName).','.ConversionUtils::stringToBase64($password));
-    }
-
-
-    /**
-     * Get the original user name value from a string containing both user and password which was generated via the
-     * encodeUserAndPassword() method.
-     *
-     * @param string $encodedUserAndPsw A string that was encoded with encodeUserAndPassword()
-     *
-     * @see UsersManager::encodeUserAndPassword
-     *
-     * @return string The username value from the encoded string or an empty string if the value could not be read
-     */
-    public function decodeUserName(string $encodedUserAndPsw){
-
-        $base64Decoded = ConversionUtils::base64ToString($encodedUserAndPsw);
-
-        if (substr_count($base64Decoded, ',') !== 1) {
-
-            return '';
-        }
-
-        return base64_decode(explode(',', $base64Decoded)[0]);
-    }
-
-
-    /**
-     * Get the original password value from a string containing both user and password which was generated via the
-     * encodeUserAndPassword() method.
-     *
-     * @param string $encodedUserAndPsw A string that was encoded with encodeUserAndPassword()
-     *
-     * @see UsersManager::encodeUserAndPassword
-     *
-     * @return string The password value from the encoded string or an empty string if the value could not be read
-     */
-    public function decodePassword(string $encodedUserAndPsw){
-
-        $base64Decoded = ConversionUtils::base64ToString($encodedUserAndPsw);
-
-        if (substr_count($base64Decoded, ',') !== 1) {
-
-            return '';
-        }
-
-        return base64_decode(explode(',', $base64Decoded)[1]);
-    }
-
-
-    /**
      * Save to database the provided users domain or update it if already exists
      *
      * @param string $domainName The name for the domain to save or update
@@ -275,10 +208,7 @@ class UsersManager extends BaseStrictClass{
 
         try {
 
-            $rows = $this->_db->tableGetRows($this->_tableDomain, ['name' => $domainName]);
-
-            // is array verification is important to prevent strange warnings on some php versions when $rows is not an array
-            return is_array($rows) ? count($rows) === 1 : false;
+            return count($this->_db->tableGetRows($this->_tableDomain, ['name' => $domainName])) === 1;
 
         } catch (Throwable $e) {
 
@@ -304,6 +234,74 @@ class UsersManager extends BaseStrictClass{
         }
 
         return $this->_domain = $domainName;
+    }
+
+
+    /**
+     * Save to database the specified users role for the currently active domain or update it if already exists.
+     *
+     * @param string $roleName The name for the role we want to save or update
+     * @param string $description The description we want to set to the role
+     *
+     * @throws UnexpectedValueException
+     *
+     * @return boolean True if the role was correctly saved
+     */
+    public function saveRole($roleName, $description){
+
+        StringUtils::forceNonEmptyString($roleName, 'roleName');
+        StringUtils::forceString($description, 'description');
+
+        try {
+
+            $this->_db->tableAddOrUpdateRow($this->_tableRole, ['domain' => $this->_domain, 'name' => $roleName],
+                ['domain' => $this->_domain, 'name' => $roleName, 'description' => $description]);
+
+        } catch (Throwable $e) {
+
+            if($this->_db->tableSyncFromDefinition($this->_tableRole, [
+                'columns' => ['domain varchar(250) NOT NULL', 'name varchar(250) NOT NULL', 'description varchar(5000) NOT NULL'],
+                'primaryKey' => ['domain', 'name'],
+                'foreignKey' => [$this->_tableRole.'_'.$this->_tableDomain.'_fk', ['domain'], $this->_tableDomain, ['name']]])){
+
+                return $this->saveRole($roleName, $description);
+            }
+
+            throw new UnexpectedValueException('Could not save role '.$roleName.' to db: '.$e->getMessage());
+        }
+
+        return true;
+    }
+
+
+    /**
+     * Check if the specified role name is stored on database for the current domain
+     *
+     * @param string $roleName The role name that we want to check
+     *
+     * @return boolean True if the role exists on the current domain, false otherwise
+     */
+    public function isRole(string $roleName){
+
+        StringUtils::forceNonEmptyString($roleName, 'roleName');
+
+        try {
+
+            return count($this->_db->tableGetRows($this->_tableRole, ['name' => $roleName, 'domain' => $this->_domain])) === 1;
+
+        } catch (Throwable $e) {
+
+            return false;
+        }
+    }
+
+
+    /**
+     * TODO
+     */
+    public function deleteRole(string $roleName){
+
+        // TODO
     }
 
 
@@ -402,70 +400,24 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Save to database the specified users role for the currently active domain or update it if already exists.
+     * Aux method to obtain the user dbid from a username at the current domain
      *
-     * @param string $roleName The name for the role we want to save or update
-     * @param string $description The description we want to set to the role
+     * @param string $userName The user name
      *
      * @throws UnexpectedValueException
      *
-     * @return boolean True if the role was correctly saved
+     * @return int The user dbid
      */
-    public function saveRole($roleName, $description = ''){
+    private function _getUserDBId(string $userName){
 
-        StringUtils::forceNonEmptyString($roleName, 'roleName');
-        StringUtils::forceString($description, 'description');
+        $user = $this->_databaseObjectsManager->getByPropertyValues(UserObject::class, ['userName' => $userName, 'domain' => $this->_domain]);
 
-        try {
+        if(count($user) < 1){
 
-            $this->_db->tableAddOrUpdateRow($this->_tableRole, ['domain' => $this->_domain, 'name' => $roleName],
-                ['domain' => $this->_domain, 'name' => $roleName, 'description' => $description]);
-
-        } catch (Throwable $e) {
-
-            if($this->_db->tableSyncFromDefinition($this->_tableRole, [
-                'columns' => ['domain varchar(250) NOT NULL', 'name varchar(250) NOT NULL', 'description varchar(5000) NOT NULL'],
-                'primaryKey' => ['domain', 'name'],
-                'foreignKey' => [$this->_tableRole.'_'.$this->_tableDomain.'_fk', ['domain'], $this->_tableDomain, ['name']]])){
-
-                return $this->saveRole($roleName, $description);
-            }
-
-            throw new UnexpectedValueException('Could not save role '.$roleName.' to db: '.$e->getMessage());
+            throw new UnexpectedValueException('Non existing user: '.$userName.' on domain '.$this->_domain);
         }
 
-        return true;
-    }
-
-
-    /**
-     * Check if the specified role name is stored on database for the current domain
-     *
-     * @param string $roleName The role name that we want to check
-     *
-     * @return boolean True if the role exists on the current domain, false otherwise
-     */
-    public function isRole(string $roleName){
-
-        StringUtils::forceNonEmptyString($roleName, 'roleName');
-
-        try {
-
-            return count($this->_db->tableGetRows($this->_tableRole, ['name' => $roleName, 'domain' => $this->_domain])) === 1;
-
-        } catch (Throwable $e) {
-
-            return false;
-        }
-    }
-
-
-    /**
-     * TODO
-     */
-    public function deleteRole(string $roleName){
-
-        // TODO
+        return $user[0]->getDbId();
     }
 
 
@@ -644,24 +596,11 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Aux method to obtain the user dbid from a username at the current domain
-     *
-     * @param string $userName The user name
-     *
-     * @throws UnexpectedValueException
-     *
-     * @return int The user dbid
+     * TODO
      */
-    private function _getUserDBId(string $userName){
+    public function deleteUser(string $todo){
 
-        $user = $this->_databaseObjectsManager->getByPropertyValues(UserObject::class, ['userName' => $userName, 'domain' => $this->_domain]);
-
-        if(count($user) < 1){
-
-            throw new UnexpectedValueException('Non existing user: '.$userName.' on domain '.$this->_domain);
-        }
-
-        return $user[0]->getDbId();
+        // TODO
     }
 
 
@@ -671,6 +610,73 @@ class UsersManager extends BaseStrictClass{
     public function saveOperation($operation, $description = ''){
 
         // TODO
+    }
+
+
+    /**
+     * Generate an encoded string containing a username and password, without any kind of encryption.
+     * This string is normally sent only the first time to login to the system and obtain a token which will
+     * be used later for all the required authentications.
+     *
+     * This is not a secure way to encode user and password values. It must only be used on the first login
+     * operation. The generated token must be always used!.
+     *
+     * @param string $userName A user name to encode
+     * @param string $password A password to encode
+     *
+     * @return string A raw string containing the encoded user and password values
+     */
+    public function encodeUserAndPassword($userName, $password){
+
+        // Base64 characters are all numbers, uppercase, lowercase, forward slash plus and equal sign,
+        // so we join both encoded user and psw with a coma, so we can later split them again
+        return base64_encode(ConversionUtils::stringToBase64($userName).','.ConversionUtils::stringToBase64($password));
+    }
+
+
+    /**
+     * Get the original user name value from a string containing both user and password which was generated via the
+     * encodeUserAndPassword() method.
+     *
+     * @param string $encodedUserAndPsw A string that was encoded with encodeUserAndPassword()
+     *
+     * @see UsersManager::encodeUserAndPassword
+     *
+     * @return string The username value from the encoded string or an empty string if the value could not be read
+     */
+    public function decodeUserName(string $encodedUserAndPsw){
+
+        $base64Decoded = ConversionUtils::base64ToString($encodedUserAndPsw);
+
+        if (substr_count($base64Decoded, ',') !== 1) {
+
+            return '';
+        }
+
+        return base64_decode(explode(',', $base64Decoded)[0]);
+    }
+
+
+    /**
+     * Get the original password value from a string containing both user and password which was generated via the
+     * encodeUserAndPassword() method.
+     *
+     * @param string $encodedUserAndPsw A string that was encoded with encodeUserAndPassword()
+     *
+     * @see UsersManager::encodeUserAndPassword
+     *
+     * @return string The password value from the encoded string or an empty string if the value could not be read
+     */
+    public function decodePassword(string $encodedUserAndPsw){
+
+        $base64Decoded = ConversionUtils::base64ToString($encodedUserAndPsw);
+
+        if (substr_count($base64Decoded, ',') !== 1) {
+
+            return '';
+        }
+
+        return base64_decode(explode(',', $base64Decoded)[1]);
     }
 
 
@@ -691,10 +697,17 @@ class UsersManager extends BaseStrictClass{
 
         if(count($user) === 1){
 
-            $dbPassword = $this->_db->tableGetRows($this->_databaseObjectsManager
-                ->tablesPrefix.'userobject_password', ['userdbid' => $user[0]->getDbId()]);
+            try {
 
-            if(!$dbPassword){
+                $dbPassword = $this->_db->tableGetRows($this->_databaseObjectsManager
+                    ->tablesPrefix.'userobject_password', ['userdbid' => $user[0]->getDbId()]);
+
+            } catch (Throwable $e) {
+
+                throw new UnexpectedValueException('Specified user does not have a stored password: '.$userName);
+            }
+
+            if(count($dbPassword) === 0){
 
                 throw new UnexpectedValueException('Specified user does not have a stored password: '.$userName);
             }
@@ -724,11 +737,18 @@ class UsersManager extends BaseStrictClass{
             StringUtils::limitLen(md5($user->userName).md5($expiryDate), 25));
 
         // If a token for the given user already exists, we will simply recycle it and return it
-        $existingTokens = $this->_db->tableGetRows($this->_tableToken, ['userdbid' => $user->getDbId()]);
+        try {
 
-        if($existingTokens !== false && count($existingTokens) === 1 && $this->isTokenValid($existingTokens[0]['token'])){
+            $existingTokens = $this->_db->tableGetRows($this->_tableToken, ['userdbid' => $user->getDbId()]);
 
-            return $existingTokens[0]['token'];
+            if(count($existingTokens) === 1 && $this->isTokenValid($existingTokens[0]['token'])){
+
+                return $existingTokens[0]['token'];
+            }
+
+        } catch (Throwable $e) {
+
+            // Nothing to do
         }
 
         try {
@@ -778,9 +798,16 @@ class UsersManager extends BaseStrictClass{
 
         StringUtils::forceNonEmptyString($token, '', 'token must have a value');
 
-        $tokenData = $this->_db->tableGetRows($this->_tableToken, ['token' => $token]);
+        try {
 
-        if(is_array($tokenData) && count($tokenData) === 1){
+            $tokenData = $this->_db->tableGetRows($this->_tableToken, ['token' => $token]);
+
+        } catch (Throwable $e) {
+
+            return false;
+        }
+
+        if(count($tokenData) === 1){
 
             if(new DateTime($tokenData[0]['expires'], new DateTimeZone('UTC')) > new DateTime(null, new DateTimeZone('UTC'))){
 

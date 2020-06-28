@@ -1120,7 +1120,7 @@ class DataBaseManager extends BaseStrictClass {
 
         $rows = $this->tableGetRows($tableName, $keyValues);
 
-        if(is_array($rows) && count($rows) === 1){
+        if(count($rows) === 1){
 
             return $this->tableUpdateRow($tableName, $keyValues, $rowValues);
         }
@@ -1168,7 +1168,12 @@ class DataBaseManager extends BaseStrictClass {
             $sqlWherePart[] = $columnName." = '".$value."'";
         }
 
-        return $this->query('SELECT * FROM '.$tableName.' WHERE '.implode(' AND ', $sqlWherePart));
+        if(($result = $this->query('SELECT * FROM '.$tableName.' WHERE '.implode(' AND ', $sqlWherePart))) !== false){
+
+            return $result;
+        }
+
+        throw new UnexpectedValueException($this->_lastError);
     }
 
 
