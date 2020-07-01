@@ -324,8 +324,9 @@ class DataBaseManager extends BaseStrictClass {
      * @see DataBaseManager::getLastError
      * @see DataBaseManager::getQueryHistory
      *
-     * @return boolean|int|array <br>
-     * - False if the query generates any error (error message will be available with getLastError())<br>
+     * @throws UnexpectedValueException If the query failed due to an error (error message will be also available with getLastError()).
+     *
+     * @return int|array <br>
      * - An array of associative arrays with the query result data for queries that generate values (like SELECT, SHOW, DESCRIBE or EXPLAIN). Note that in PHP
      *   all query result values are returned as strings which must be casted to the appropiate types by the user<br>
      * - An integer containing the affected rows for successful queries that do not generate vaules (like CREATE, DROP, UPDATE, INSERT...).<br>
@@ -361,6 +362,11 @@ class DataBaseManager extends BaseStrictClass {
 
         // Store if the last query was successful or not
         $this->_lastQuerySucceeded = ($result !== false);
+
+        if($result === false){
+
+            throw new UnexpectedValueException($this->_lastError);
+        }
 
         return $result;
     }
@@ -750,7 +756,11 @@ class DataBaseManager extends BaseStrictClass {
             $query .= ' AFTER '.$after;
         }
 
-        if($this->query($query) === false){
+        try {
+
+            $this->query($query);
+
+        } catch (Throwable $e) {
 
             throw new UnexpectedValueException('Could not add column '.$columnName.' to table '.$tableName.': '.$this->_lastError);
         }
@@ -768,16 +778,20 @@ class DataBaseManager extends BaseStrictClass {
      *
      * @throws UnexpectedValueException If the index cannot be added
      *
-     * @return boolean True if the foreign key was correctly added
+     * @return boolean True if the unique index was correctly added
      */
     public function tableAddUniqueIndex($tableName, $indexName, array $indexColumns){
 
-        if($this->query('ALTER TABLE '.$tableName.' ADD CONSTRAINT '.$indexName.' UNIQUE ('.implode(',', $indexColumns).')') !== false){
+        try {
 
-            return true;
+            $this->query('ALTER TABLE '.$tableName.' ADD CONSTRAINT '.$indexName.' UNIQUE ('.implode(',', $indexColumns).')');
+
+        } catch (Throwable $e) {
+
+            throw new UnexpectedValueException('Could not add unique index '.$indexName.' to table '.$tableName.': '.$this->_lastError);
         }
 
-        throw new UnexpectedValueException('Could not add foreignKey '.$indexName.' to table '.$tableName.': '.$this->_lastError);
+        return true;
     }
 
 
@@ -798,14 +812,18 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function tableAddForeignKey($tableName, $fkName, array $fkColumns, $refTable, array $refColumns, $onDelete = 'CASCADE', $onUpdate = 'CASCADE'){
 
-        if($this->query('ALTER TABLE '.$tableName.' ADD CONSTRAINT '.$fkName.
-            ' FOREIGN KEY ('.implode(',', $fkColumns).') REFERENCES '.$refTable.'('.implode(',', $refColumns).
-            ') ON DELETE '.$onDelete.' ON UPDATE '.$onUpdate) !== false){
+        try {
 
-            return true;
+            $this->query('ALTER TABLE '.$tableName.' ADD CONSTRAINT '.$fkName.
+                ' FOREIGN KEY ('.implode(',', $fkColumns).') REFERENCES '.$refTable.'('.implode(',', $refColumns).
+                ') ON DELETE '.$onDelete.' ON UPDATE '.$onUpdate);
+
+        } catch (Throwable $e) {
+
+            throw new UnexpectedValueException('Could not add foreignKey '.$fkName.' to table '.$tableName.': '.$this->_lastError);
         }
 
-        throw new UnexpectedValueException('Could not add foreignKey '.$fkName.' to table '.$tableName.': '.$this->_lastError);
+        return true;
     }
 
 
@@ -1196,12 +1214,14 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function tableCountRows($tableName){
 
-        if(($result = $this->query('select count(1) as c FROM '.$tableName)) !== false){
+        try {
 
-            return (int)$result[0]['c'];
+            return (int)($this->query('select count(1) as c FROM '.$tableName))[0]['c'];
+
+        } catch (Throwable $e) {
+
+            throw new UnexpectedValueException('Could not count table rows: '.$this->_lastError);
         }
-
-        throw new UnexpectedValueException('Could not count table rows: '.$this->_lastError);
     }
 
 
@@ -1212,10 +1232,10 @@ class DataBaseManager extends BaseStrictClass {
      * @param string $columnValues Associative array where keys are column names and values are column values that must be found on all the rows
      *        be returned
      *
-     * @return boolean|array
-     *          - False if the query generates any error (error message will be available with getLastError())<br>
-     *          - An array of associative arrays with the query result data. Note that in PHP all query result values are returned as strings
-     *            which must be casted to the appropiate types by the user
+     * @throws UnexpectedValueException
+     *
+     * @return array An array of associative arrays with the query result data. Note that in PHP all query result values are returned as strings
+     *         which must be casted to the appropiate types by the user
      */
     public function tableGetRows($tableName, array $columnValues){
 

@@ -353,7 +353,7 @@ class DepotManagerTest extends TestCase {
     /** test */
     public function testGetDataBaseManager(){
 
-        $dbObjectsManager = DataBaseManagerTest::createAndConnectToTestingMariaDb();
+        $dbObjectsManager = DataBaseManager_MariaDb_Test::createAndConnectToTestingMariaDb();
         $this->addMariaDbSourceToDepotSetup();
 
         // Test empty values
@@ -372,14 +372,14 @@ class DepotManagerTest extends TestCase {
         AssertUtils::throwsException(function(){ $this->sut->getDataBaseManager(12345); }, '/Invalid database source name <12345> review your turbodepot setup file/');
         AssertUtils::throwsException(function(){ $this->sut->getDataBaseManager([1,2,3,4]); }, '/must be of the type string, array given/');
 
-        DataBaseManagerTest::deleteAndDisconnectFromTestingMariaDb($dbObjectsManager);
+        DataBaseManager_MariaDb_Test::deleteAndDisconnectFromTestingMariaDb($dbObjectsManager);
     }
 
 
     /** test */
     public function testGetDataBaseObjectsManager(){
 
-        $dbObjectsManager = DataBaseManagerTest::createAndConnectToTestingMariaDb();
+        $dbObjectsManager = DataBaseManager_MariaDb_Test::createAndConnectToTestingMariaDb();
         $this->addMariaDbSourceToDepotSetup();
 
         // Test empty values
@@ -398,14 +398,14 @@ class DepotManagerTest extends TestCase {
         AssertUtils::throwsException(function(){ $this->sut->getDataBaseObjectsManager(12345); }, '/Invalid database source name <12345> review your turbodepot setup file/');
         AssertUtils::throwsException(function(){ $this->sut->getDataBaseObjectsManager([1,2,3,4]); }, '/must be of the type string, array given/');
 
-        DataBaseManagerTest::deleteAndDisconnectFromTestingMariaDb($dbObjectsManager);
+        DataBaseManager_MariaDb_Test::deleteAndDisconnectFromTestingMariaDb($dbObjectsManager);
     }
 
 
     /** test */
     public function testGetUsersManager(){
 
-        $dbObjectsManager = DataBaseManagerTest::createAndConnectToTestingMariaDb();
+        $dbObjectsManager = DataBaseManager_MariaDb_Test::createAndConnectToTestingMariaDb();
 
         // Test empty values
         AssertUtils::throwsException(function(){ $this->sut->getUsersManager(); }, '/Could not initialize users manager: Invalid database source name <> review your turbodepot setup file/');
@@ -435,7 +435,7 @@ class DepotManagerTest extends TestCase {
 
         AssertUtils::throwsException(function(){ $this->sut->getUsersManager(); }, '/Could not initialize users manager: Invalid database source name <invalid source> review your turbodepot setup file/');
 
-        DataBaseManagerTest::deleteAndDisconnectFromTestingMariaDb($dbObjectsManager);
+        DataBaseManager_MariaDb_Test::deleteAndDisconnectFromTestingMariaDb($dbObjectsManager);
     }
 
 
@@ -451,7 +451,7 @@ class DepotManagerTest extends TestCase {
     /** test */
     public function testGetUsersManager_must_create_users_tables_structure_if_database_is_empty(){
 
-        $dbObjectsManager = DataBaseManagerTest::createAndConnectToTestingMariaDb();
+        $dbObjectsManager = DataBaseManager_MariaDb_Test::createAndConnectToTestingMariaDb();
 
         $this->addMariaDbSourceToDepotSetup();
         $db = $this->sut->getDataBaseManager('tmp_db_source');
@@ -486,7 +486,7 @@ class DepotManagerTest extends TestCase {
         $this->assertTrue($db->tableExists('usr_token'));
         $this->assertTrue($db->tableExists('usr_userobject'));
 
-        DataBaseManagerTest::deleteAndDisconnectFromTestingMariaDb($dbObjectsManager);
+        DataBaseManager_MariaDb_Test::deleteAndDisconnectFromTestingMariaDb($dbObjectsManager);
     }
 
 

@@ -44,7 +44,7 @@ class UsersManagerTest extends TestCase {
      */
     protected function setUp(){
 
-        $this->dbObjectsManager = DataBaseManagerTest::createAndConnectToTestingMariaDb();
+        $this->dbObjectsManager = DataBaseManager_MariaDb_Test::createAndConnectToTestingMariaDb();
         $this->dbObjectsManager->tablesPrefix = 'usr_';
 
         $this->db = $this->dbObjectsManager->getDataBaseManager();
@@ -59,7 +59,7 @@ class UsersManagerTest extends TestCase {
      */
     protected function tearDown(){
 
-        DataBaseManagerTest::deleteAndDisconnectFromTestingMariaDb($this->dbObjectsManager);
+        DataBaseManager_MariaDb_Test::deleteAndDisconnectFromTestingMariaDb($this->dbObjectsManager);
     }
 
 
@@ -866,13 +866,17 @@ class UsersManagerTest extends TestCase {
         $this->assertSame('user', $login1Result[1]->userName);
         $this->assertSame(1, $login1Result[1]->getDbId());
 
+        $this->sut->saveRole('admin', '');
+
         $user = new UserObject();
         $user->userName = 'user2';
+        $user->roles = ['admin'];
         $this->sut->saveUser($user);
         $this->sut->setUserPassword($user->userName, 'psw2');
         $login2Result = $this->sut->login('user2', 'psw2');
         $this->assertTrue(strlen($login2Result[0]) > 100);
         $this->assertSame('user2', $login2Result[1]->userName);
+        $this->assertSame(['admin'], $login2Result[1]->roles);
         $this->assertSame(2, $login2Result[1]->getDbId());
 
         $this->assertSame([$login1Result[0], $login2Result[0]], $this->db->tableGetColumnValues('usr_token', 'token'));

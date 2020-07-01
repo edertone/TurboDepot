@@ -16,6 +16,7 @@ use PHPUnit\Framework\TestCase;
 use org\turbodepot\src\main\php\managers\DataBaseManager;
 use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 use org\turbodepot\src\main\php\managers\FilesManager;
+use org\turbotesting\src\main\php\utils\AssertUtils;
 
 
 /**
@@ -23,12 +24,12 @@ use org\turbodepot\src\main\php\managers\FilesManager;
  *
  * @return void
  */
-class DataBaseManagerTest extends TestCase {
+class DataBaseManager_MariaDb_Test extends TestCase {
 
 
     /**
      * Load the database setup for testing parameters from resources, connect to the provided database engine and make sure an empty
-     * database exists (with the name that is defined at the testing parameters) exists, and return a DataBaseObjectsManager instance
+     * database exists (with the name that is defined at the testing parameters), and return a DataBaseObjectsManager instance
      * which is fully initialized and ready to be used with that db
      *
      * @return DataBaseObjectsManager An initialized instance that is ready to operate with the testing database
@@ -131,6 +132,8 @@ class DataBaseManagerTest extends TestCase {
      */
     protected function setUp(){
 
+        $this->databaseObjectsManager = DataBaseManager_MariaDb_Test::createAndConnectToTestingMariaDb();
+        $this->sut = $this->databaseObjectsManager->getDataBaseManager();
     }
 
 
@@ -141,6 +144,7 @@ class DataBaseManagerTest extends TestCase {
      */
     protected function tearDown(){
 
+        DataBaseManager_MariaDb_Test::deleteAndDisconnectFromTestingMariaDb($this->databaseObjectsManager);
     }
 
 
@@ -173,6 +177,34 @@ class DataBaseManagerTest extends TestCase {
         // TODO
 
         $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    // TODO - implement all missing tests
+
+
+    /**
+     * test
+     */
+    public function testQuery(){
+
+        // Test empty values
+        AssertUtils::throwsException(function(){ $this->sut->query(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function(){ $this->sut->query(null); }, '/Empty query/');
+        AssertUtils::throwsException(function(){ $this->sut->query(''); }, '/Empty query/');
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // Test exceptions
+        AssertUtils::throwsException(function(){ $this->sut->query('INVALID QUERY'); }, '/You have an error in your SQL syntax/');
+        $this->assertRegExp('/You have an error in your SQL syntax/', $this->sut->getLastError());
+        AssertUtils::throwsException(function(){ $this->sut->query('SELECT * FROM invalidtable'); }, '/.*invalidtable.*doesn.t exist/');
+        $this->assertRegExp('/.*invalidtable.*doesn.t exist/', $this->sut->getLastError());
+        $this->assertSame(2, count($this->sut->getQueryHistory()));
+        // TODO
     }
 
 

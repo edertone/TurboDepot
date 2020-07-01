@@ -69,7 +69,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
      */
     protected function setUp(){
 
-        $this->sut = DataBaseManagerTest::createAndConnectToTestingMariaDb();
+        $this->sut = DataBaseManager_MariaDb_Test::createAndConnectToTestingMariaDb();
         $this->db = $this->sut->getDataBaseManager();
         $this->dbSetup = json_decode((new FilesManager())->readFile(__DIR__.'/../../resources/managers/databaseManager/database-setup-for-testing.json'));
     }
@@ -82,7 +82,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
      */
     protected function tearDown(){
 
-        DataBaseManagerTest::deleteAndDisconnectFromTestingMariaDb($this->sut);
+        DataBaseManager_MariaDb_Test::deleteAndDisconnectFromTestingMariaDb($this->sut);
     }
 
 
@@ -943,7 +943,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertSame(['dbid', 'value'], $this->db->tableGetColumnNames($objectTableName.'_emails'));
 
         AssertUtils::throwsException(function() use ($object) { $this->assertSame(1, $this->sut->save($object)); },
-            '/Could not add foreignKey td_customerwitharrayprops_emails_dbid_arrayindex_uk.*Duplicate entry/');
+            '/Could not add unique index td_customerwitharrayprops_emails_dbid_arrayindex_uk.*Duplicate entry/');
     }
 
 

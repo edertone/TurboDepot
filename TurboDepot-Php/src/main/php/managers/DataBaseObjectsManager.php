@@ -1139,7 +1139,45 @@ class DataBaseObjectsManager extends BaseStrictClass{
             return [];
         }
 
-        return array_map(function ($r) use ($class) {return $this->_convertTableDataToObject($r, $class);}, $data);
+        return $this->_generateObjectsFromDbTableData($class, $data);
+    }
+
+
+    /**
+     * Aux method to generate a list of fully initialized database object instances from the loaded rows of a database table.
+     *
+     * @param mixed $class The class (which extends DataBaseObject) for the object types that we want to obtain. Fo example: User::class
+     * @param array $data The table rows loaded from db
+     *
+     * @return array A list of initialized database object instances
+     */
+    private function _generateObjectsFromDbTableData($class, array $data){
+
+        $objects = array_map(function ($r) use ($class) {return $this->_convertTableDataToObject($r, $class);}, $data);
+
+        foreach ($objects as $object) {
+
+            $tableName = $this->getTableNameFromObject($object);
+
+            foreach ($this->_getArrayTypedProperties($object) as $property) {
+
+                $object->{$property} = [];
+                $arrayPropTableName = $tableName.'_'.strtolower($property);
+
+                try {
+
+                    $arrayPropValues = $this->_db->query('SELECT value FROM '.$arrayPropTableName.' WHERE dbid='.$object->getDbId().' ORDER BY arrayindex ASC');
+
+                    $object->{$property} = array_map(function ($r) {return $r['value']; }, $arrayPropValues);
+
+                } catch (Throwable $e) {
+
+                    // Nothing to do
+                }
+            }
+        }
+
+        return $objects;
     }
 
 
@@ -1165,7 +1203,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             return [];
         }
 
-        return array_map(function ($r) use ($class) {return $this->_convertTableDataToObject($r, $class);}, $data);
+        return $this->_generateObjectsFromDbTableData($class, $data);
     }
 
 
