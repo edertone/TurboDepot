@@ -791,12 +791,19 @@ class DataBaseManager extends BaseStrictClass {
 
             $this->query('ALTER TABLE '.$tableName.' ADD CONSTRAINT '.$indexName.' UNIQUE ('.implode(',', $indexColumns).')');
 
+            // Unique index did not exist, so table's been modified
+            return true;
+
         } catch (Throwable $e) {
 
-            throw new UnexpectedValueException('Could not add unique index '.$indexName.' to table '.$tableName.': '.$this->_lastError);
+            if(strpos(strtolower($e->getMessage()), 'duplicate key') === false){
+
+                throw new UnexpectedValueException('Could not add unique index '.$indexName.' to table '.$tableName.': '.$this->_lastError);
+            }
         }
 
-        return true;
+        // Unique index already existed, so table's not been modified
+        return false;
     }
 
 
@@ -823,12 +830,19 @@ class DataBaseManager extends BaseStrictClass {
                 ' FOREIGN KEY ('.implode(',', $fkColumns).') REFERENCES '.$refTable.'('.implode(',', $refColumns).
                 ') ON DELETE '.$onDelete.' ON UPDATE '.$onUpdate);
 
+            // Foreign key did not exist, so table's been modified
+            return true;
+
         } catch (Throwable $e) {
 
-            throw new UnexpectedValueException('Could not add foreignKey '.$fkName.' to table '.$tableName.': '.$this->_lastError);
+            if(strpos(strtolower($e->getMessage()), 'duplicate key') === false){
+
+                throw new UnexpectedValueException('Could not add foreignKey '.$fkName.' to table '.$tableName.': '.$this->_lastError);
+            }
         }
 
-        return true;
+        // Foreign key already existed, so table's not been modified
+        return false;
     }
 
 
@@ -943,37 +957,19 @@ class DataBaseManager extends BaseStrictClass {
             // Create or update the table unique indices if necessary
             foreach ($tableDef['uniqueIndices'] as $uniqueIndex) {
 
-                try {
-
-                    $this->tableAddUniqueIndex($tableName, $tableName.'_'.implode('_', $uniqueIndex).'_uk', $uniqueIndex);
+                if($this->tableAddUniqueIndex($tableName, $tableName.'_'.implode('_', $uniqueIndex).'_uk', $uniqueIndex)){
 
                     $isTableModified = true;
-
-                } catch (Throwable $e) {
-
-                    if(strpos($e->getMessage(), 'Duplicate key') === false){
-
-                        throw $e;
-                    }
                 }
             }
 
             // Create or update the table foreign key if necessary
             foreach ($tableDef['foreignKey'] as $foreignKey) {
 
-                try {
-
-                    $this->tableAddForeignKey($tableName, $foreignKey[0], $foreignKey[1], $foreignKey[2], $foreignKey[3],
-                        isset($foreignKey[4]) ? $foreignKey[4] : 'CASCADE',  isset($foreignKey[5]) ? $foreignKey[5] : 'CASCADE');
+                if($this->tableAddForeignKey($tableName, $foreignKey[0], $foreignKey[1], $foreignKey[2], $foreignKey[3],
+                    isset($foreignKey[4]) ? $foreignKey[4] : 'CASCADE',  isset($foreignKey[5]) ? $foreignKey[5] : 'CASCADE')){
 
                     $isTableModified = true;
-
-                } catch (Throwable $e) {
-
-                    if(strpos(strtolower($e->getMessage()), 'duplicate key') === false){
-
-                        throw $e;
-                    }
                 }
             }
 
@@ -1337,33 +1333,6 @@ class DataBaseManager extends BaseStrictClass {
 
                 throw new UnexpectedValueException('Error trying to delete rows from '.$tableName.': '.$this->_lastError);
             }
-        }
-    }
-
-
-    /**
-     * Validate that the specified table is correct and exists on db
-     *
-     * @param string $tableName The name for a table to validate
-     *
-     * @throws UnexpectedValueException In case any problem is found with the specified table
-     */
-    private function _validateTable($tableName){
-
-        // An active engine connection must be available and a database selected
-        if($this->getSelectedDataBase() === ''){
-
-            throw new UnexpectedValueException('Not connected to a database host or database not selected');
-        }
-
-        if(!is_string($tableName) || $tableName === ''){
-
-            throw new UnexpectedValueException('Table name name must be a non empty string');
-        }
-
-        if(!$this->tableExists($tableName)){
-
-            throw new UnexpectedValueException('Table '.$tableName.' does not exist');
         }
     }
 
