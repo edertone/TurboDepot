@@ -334,7 +334,6 @@ class DataBaseManager extends BaseStrictClass {
     public function query($query){
 
         $result = false;
-
         $queryStart = microtime(true);
 
         if($this->_engine === self::MYSQL){
@@ -361,9 +360,7 @@ class DataBaseManager extends BaseStrictClass {
         $this->_addQueryToHistory($query, $queryStart, $result);
 
         // Store if the last query was successful or not
-        $this->_lastQuerySucceeded = ($result !== false);
-
-        if($result === false){
+        if(($this->_lastQuerySucceeded = ($result !== false)) === false){
 
             throw new UnexpectedValueException($this->_lastError);
         }
@@ -707,6 +704,8 @@ class DataBaseManager extends BaseStrictClass {
             throw new UnexpectedValueException('at least one column is expected');
         }
 
+        $sql = '';
+
         if($this->_engine === self::MYSQL){
 
             if(count($primaryKey) > 0){
@@ -724,13 +723,19 @@ class DataBaseManager extends BaseStrictClass {
                 $columns[] = 'INDEX '.$tableName.'_'.implode('_', $indice).' ('.implode(',', $indice).')';
             }
 
-            if($this->query('CREATE TABLE '.$tableName.' ('.implode(', ', $columns).')') !== false){
-
-                return true;
-            }
+            $sql = 'CREATE TABLE '.$tableName.' ('.implode(', ', $columns).')';
         }
 
-        throw new UnexpectedValueException('Could not create table '.$tableName.' '.$this->_lastError);
+        try {
+
+            $this->query($sql);
+
+        } catch (Throwable $e) {
+
+            throw new UnexpectedValueException('Could not create table '.$tableName.' '.$this->_lastError);
+        }
+
+        return true;
     }
 
 
@@ -996,22 +1001,15 @@ class DataBaseManager extends BaseStrictClass {
 
         if($this->_engine === self::MYSQL){
 
-            $mysqlResult = $this->query('SHOW COLUMNS FROM '.$tableName);
+            try {
 
-            if($mysqlResult !== false){
+                return array_map(function ($r) { return $r['Field']; }, $this->query('SHOW COLUMNS FROM '.$tableName));
 
-                $result = [];
+            } catch (Throwable $e) {
 
-                foreach ($mysqlResult as $row) {
-
-                    $result[] = $row['Field'];
-                }
-
-                return $result;
+                throw new UnexpectedValueException('Could not get column names: '.$this->_lastError);
             }
         }
-
-        throw new UnexpectedValueException('Could not get column names: '.$this->_lastError);
     }
 
 
@@ -1029,18 +1027,22 @@ class DataBaseManager extends BaseStrictClass {
 
         $result = [];
 
-        if($this->_engine === self::MYSQL &&
-           ($types = $this->query("SHOW FIELDS FROM `".$tableName."`")) !== false){
+        if($this->_engine === self::MYSQL){
 
-            foreach ($types as $type) {
+            try {
 
-                $result[$type['Field']] = strtolower($type['Type']).($type['Null'] === 'NO' ? ' NOT NULL' : '');
+                foreach ($this->query("SHOW FIELDS FROM `".$tableName."`") as $type) {
+
+                    $result[$type['Field']] = strtolower($type['Type']).($type['Null'] === 'NO' ? ' NOT NULL' : '');
+                }
+
+            } catch (Throwable $e) {
+
+                throw new UnexpectedValueException('Could not get column data types: '.$this->_lastError);
             }
-
-            return $result;
         }
 
-        throw new UnexpectedValueException('Could not get column data types: '.$this->_lastError);
+        return $result;
     }
 
 
@@ -1054,13 +1056,19 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function tableGetColumnMaxValue($tableName, $columnName){
 
-        if($this->_engine === self::MYSQL &&
-            ($result = $this->query('SELECT CAST('.$columnName.' AS SIGNED) AS '.$columnName.' FROM '.$tableName.' ORDER BY '.$columnName.' DESC LIMIT 1')) !== false){
+        if($this->_engine === self::MYSQL){
 
-                return $result[0][$columnName];
+            try {
+
+                $result = $this->query('SELECT CAST('.$columnName.' AS SIGNED) AS '.$columnName.' FROM '.$tableName.' ORDER BY '.$columnName.' DESC LIMIT 1');
+
+            } catch (Throwable $e) {
+
+                throw new UnexpectedValueException('Could not get column max value: '.$this->_lastError);
+            }
         }
 
-        throw new UnexpectedValueException('Could not get column max value: '.$this->_lastError);
+        return $result[0][$columnName];
     }
 
 
@@ -1082,22 +1090,16 @@ class DataBaseManager extends BaseStrictClass {
 
         if($this->_engine === self::MYSQL){
 
-            $mysqlResult = $this->query('SELECT '.$sqlDistinct.' '.$columnName.' FROM '.$tableName);
+            try {
 
-            if($mysqlResult !== false){
+                return array_map(function ($r) use($columnName) { return $r[$columnName]; },
+                    $this->query('SELECT '.$sqlDistinct.' '.$columnName.' FROM '.$tableName));
 
-                $result = [];
+            } catch (Throwable $e) {
 
-                foreach ($mysqlResult as $value) {
-
-                    $result[] = $value[$columnName];
-                }
-
-                return $result;
+                throw new UnexpectedValueException('Could not list table column values: '.$this->_lastError);
             }
         }
-
-        throw new UnexpectedValueException('Could not list table column values: '.$this->_lastError);
     }
 
 
@@ -1128,12 +1130,16 @@ class DataBaseManager extends BaseStrictClass {
             $sqlRows[] = '('.implode(',', $sqlRow).')';
         }
 
-        if($this->query('INSERT INTO '.$tableName.' ('.implode(',', $cols).') VALUES '.implode(',', $sqlRows)) !== false){
+        try {
 
-            return true;
+            $this->query('INSERT INTO '.$tableName.' ('.implode(',', $cols).') VALUES '.implode(',', $sqlRows));
+
+        } catch (Throwable $e) {
+
+            throw new UnexpectedValueException('Could not add row to table '.$tableName.': '.$this->_lastError);
         }
 
-        throw new UnexpectedValueException('Could not add row to table '.$tableName.': '.$this->_lastError);
+        return true;
     }
 
 
@@ -1246,12 +1252,14 @@ class DataBaseManager extends BaseStrictClass {
             $sqlWherePart[] = $columnName." = '".$value."'";
         }
 
-        if(($result = $this->query('SELECT * FROM '.$tableName.' WHERE '.implode(' AND ', $sqlWherePart))) !== false){
+        try {
 
-            return $result;
+            return $this->query('SELECT * FROM '.$tableName.' WHERE '.implode(' AND ', $sqlWherePart));
+
+        } catch (Throwable $e) {
+
+            throw new UnexpectedValueException($this->_lastError);
         }
-
-        throw new UnexpectedValueException($this->_lastError);
     }
 
 
@@ -1264,12 +1272,16 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function tableDelete($tableName) {
 
-        if($this->query('DROP TABLE '.$tableName) !== false){
+        try {
 
-            return true;
+            $this->query('DROP TABLE '.$tableName);
+
+        } catch (Throwable $e) {
+
+            throw new UnexpectedValueException('Could not delete table '.$tableName.': '.$this->_lastError);
         }
 
-        throw new UnexpectedValueException('Could not delete table '.$tableName.': '.$this->_lastError);
+        return true;
     }
 
 
@@ -1283,12 +1295,16 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function tableDeleteColumns(string $tableName, array $columnNames) {
 
-        if($this->query('ALTER TABLE '.$tableName.' DROP COLUMN '.implode(', DROP COLUMN ', $columnNames)) !== false){
+        try {
 
-            return true;
+            $this->query('ALTER TABLE '.$tableName.' DROP COLUMN '.implode(', DROP COLUMN ', $columnNames));
+
+        } catch (Throwable $e) {
+
+            throw new UnexpectedValueException('Could not delete columns ('.implode(',', $columnNames).') from '.$tableName.': '.$this->_lastError);
         }
 
-        throw new UnexpectedValueException('Could not delete columns ('.implode(',', $columnNames).') from '.$tableName.': '.$this->_lastError);
+        return true;
     }
 
 
@@ -1311,13 +1327,17 @@ class DataBaseManager extends BaseStrictClass {
             $sqlWhere[] = $columnName."='".$value."'";
         }
 
-        if($this->_engine === self::MYSQL &&
-            ($result = $this->query('DELETE FROM '.$tableName.' WHERE '.implode(' AND ', $sqlWhere))) !== false){
+        if($this->_engine === self::MYSQL){
 
-            return $result;
+            try {
+
+                return $this->query('DELETE FROM '.$tableName.' WHERE '.implode(' AND ', $sqlWhere));
+
+            } catch (Throwable $e) {
+
+                throw new UnexpectedValueException('Error trying to delete rows from '.$tableName.': '.$this->_lastError);
+            }
         }
-
-        throw new UnexpectedValueException('Error trying to delete rows from '.$tableName.': '.$this->_lastError);
     }
 
 
@@ -1364,14 +1384,21 @@ class DataBaseManager extends BaseStrictClass {
             return true;
         }
 
-        if($this->_engine === self::MYSQL && $this->query('START TRANSACTION') !== false){
+        if($this->_engine === self::MYSQL){
 
-            return true;
+            try {
+
+                $this->query('START TRANSACTION');
+
+            } catch (Throwable $e) {
+
+                $this->_transactionsCounter = 0;
+
+                throw new UnexpectedValueException('Could not start transaction '.$this->_lastError);
+            }
         }
 
-        $this->_transactionsCounter = 0;
-
-        throw new UnexpectedValueException('Could not start transaction');
+        return true;
     }
 
 
@@ -1395,14 +1422,21 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function transactionRollback(){
 
-        if($this->_engine === self::MYSQL && $this->query('ROLLBACK') !== false){
+        if($this->_engine === self::MYSQL){
 
-            $this->_transactionsCounter = 0;
+            try {
 
-            return true;
+                $this->query('ROLLBACK');
+
+                $this->_transactionsCounter = 0;
+
+            } catch (Throwable $e) {
+
+                throw new UnexpectedValueException('Could not rollback transaction '.$this->_lastError);
+            }
         }
 
-        throw new UnexpectedValueException('Could not rollback transaction');
+        return true;
     }
 
 
@@ -1424,13 +1458,17 @@ class DataBaseManager extends BaseStrictClass {
 
         if($this->_transactionsCounter === 0){
 
-            if($this->_engine === self::MYSQL && $this->query('COMMIT') !== false){
+            try {
 
-                return true;
+                $this->query('COMMIT');
+
+            } catch (Throwable $e) {
+
+                throw new UnexpectedValueException('Could not commit transaction '.$this->_lastError);
             }
-
-            throw new UnexpectedValueException('Could not commit transaction');
         }
+
+        return true;
     }
 
 
