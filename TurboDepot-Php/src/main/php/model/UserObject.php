@@ -23,6 +23,7 @@ final class UserObject extends DataBaseObject{
         $this->_types['domain'] = [250, self::NOT_NULL, self::STRING];
         $this->_types['roles'] = [250, self::NOT_NULL, self::ARRAY, self::STRING];
         $this->_types['userName'] = [100, self::NOT_NULL, self::STRING];
+        $this->_types['description'] = [2000, self::NOT_NULL, self::STRING];
         $this->_types['data'] = [5000, self::NOT_NULL, self::STRING];
 
         $this->_uniqueIndices[] = ['domain', 'userName'];
@@ -54,6 +55,13 @@ final class UserObject extends DataBaseObject{
      * @var string
      */
     public $userName = '';
+
+
+    /**
+     * Some description that we would like to write for the user
+     * @var string
+     */
+    public $description = '';
 
 
     // TODO - implement this flag that should completely disable this user when set to false

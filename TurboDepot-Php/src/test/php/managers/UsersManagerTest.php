@@ -307,6 +307,7 @@ class UsersManagerTest extends TestCase {
         $user = new UserObject();
         $user->domain = 'different domain';
         $user->userName = 'user';
+        $user->description = 'user description';
         AssertUtils::throwsException(function() use ($user) { $this->sut->saveUser($user); }, '/Saving a user with a domain .different domain. that doesn\'t match the current one ../');
         AssertUtils::throwsException(function() use ($user) { $this->sut->setDomain('different domain'); }, '/Domain does not exist different domain/');
 
@@ -359,7 +360,7 @@ class UsersManagerTest extends TestCase {
         $this->assertSame(1, $this->sut->saveUser($user));
         $this->assertTrue($this->db->tableExists('usr_userobject'));
         $this->assertTrue(in_array('username', $this->db->tableGetColumnNames('usr_userobject'), true));
-        $this->assertSame(8, count($this->db->tableGetColumnNames('usr_userobject')));
+        $this->assertSame(9, count($this->db->tableGetColumnNames('usr_userobject')));
     }
 
 
