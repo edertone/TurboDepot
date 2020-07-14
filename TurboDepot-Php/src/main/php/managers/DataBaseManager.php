@@ -451,6 +451,9 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function isSQLNumericTypeCompatibleWith(string $sqlType1, string $sqlType2){
 
+        $sqlType1 = strtolower($sqlType1);
+        $sqlType2 = strtolower($sqlType2);
+
         if($this->_engine === self::MYSQL){
 
             // List of numeric sql types sorted by smallest to biggest precision
@@ -460,6 +463,14 @@ class DataBaseManager extends BaseStrictClass {
             $sqlType2Index = array_search(explode(' ', explode('(', trim($sqlType2))[0])[0], $sqlTypes);
 
             if($sqlType1Index !== false && $sqlType2Index !== false){
+
+                $sqlType1Unsigned = strpos($sqlType1, 'unsigned') !== false;
+                $sqlType2Unsigned = strpos($sqlType2, 'unsigned') !== false;
+
+                if($sqlType1Unsigned !== $sqlType2Unsigned){
+
+                    return false;
+                }
 
                 return $sqlType1Index >= $sqlType2Index;
             }
@@ -925,11 +936,11 @@ class DataBaseManager extends BaseStrictClass {
                         $isDbTableColumnADate = $this->isSQLDateTimeType($dbTableColumnType);
 
                         if(!$this->isSQLSameType($tableDefColumnType, $dbTableColumnType) &&
-                            !$this->isSQLNumericTypeCompatibleWith($dbTableColumnType, $tableDefColumnType) &&
-                            !($isDbTableColumnADate && $this->isSQLStringType($tableDefColumnType))){
+                           !$this->isSQLNumericTypeCompatibleWith($dbTableColumnType, $tableDefColumnType) &&
+                           !($isDbTableColumnADate && $this->isSQLStringType($tableDefColumnType))){
 
                             // This case cannot be automatically handled without destroying data, so exception and user must manually modify the table column
-                            throw new UnexpectedValueException($tableName.' column '.$tableDefColumnName.' data type expected: '.$dbTableColumnType.' but received: '.$tableDefColumnType, 1);
+                            throw new UnexpectedValueException('table '.$tableName.' column '.$tableDefColumnName.' has type: '.$dbTableColumnType.' but trying to set: '.$tableDefColumnType, 1);
                         }
 
                         $valueTypeSize = $this->getSQLTypeSize($tableDefColumnType);
@@ -942,7 +953,7 @@ class DataBaseManager extends BaseStrictClass {
 
                             if(!$tableDef['resizeColumns']){
 
-                                throw new UnexpectedValueException($tableName.' column '.$tableDefColumnName.' data type expected: '.$dbTableColumnType.' but received: '.$tableDefColumnType, 2);
+                                throw new UnexpectedValueException('table '.$tableName.' column '.$tableDefColumnName.' has type: '.$dbTableColumnType.' but trying to set: '.$tableDefColumnType, 2);
                             }
 
                             // Increase the size of the table column so it can fit the object value
@@ -1196,9 +1207,7 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function tableAddOrUpdateRow($tableName, array $keyValues, array $rowValues){
 
-        $rows = $this->tableGetRows($tableName, $keyValues);
-
-        if(count($rows) === 1){
+        if(count($this->tableGetRows($tableName, $keyValues)) === 1){
 
             return $this->tableUpdateRow($tableName, $keyValues, $rowValues);
         }
@@ -1331,7 +1340,7 @@ class DataBaseManager extends BaseStrictClass {
 
             } catch (Throwable $e) {
 
-                throw new UnexpectedValueException('Error trying to delete rows from '.$tableName.': '.$this->_lastError);
+                throw new UnexpectedValueException('Error deleting rows from '.$tableName.': '.$this->_lastError);
             }
         }
     }

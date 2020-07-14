@@ -50,7 +50,7 @@ use org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\ObjectWith
  *
  * @return void
  */
-class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
+class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCase {
 
 
     /**
@@ -309,15 +309,15 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $object = new Customer();
         $object->age = 14123412341;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column age data type expected: smallint.6. NOT NULL but received: bigint/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/table td_customer column age has type: smallint.6. NOT NULL but trying to set: bigint NOT NULL/');
 
         $object = new Customer();
         $object->age = 14123412341345345345345345345;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column age data type expected: smallint.6. NOT NULL but received: double/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/table td_customer column age has type: smallint.6. NOT NULL but trying to set: double NOT NULL/');
 
         $object = new Customer();
         $object->name = 'customer';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column name data type expected: varchar.1. NOT NULL but received: varchar.8./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/table td_customer column name has type: varchar.1. NOT NULL but trying to set: varchar.8. NOT NULL/');
 
         $this->sut->isColumnResizedWhenValueisBigger = true;
         $this->assertSame(4, $this->sut->save($object));
@@ -454,7 +454,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $object = new Customer();
         $object->name = 12345;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column name data type expected: varchar.100. NOT NULL but received: mediumint/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/table td_customer column name has type: varchar.100. NOT NULL but trying to set: mediumint NOT NULL/');
 
         $object = new Customer();
         $object->name = new stdClass();
@@ -462,15 +462,15 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         $object = new Customer();
         $object->age = 'string instead of int';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column age data type expected: smallint.6. NOT NULL but received: varchar.21./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/table td_customer column age has type: smallint.6. NOT NULL but trying to set: varchar.21. NOT NULL/');
 
         $object = new Customer();
         $object->age = 1.12;
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column age data type expected: smallint.6. NOT NULL but received: double/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/table td_customer column age has type: smallint.6. NOT NULL but trying to set: double NOT NULL/');
 
         $object = new Customer();
         $object->debt = 'notadouble';
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customer column debt data type expected: double NOT NULL but received: varchar.10./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/table td_customer column debt has type: double NOT NULL but trying to set: varchar.10. NOT NULL/');
 
         AssertUtils::throwsException(function() { $this->sut->save(new DataBaseManager()); }, '/Argument 1 passed to.* must be an instance of.*DataBaseObject, instance of.*DataBaseManager given/');
 
@@ -856,7 +856,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $object->boolArray = [];
         $object->intArray = [];
         $object->doubleArray = [];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_emails column value data type expected: varchar.6. NOT NULL but received: int/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/table td_customerwitharrayprops_emails column value has type: varchar.6. NOT NULL but trying to set: int NOT NULL/');
 
         $object = new CustomerWithArrayProps();
         $this->assertSame(2, $this->sut->save($object));
@@ -869,22 +869,22 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         // Test wrong values
 
         $object->emails = ['this value is too long for the created table'];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_emails column value data type expected: varchar.6. NOT NULL but received: varchar.44./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/table td_customerwitharrayprops_emails column value has type: varchar.6. NOT NULL but trying to set: varchar.44. NOT NULL/');
 
         $object->emails = ['ok', 'this value is too long for the created table'];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_emails column value data type expected: varchar.6. NOT NULL but received: varchar.44./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/table td_customerwitharrayprops_emails column value has type: varchar.6. NOT NULL but trying to set: varchar.44. NOT NULL/');
 
         $object = new CustomerWithArrayProps();
         $object->intArray = ['string'];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_intarray column value data type expected: smallint.6. NOT NULL but received: varchar.6./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/table td_customerwitharrayprops_intarray column value has type: smallint.6. NOT NULL but trying to set: varchar.6. NOT NULL/');
 
         $object = new CustomerWithArrayProps();
         $object->intArray = [111, 452435234523452345];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_intarray column value data type expected: smallint.6. NOT NULL but received: bigint/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/table td_customerwitharrayprops_intarray column value has type: smallint.6. NOT NULL but trying to set: bigint NOT NULL/');
 
         $object = new CustomerWithArrayProps();
         $object->boolArray = [111];
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_customerwitharrayprops_boolarray column value data type expected: tinyint.1. NOT NULL but received: smallint/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/table td_customerwitharrayprops_boolarray column value has type: tinyint.1. NOT NULL but trying to set: smallint NOT NULL/');
 
         $object = new CustomerWithArrayProps();
         $object->name = ['storing an array into a non array prop'];
@@ -1538,7 +1538,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertTrue($this->db->tableAddColumn($objectTableName, 'age', $this->db->getSQLTypeFromValue('hello')));
 
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); },
-        '/td_customertyped column age data type expected: varchar.5. but received: smallint/');
+        '/table td_customertyped column age has type: varchar.5. but trying to set: smallint/');
     }
 
 
@@ -1556,7 +1556,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
         $this->assertTrue($this->db->tableAddColumn($objectTableName, 'name', $this->db->getSQLTypeFromValue('hello')));
 
         AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); },
-            '/td_customertyped column name data type expected: varchar.5. but received: varchar.20. NOT NULL/');
+            '/table td_customertyped column name has type: varchar.5. but trying to set: varchar.20. NOT NULL/');
     }
 
 
@@ -1701,7 +1701,7 @@ class DataBaseObjectsManagerObjectsCreateAndSaveMariaDb extends TestCase {
 
         // Delete the name column from table and check that object can be saved and nameRenamed column's been created
         $this->db->tableDeleteColumns($objectTableName, ['name']);
-        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/td_objecttoalter column city data type expected: varchar.8. NOT NULL but received: varchar.15./');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->save($object); }, '/table td_objecttoalter column city has type: varchar.8. NOT NULL but trying to set: varchar.15. NOT NULL/');
         $this->sut->isColumnResizedWhenValueisBigger = true;
         $this->assertSame(2, $this->sut->save($object));
         $this->assertFalse(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));

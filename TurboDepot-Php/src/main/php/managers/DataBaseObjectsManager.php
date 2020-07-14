@@ -109,11 +109,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Stores the sql data type that can be used anywhere on this class to reference an autonumeric primary key column on object tables.
+     * Stores the sql data type that can be used anywhere on this class to reference a big unsigned integer SQL type on object tables.
      * It is stored globally to improve performance instead of calculating it every time.
      * @var string
      */
-    private $_autonumericPkDefinition = '';
+    private $_unsignedBigIntSqlTypeDef = '';
 
 
     /**
@@ -143,7 +143,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $connection = $this->_db->connectMariaDb($host, $userName, $password, $dataBaseName);
 
-        $this->_autonumericPkDefinition = $this->_db->getSQLTypeFromValue(999999999999999, false, true);
+        $this->_unsignedBigIntSqlTypeDef = $this->_db->getSQLTypeFromValue(999999999999999, false, true);
 
         return $connection;
     }
@@ -867,7 +867,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             $arrayPropTableName = $tableName.'_'.strtolower($property);
 
             $tableDef = ['uniqueIndices' => [['dbid', 'arrayindex']],
-                'columns' => ['dbid '.$this->_autonumericPkDefinition, 'arrayindex '.$this->_autonumericPkDefinition],
+                'columns' => ['dbid '.$this->_unsignedBigIntSqlTypeDef, 'arrayindex '.$this->_unsignedBigIntSqlTypeDef],
                 'resizeColumns' => $this->isColumnResizedWhenValueisBigger,
                 'foreignKey' => [[$arrayPropTableName.'_dbid_fk', ['dbid'], $tableName, ['dbid']]],
                 'deleteColumns' => 'no'];
@@ -885,7 +885,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             $multiLanPropTableName = $tableName.'_'.strtolower($property);
 
-            $tableDef = ['columns' => ['dbid '.$this->_autonumericPkDefinition],
+            $tableDef = ['columns' => ['dbid '.$this->_unsignedBigIntSqlTypeDef],
                 'resizeColumns' => $this->isColumnResizedWhenValueisBigger,
                 'foreignKey' => [[$multiLanPropTableName.'_dbid_fk', ['dbid'], $tableName, ['dbid']]],
                 'deleteColumns' => 'no'];
@@ -1192,11 +1192,16 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     public function getByPropertyValues($class, array $propertyValues) {
 
-        $tableName = $this->tablesPrefix.strtolower(StringUtils::getPathElement($class));
+        $columns = [];
+
+        foreach ($propertyValues as $key => $value) {
+
+            $columns[strtolower($key)] = $value;
+        }
 
         try {
 
-            $data = $this->_db->tableGetRows($tableName, array_map(function ($p) {return strtolower($p);}, $propertyValues));
+            $data = $this->_db->tableGetRows($this->tablesPrefix.strtolower(StringUtils::getPathElement($class)), $columns);
 
         } catch (Throwable $e) {
 
@@ -1213,6 +1218,105 @@ class DataBaseObjectsManager extends BaseStrictClass{
     public function getByFilter() {
 
         // TODO - Obtain one or more Database objects given a complex filter
+    }
+
+
+    /**
+     * Erase one or more DatabaseObject instances from database. Method is transactional so if any of the objects can't be deleted, none will be.
+     *
+     * If $this->isTrashEnabled is true, the object instances will be moved to trash. Otherwise they will be permanently deleted
+     *
+     * @param array|DataBaseObject $objects A single database object instance or an array with instances to be deleted
+     *
+     * @throws UnexpectedValueException If any problem arises
+     *
+     * @return int The number of deleted objects from db (if delete was successful)
+     */
+    public function deleteByInstances($objects){
+
+        if(!is_array($objects)){
+
+            $objects = [$objects];
+        }
+
+        return $this->deleteByDbIds(array_map(function ($o) {return $o->getDbId();}, $objects));
+    }
+
+
+    /**
+     * Erase one or more DatabaseObject instances from database given their dbids. Method is transactional so if any of the objects
+     * can't be deleted, none will be.
+     *
+     * If $this->isTrashEnabled is true, the object instances will be moved to trash. Otherwise they will be permanently deleted
+     *
+     * @param mixed $class The class (which extends DataBaseObject) for the object types that we want to delete. Fo example: User::class
+     * @param array $dbIds A list of dbids for the objects to delete
+     *
+     * @throws UnexpectedValueException If any problem arises
+     *
+     * @return int The number of deleted objects from db (if delete was successful)
+     */
+    public function deleteByDbIds($class, array $dbIds){
+
+        $deletedObjects = 0;
+        $tableName = $this->tablesPrefix.strtolower(StringUtils::getPathElement($class));
+
+        $this->_db->transactionBegin();
+
+        foreach ($dbIds as $dbId) {
+
+            // TODO - Implement isTrashEnabled feature
+
+            try {
+
+                if(($deleteCount = $this->_db->tableDeleteRows($tableName, ['dbid' => $dbId])) !== 1){
+
+                    throw new UnexpectedValueException('object dbid not found: '.$dbId);
+                }
+
+            } catch (Throwable $e) {
+
+                $this->_db->transactionRollback();
+
+                throw new UnexpectedValueException('Error deleting objects: '.$e->getMessage());
+            }
+
+            $deletedObjects += $deleteCount;
+        }
+
+        $this->_db->transactionCommit();
+
+        return $deletedObjects;
+    }
+
+
+    /**
+     * Erase one or more DatabaseObject instances from database given the value of some user properties. Method is transactional
+     * so if any of the objects can't be deleted, none will be.
+     *
+     * If $this->isTrashEnabled is true, the object instances will be moved to trash. Otherwise they will be permanently deleted
+     *
+     * @param mixed $class The class (which extends DataBaseObject) for the object types that we want to delete. Fo example: User::class
+     * @param array $propertyValues Associative array where keys are the property names and values the property values that must be found on all
+     *        the objects that will be deleted by this Method
+     *
+     * @throws UnexpectedValueException If any problem arises
+     *
+     * @return int The number of deleted objects from db (if delete was successful)
+     */
+    public function deleteByPropertyValues($class, array $propertyValues){
+
+        $tableName = $this->tablesPrefix.strtolower(StringUtils::getPathElement($class));
+
+        $columns = [];
+
+        foreach ($propertyValues as $key => $value) {
+
+            $columns[strtolower($key)] = $value;
+        }
+
+        return $this->deleteByDbIds($class,
+            array_map(function ($p) { return $p['dbid']; }, $this->_db->tableGetRows($tableName, $columns)));
     }
 
 
