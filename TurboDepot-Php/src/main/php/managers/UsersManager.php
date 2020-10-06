@@ -385,7 +385,7 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Save the provided password for the specified user. It will be stored with a one way encryption method so
+     * Save (create or update) the provided password for the specified user. It will be stored with a one way encryption method so
      * after this method is called the password won't be able to be recovered any more from db.
      *
      * @param string $userName The name for an existing user to which we want to set the password value
