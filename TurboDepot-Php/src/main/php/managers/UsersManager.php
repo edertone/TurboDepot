@@ -13,6 +13,7 @@
 namespace org\turbodepot\src\main\php\managers;
 
 use Throwable;
+use stdClass;
 use DateTime;
 use DateTimeZone;
 use UnexpectedValueException;
@@ -20,6 +21,7 @@ use org\turbocommons\src\main\php\model\BaseStrictClass;
 use org\turbocommons\src\main\php\utils\ConversionUtils;
 use org\turbodepot\src\main\php\model\UserObject;
 use org\turbocommons\src\main\php\utils\StringUtils;
+use org\turbocommons\src\main\php\utils\ArrayUtils;
 
 
 /**
@@ -67,10 +69,25 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
+     * Stores the sql data type that can be used anywhere on this class to reference a big unsigned integer SQL type on object tables.
+     * It is stored globally to improve performance instead of calculating it every time.
+     * @var string
+     */
+    private $_unsignedBigIntSqlTypeDef = '';
+
+
+    /**
      * The name of the domains table
      * @var string
      */
     private $_tableDomain;
+
+
+    /**
+     * The name of the user object table
+     * @var string
+     */
+    private $_tableUserObject;
 
 
     /**
@@ -118,16 +135,20 @@ class UsersManager extends BaseStrictClass{
 
         $this->_databaseObjectsManager = $databaseObjectsManager;
         $this->_db = $this->_databaseObjectsManager->getDataBaseManager();
-        $this->_tableDomain = $this->_databaseObjectsManager->tablesPrefix.'domain';
-        $this->_tableRole = $this->_databaseObjectsManager->tablesPrefix.'role';
-        $this->_tableUserPsw = $this->_databaseObjectsManager->tablesPrefix.'userobject_password';
-        $this->_tableUserMail = $this->_databaseObjectsManager->tablesPrefix.'userobject_mail';
-        $this->_tableToken = $this->_databaseObjectsManager->tablesPrefix.'token';
 
         if(!$this->_db->isConnected()){
 
             throw new UnexpectedValueException('No active connection to database available for the provided DataBaseObjectsManager');
         }
+
+        $this->_unsignedBigIntSqlTypeDef = $this->_db->getSQLTypeFromValue(999999999999999, false, true);
+
+        $this->_tableDomain = $this->_databaseObjectsManager->tablesPrefix.'domain';
+        $this->_tableUserObject = $this->_databaseObjectsManager->tablesPrefix.'userobject';
+        $this->_tableRole = $this->_databaseObjectsManager->tablesPrefix.'role';
+        $this->_tableUserPsw = $this->_databaseObjectsManager->tablesPrefix.'userobject_password';
+        $this->_tableUserMail = $this->_databaseObjectsManager->tablesPrefix.'userobject_mails';
+        $this->_tableToken = $this->_databaseObjectsManager->tablesPrefix.'token';
 
         try {
 
@@ -380,14 +401,16 @@ class UsersManager extends BaseStrictClass{
 
         try {
 
-            $this->_db->tableAddOrUpdateRow($this->_tableUserPsw, ['userdbid' => $userDbId],
-                ['userdbid' => $userDbId, 'password' => password_hash($password, PASSWORD_BCRYPT)]);
+            $this->_db->tableAddOrUpdateRow($this->_tableUserPsw, ['dbid' => $userDbId],
+                ['dbid' => $userDbId, 'password' => password_hash($password, PASSWORD_BCRYPT)]);
 
         } catch (Throwable $e) {
 
             if($this->_db->tableSyncFromDefinition($this->_tableUserPsw, [
-                'columns' => ['userdbid bigint NOT NULL', 'password varchar(500) NOT NULL'],
-                'primaryKey' => ['userdbid']])){
+                'columns' => ['dbid '.$this->_unsignedBigIntSqlTypeDef, 'password varchar(500) NOT NULL'],
+                'primaryKey' => ['dbid'],
+                'foreignKey' => [[$this->_tableUserPsw.'_'.$this->_tableUserObject.'_fk', ['dbid'], $this->_tableUserObject, ['dbid']]]
+            ])){
 
                 return $this->setUserPassword($userName, $password);
             }
@@ -427,10 +450,10 @@ class UsersManager extends BaseStrictClass{
      * status of an email account with the method setUserMailVerified(), normally after sending a verification email to the user with
      * the sendUserMailVerification() method.
      *
-     * @param string $userName The username for the user to which whe want to add the email account
+     * @param string $userName The username on the currently active domain to which whe want to add the email account
      * @param string $mail The email account that we want to add or update
      * @param string $comments Comments that will be stored with the email account
-     * @param string $data Any extra data which we may need to store related to the email account (normally we use a json encoded string).
+     * @param string $data Any extra data which we may need to store related to the email account (a json encoded string for example).
      *
      * @throws UnexpectedValueException
      *
@@ -450,15 +473,16 @@ class UsersManager extends BaseStrictClass{
 
         try {
 
-            $this->_db->tableAddOrUpdateRow($this->_tableUserMail, ['userdbid' => $userDbId, 'mail' => $mail],
-                ['userdbid' => $userDbId, 'mail' => $mail, 'isverified' => 0, 'comments' => $comments, 'data' => $data]);
+            $this->_db->tableAddOrUpdateRow($this->_tableUserMail, ['dbid' => $userDbId, 'mail' => $mail],
+                ['dbid' => $userDbId, 'mail' => $mail, 'isverified' => 0, 'comments' => $comments, 'data' => $data]);
 
         } catch (Throwable $e) {
 
             if($this->_db->tableSyncFromDefinition($this->_tableUserMail, [
-                'columns' => ['userdbid bigint NOT NULL', 'mail varchar(250) NOT NULL', 'isverified tinyint(1) NOT NULL',
+                'columns' => ['dbid '.$this->_unsignedBigIntSqlTypeDef, 'mail varchar(250) NOT NULL', 'isverified tinyint(1) NOT NULL',
                               'comments varchar(5000) NOT NULL', 'data varchar(25000) NOT NULL'],
-                'primaryKey' => ['userdbid', 'mail']])){
+                'primaryKey' => ['dbid', 'mail'],
+                'foreignKey' => [[$this->_tableUserMail.'_'.$this->_tableUserObject.'_fk', ['dbid'], $this->_tableUserObject, ['dbid']]]])){
 
                 return $this->saveUserMail($userName, $mail, $comments, $data);
             }
@@ -518,7 +542,7 @@ class UsersManager extends BaseStrictClass{
 
         if($this->isUserMailVerified($userName, $mail) !== $isVerified){
 
-            $this->_db->tableUpdateRow($this->_tableUserMail, ['userdbid' => $this->_getUserDBId($userName), 'mail' => $mail],
+            $this->_db->tableUpdateRow($this->_tableUserMail, ['dbid' => $this->_getUserDBId($userName), 'mail' => $mail],
                 ['isverified' => $isVerified ? 1 : 0]);
         }
 
@@ -547,7 +571,7 @@ class UsersManager extends BaseStrictClass{
 
         $result = [];
 
-        foreach ($this->_db->tableGetRows($this->_tableUserMail, ['userdbid' => $this->_getUserDBId($userName)]) as $row) {
+        foreach ($this->_db->tableGetRows($this->_tableUserMail, ['dbid' => $this->_getUserDBId($userName)]) as $row) {
 
             if($filter === 'ALL' ||
                ($filter === 'VERIFIED' && $row['isverified'] === '1') ||
@@ -558,6 +582,27 @@ class UsersManager extends BaseStrictClass{
         }
 
         return $result;
+    }
+
+
+    /**
+     * TODO
+     * @param string $token
+     * @throws UnexpectedValueException
+     * @return \org\turbodepot\src\main\php\model\DataBaseObject
+     */
+    public function getUserFromToken(string $token){
+
+        StringUtils::forceNonEmptyString($token, 'token');
+
+        $tokenData = $this->_db->tableGetRows($this->_tableToken, ['token' => $token]);
+
+        if(count($tokenData) <= 0){
+
+            throw new UnexpectedValueException('Invalid token: '.$token);
+        }
+
+        return $this->_databaseObjectsManager->getByDbId(UserObject::class, $tokenData[0]['dbid']);
     }
 
 
@@ -578,7 +623,7 @@ class UsersManager extends BaseStrictClass{
 
         if(count($mails) <= 0){
 
-            return $this->_db->tableDeleteRows($this->_tableUserMail, ['userdbid' => $userDBId]);
+            return $this->_db->tableDeleteRows($this->_tableUserMail, ['dbid' => $userDBId]);
         }
 
         foreach ($mails as $mail) {
@@ -588,7 +633,7 @@ class UsersManager extends BaseStrictClass{
                 throw new UnexpectedValueException('Invalid mail: '.$mail);
             }
 
-            $result += $this->_db->tableDeleteRows($this->_tableUserMail, ['userdbid' => $userDBId, 'mail' => $mail]);
+            $result += $this->_db->tableDeleteRows($this->_tableUserMail, ['dbid' => $userDBId, 'mail' => $mail]);
         }
 
         return $result;
@@ -596,11 +641,63 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Delete a user from database on the currently active domain
+     *
+     * @param string $userName The userName for whom the related instance will be deleted from database
+     *
+     * @throws UnexpectedValueException If the user cannot be deleted
+     *
+     * @return boolean true if the delete was successful
      */
-    public function deleteUser(string $todo){
+    public function deleteUser($userName){
 
-        // TODO
+        StringUtils::forceNonEmptyString($userName, 'userName');
+
+        if($this->_databaseObjectsManager->deleteByPropertyValues(UserObject::class, ['userName' => $userName]) === 0){
+
+            throw new UnexpectedValueException('Trying to delete non existant user: '.$userName);
+        }
+
+        return true;
+    }
+
+
+    /**
+     * Delete a list of users from database on the currently active domain.
+     * Method is transactional so if any of the objects can't be deleted, none will be.
+     *
+     * @param array $userNames An array of usernames for whom the related instances will be deleted from database
+     *
+     * @throws UnexpectedValueException If any of the users cannot be deleted
+     *
+     * @return int The number of deleted users
+     */
+    public function deleteUsers($userNames){
+
+        ArrayUtils::forceNonEmptyArray($userNames, 'userNames');
+
+        $deletedObjects = 0;
+        $this->_db->transactionBegin();
+
+        foreach ($userNames as $userName) {
+
+            try {
+
+                $this->deleteUser($userName);
+
+                $deletedObjects ++;
+
+            } catch (Throwable $e) {
+
+                $this->_db->transactionRollback();
+
+                throw new UnexpectedValueException('Error deleting objects: '.$e->getMessage());
+            }
+        }
+
+        $this->_db->transactionCommit();
+
+        return $deletedObjects;
     }
 
 
@@ -686,9 +783,10 @@ class UsersManager extends BaseStrictClass{
      * @param string $userName The username for the user we want to login
      * @param string $password The password for the user we want to login
      *
-     * @return UserObject[]|string[] An empty array if login failed or an array with two elements if
-     *         the login succeeded: First element will be a string with the user token and second element will be the User instance for the
-     *         requested user.
+     * @return stdClass An instance with the following properties if login succeeded:<br>
+     *         ->token Will contain a string with the user token<br>
+     *         ->user Will contain the UserObject instance for the logged user<br>
+     *         ->operations Will contain an array with the names for all the operations that are allowed to the logged user
      */
     public function login(string $userName, string $password){
 
@@ -700,7 +798,7 @@ class UsersManager extends BaseStrictClass{
             try {
 
                 $dbPassword = $this->_db->tableGetRows($this->_databaseObjectsManager
-                    ->tablesPrefix.'userobject_password', ['userdbid' => $user[0]->getDbId()]);
+                    ->tablesPrefix.'userobject_password', ['dbid' => $user[0]->getDbId()]);
 
             } catch (Throwable $e) {
 
@@ -714,11 +812,16 @@ class UsersManager extends BaseStrictClass{
 
             if(count($dbPassword) === 1 && password_verify($password, $dbPassword[0]['password'])){
 
-                return [$this->createToken($user[0]), $user[0]];
+                $result = new stdClass();
+                $result->token = $this->createToken($user[0]);
+                $result->user = $user[0];
+                $result->operations = []; // TODO
+
+                return $result;
             }
         }
 
-        return [];
+        throw new UnexpectedValueException('Authentication failed');
     }
 
 
@@ -739,7 +842,7 @@ class UsersManager extends BaseStrictClass{
         // If a token for the given user already exists, we will simply recycle it and return it
         try {
 
-            $existingTokens = $this->_db->tableGetRows($this->_tableToken, ['userdbid' => $user->getDbId()]);
+            $existingTokens = $this->_db->tableGetRows($this->_tableToken, ['dbid' => $user->getDbId()]);
 
             if(count($existingTokens) === 1 && $this->isTokenValid($existingTokens[0]['token'])){
 
@@ -753,12 +856,14 @@ class UsersManager extends BaseStrictClass{
 
         try {
 
-            $this->_db->tableAddRows($this->_tableToken, [['token' => $token, 'userdbid' => $user->getDbId(), 'expires' => $expiryDate]]);
+            $this->_db->tableAddRows($this->_tableToken, [['token' => $token, 'dbid' => $user->getDbId(), 'expires' => $expiryDate]]);
 
         } catch (Throwable $e) {
 
             if($this->_db->tableSyncFromDefinition($this->_tableToken, [
-                'columns' => ['token varchar(150) NOT NULL', 'userdbid bigint NOT NULL', 'expires '.$this->_db->getSQLDateTimeType(false)]])){
+                'columns' => ['token varchar(150) NOT NULL', 'dbid '.$this->_unsignedBigIntSqlTypeDef, 'expires '.$this->_db->getSQLDateTimeType(false)],
+                'primaryKey' => ['dbid'],
+                'foreignKey' => [[$this->_tableToken.'_'.$this->_tableUserObject.'_fk', ['dbid'], $this->_tableUserObject, ['dbid']]]])){
 
                 return $this->createToken($user);
             }
@@ -778,7 +883,7 @@ class UsersManager extends BaseStrictClass{
      *
      * @param string $encodedCredentials The user and password credentials as they are encoded by UsersManager::encodeUserAndPassword() method
      *
-     * @return UserObject[]|string[] See UsersManager::login()
+     * @return stdClass See UsersManager::login()
      */
     public function loginFromEncodedCredentials(string $encodedCredentials){
 

@@ -1,0 +1,2 @@
+- It should be interesting to have the possibility to inherit user roles, so a role will be able to acquire the permisions from another
+  one and therefore it won't be necessary to define them several times. This feature must be investigated cause may be difficult to implement  

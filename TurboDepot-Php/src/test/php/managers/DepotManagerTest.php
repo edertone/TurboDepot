@@ -468,7 +468,7 @@ class DepotManagerTest extends TestCase {
         $this->assertFalse($this->sut->getUsersManager()->isTokenValid('invalidtoken'));
         $this->assertFalse($db->tableExists('usr_token'));
 
-        $this->assertSame([], $this->sut->getUsersManager()->login('user1', 'psw1'));
+        AssertUtils::throwsException(function(){ $this->sut->getUsersManager()->login('user1', 'psw1'); }, '/Authentication failed/');
 
         $user = new UserObject();
         $user->userName = 'user1';
@@ -480,7 +480,8 @@ class DepotManagerTest extends TestCase {
         AssertUtils::throwsException(function(){ $this->sut->getUsersManager()->login('user1', 'psw1'); }, '/Specified user does not have a stored password: user1/');
 
         $this->sut->getUsersManager()->setUserPassword('user1', 'psw1');
-        $this->assertSame(2, count($this->sut->getUsersManager()->login('user1', 'psw1')));
+        $this->assertSame('user1', $this->sut->getUsersManager()->login('user1', 'psw1')->user->userName);
+        $this->assertTrue(strlen($this->sut->getUsersManager()->login('user1', 'psw1')->token) > 100);
 
         $this->assertTrue($db->tableExists('usr_domain'));
         $this->assertTrue($db->tableExists('usr_token'));
