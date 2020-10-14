@@ -59,6 +59,13 @@ class DepotManager extends BaseStrictClass{
 
 
     /**
+     * A markdown manager instance that is used by this class
+     * @var MarkdownManager
+     */
+    private $_markDownManager = null;
+
+
+    /**
      * A files manager instance that is used by this class
      * @var LocalizedFilesManager
      */
@@ -205,6 +212,22 @@ class DepotManager extends BaseStrictClass{
         }
 
         return $this->_tmpFilesManager;
+    }
+
+
+    /**
+     * Obtain the MarkDown manager instance that is available through this depot manager.
+     *
+     * @return MarkDownManager
+     */
+    public function getMarkDownManager(){
+
+        if($this->_markDownManager === null){
+
+            $this->_markDownManager = new MarkDownManager();
+        }
+
+        return $this->_markDownManager;
     }
 
 

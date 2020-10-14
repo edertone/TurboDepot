@@ -39,11 +39,11 @@ class MarkDownBlogManager extends BaseStrictClass{
 
 
     /**
-     * A ParseDown class instance. It is a library to convert Markdown data to html
+     * A markdownManager instance used to operate with markdown data
      *
-     * @var \Parsedown
+     * @var MarkDownManager
      */
-    private $_parseDown;
+    private $_markDownManager;
 
 
     /**
@@ -59,13 +59,8 @@ class MarkDownBlogManager extends BaseStrictClass{
     public function __construct(string $rootPath){
 
        $this->_rootPath = StringUtils::formatPath($rootPath);
-
        $this->_fm = new FilesManager();
-
-       require_once __DIR__.DIRECTORY_SEPARATOR.'..'.DIRECTORY_SEPARATOR.'..'.DIRECTORY_SEPARATOR.'libs'
-           .DIRECTORY_SEPARATOR.'parsedown'.DIRECTORY_SEPARATOR.'Parsedown.php';
-
-       $this->_parseDown = new \Parsedown();
+       $this->_markDownManager = new MarkDownManager();
     }
 
 
@@ -250,7 +245,7 @@ class MarkDownBlogManager extends BaseStrictClass{
             return null;
         }
 
-        $post->textAsHtml = $this->_parseDown->text($post->text);
+        $post->textAsHtml = $this->_markDownManager->toHtml($post->text);
 
         $lines = StringUtils::getLines($post->text);
 
