@@ -411,9 +411,7 @@ describe('TerminalManagerTest', function() {
         
         // Test wrong values
         // Test exceptions
-        expect(() => {
-            this.sut.createTempDirectory('invalid?chars*');
-        }).toThrowError(Error, /no such file or directory/);        
+        expect(() => { this.sut.createTempDirectory('invalid?chars*'); }).toThrowError(Error, /invalid argument/);        
     });
     
     
@@ -454,9 +452,7 @@ describe('TerminalManagerTest', function() {
         
         // Test wrong values
         // Test exceptions
-        expect(() => {
-            this.sut.createTempDirectory('invalid?chars*');
-        }).toThrowError(Error, /no such file or directory/); 
+        expect(() => { this.sut.createTempDirectory('invalid?chars*'); }).toThrowError(Error, /invalid argument/); 
         
         expect(path.resolve(process.cwd())).toBe(this.initialDir);
     });

@@ -1958,26 +1958,13 @@ class FilesManagerTest extends TestCase {
     public function testSaveFile(){
 
         // Test empty values
-        try {
-            $this->sut->saveFile(null, null, null);
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Path must be a string/', $e->getMessage());
-        }
-
-        try {
-            $this->sut->saveFile('', null, null);
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Filename cannot be empty/', $e->getMessage());
-        }
-
-        try {
-            $this->sut->saveFile('', '', null);
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Filename cannot be empty/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->saveFile(null, null); }, '/Path must be a string/');
+        AssertUtils::throwsException(function(){ $this->sut->saveFile(null, null, null); }, '/must be of the type bool, null given/');
+        AssertUtils::throwsException(function(){ $this->sut->saveFile('', null); }, '/Filename cannot be empty/');
+        AssertUtils::throwsException(function(){ $this->sut->saveFile('', null, null); }, '/must be of the type bool, null given/');
+        AssertUtils::throwsException(function(){ $this->sut->saveFile('', ''); }, '/Filename cannot be empty/');
+        AssertUtils::throwsException(function(){ $this->sut->saveFile('', '', null); }, '/must be of the type bool, null given/');
+        AssertUtils::throwsException(function(){ $this->sut->saveFile('somepath', '', false, null); }, '/must be of the type bool, null given/');
 
         // Test ok values
         $this->assertFalse($this->sut->isFile($this->tempFolder.DIRECTORY_SEPARATOR.'empty.txt'));
@@ -2003,31 +1990,24 @@ class FilesManagerTest extends TestCase {
         $this->assertTrue($sut2->saveFile('file3.txt', 'file3'));
         $this->assertSame('file3', $sut2->readFile('file3.txt'));
 
-        // Test wrong values
-        try {
-            $this->sut->saveFile('nonexistantpath/nonexistantfile');
-            $this->exceptionMessage = 'nonexistantpath/nonexistantfile did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/No such file or directory/', $e->getMessage());
-        }
+        $this->assertFalse($this->sut->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'dir1'));
+        $this->assertFalse($this->sut->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'dir1'.DIRECTORY_SEPARATOR.'dir2'));
+        $this->assertFalse($this->sut->isFile($this->tempFolder.DIRECTORY_SEPARATOR.'dir1'.DIRECTORY_SEPARATOR.'dir2'.DIRECTORY_SEPARATOR.'file.txt'));
+        $this->assertTrue($this->sut->saveFile($this->tempFolder.DIRECTORY_SEPARATOR.'dir1'.DIRECTORY_SEPARATOR.'dir2'.DIRECTORY_SEPARATOR.'file.txt', 'test', false, true));
+        $this->assertSame('test', $this->sut->readFile($this->tempFolder.DIRECTORY_SEPARATOR.'dir1'.DIRECTORY_SEPARATOR.'dir2'.DIRECTORY_SEPARATOR.'file.txt'));
 
-        try {
-            $this->sut->saveFile([1,2,3,4,5]);
-            $this->exceptionMessage = '[1,2,3,4,5] did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Path must be a string/', $e->getMessage());
-        }
+        // Test wrong values
+        AssertUtils::throwsException(function(){ $this->sut->saveFile('nonexistantpath/nonexistantfile'); }, '/No such file or directory/');
+        AssertUtils::throwsException(function(){ $this->sut->saveFile([1,2,3,4,5]); }, '/Path must be a string/');
+
+        $this->assertTrue($this->sut->saveFile($this->tempFolder.DIRECTORY_SEPARATOR.'dir1'.DIRECTORY_SEPARATOR.'file'));
+        AssertUtils::throwsException(function(){ $this->sut->saveFile($this->tempFolder.DIRECTORY_SEPARATOR.'dir1'.DIRECTORY_SEPARATOR.'file'.DIRECTORY_SEPARATOR.'file.txt', 'test', false, true); }, '/specified path is an existing file/');
 
         // Test exceptions
         $this->assertFalse($this->sut->isDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'dir'));
         $this->assertTrue($this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'dir'));
 
-        try {
-            $this->sut->saveFile($this->tempFolder.DIRECTORY_SEPARATOR.'dir');
-            $this->exceptionMessage = 'dir did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/failed to open stream/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->saveFile($this->tempFolder.DIRECTORY_SEPARATOR.'dir'); }, '/failed to open stream/');
     }
 
 

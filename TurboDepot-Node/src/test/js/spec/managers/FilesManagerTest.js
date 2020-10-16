@@ -438,19 +438,11 @@ describe('FilesManager', function() {
     it('should have a correctly implemented saveFile method', function() {
 
         // Test empty values
-        expect(() => {
-            this.sut.saveFile(null, null, null);
-        }).toThrowError(Error, /Path must be a string/);
+        // TODO - the tests from the php version that pass null values to boolean parameters are skipped here
+        expect(() => { this.sut.saveFile(null, null, null); }).toThrowError(Error, /Path must be a string/);
+        expect(() => { this.sut.saveFile('', null, null); }).toThrowError(Error, /Could not write to file/);
+        expect(() => { this.sut.saveFile('', '', null); }).toThrowError(Error, /Could not write to file/);
         
-        expect(() => {
-            this.sut.saveFile('', null, null);
-        }).toThrowError(Error, /Could not write to file/);
-        
-        expect(() => {
-            this.sut.saveFile('', '', null);
-        }).toThrowError(Error, /Could not write to file/);
-        
-
         // Test ok values
         expect(this.sut.isFile(this.tempFolder + '/empty.txt')).toBe(false);
         expect(this.sut.saveFile(this.tempFolder + '/empty.txt')).toBe(true);
@@ -475,22 +467,24 @@ describe('FilesManager', function() {
         expect(sut2.saveFile('file3.txt', 'file3')).toBe(true);
         expect(sut2.readFile('file3.txt')).toBe('file3');
 
+        expect(this.sut.isDirectory(this.tempFolder + '/dir1')).toBe(false);
+        expect(this.sut.isDirectory(this.tempFolder + '/dir1/dir2')).toBe(false);
+        expect(this.sut.isFile(this.tempFolder + '/dir1/dir2/file.txt')).toBe(false);
+        expect(this.sut.saveFile(this.tempFolder + '/dir1/dir2/file.txt', 'test', false, true)).toBe(true);
+        expect('test', this.sut.readFile(this.tempFolder + '/dir1/dir2/file.txt')).toBe('test');
+
         // Test wrong values
-        expect(() => {
-            this.sut.saveFile('nonexistantpath/nonexistantfile');
-        }).toThrowError(Error, /Could not write to file/);
+        expect(() => { this.sut.saveFile('nonexistantpath/nonexistantfile'); }).toThrowError(Error, /Could not write to file/);
+        expect(() => { this.sut.saveFile([1,2,3,4,5]); }).toThrowError(Error, /Path must be a string/);
         
-        expect(() => {
-            this.sut.saveFile([1,2,3,4,5]);
-        }).toThrowError(Error, /Path must be a string/);
-        
+        expect(this.sut.saveFile(this.tempFolder + '/dir1/file')).toBe(true);
+        expect(() => { this.sut.saveFile(this.tempFolder + '/dir1/file/file.txt', 'test', false, true); }).toThrowError(Error, /specified path is an existing file/);
+
         // Test exceptions
         expect(this.sut.isDirectory(this.tempFolder + '/dir')).toBe(false);
         expect(this.sut.createDirectory(this.tempFolder + '/dir')).toBe(true);
 
-        expect(() => {
-            this.sut.saveFile(this.tempFolder + '/dir');
-        }).toThrowError(Error, /Could not write to file/);
+        expect(() => { this.sut.saveFile(this.tempFolder + '/dir'); }).toThrowError(Error, /Could not write to file/);
     });
     
     

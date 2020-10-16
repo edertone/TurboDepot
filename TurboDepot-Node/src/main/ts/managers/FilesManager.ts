@@ -1020,13 +1020,19 @@ export class FilesManager{
      * @param data Any information to save on the file.
      * @param append Set it to true to append the data to the end of the file instead of overwritting it. File will be created if it does
      *        not exist, even with append set to true.
+     * @param createDirectories If set to true, all necessary non existant directories on the provided file path will be also created.
      *
      * @return True on success or false on failure.
      */
-    saveFile(pathToFile: string, data = '', append = false){
+    saveFile(pathToFile: string, data = '', append = false, createDirectories = false){
 
         pathToFile = this._composePath(pathToFile);
 
+        if(createDirectories){
+
+            this.createDirectory(StringUtils.getPath(pathToFile), true);
+        }
+        
         // TODO : we should lock the file before writting to it.
         // This feature is implemented on the PHP version of this library, but as it is not
         // yet available on Nodejs, we cannot implement it here

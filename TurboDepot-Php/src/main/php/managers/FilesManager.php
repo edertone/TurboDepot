@@ -981,14 +981,20 @@ class FilesManager extends BaseStrictClass{
      *
      * @param string $pathToFile Absolute or relative path including full filename where data will be saved. File will be created or overwritten without warning.
      * @param string $data Any information to save on the file.
-     * @param string $append Set it to true to append the data to the end of the file instead of overwritting it. File will be created if it does
+     * @param boolean $append Set it to true to append the data to the end of the file instead of overwritting it. File will be created if it does
      *        not exist, even with append set to true.
+     * @param boolean $createDirectories If set to true, all necessary non existant directories on the provided file path will be also created.
      *
      * @return True on success or false on failure.
      */
-    public function saveFile($pathToFile, $data = '', $append = false){
+    public function saveFile($pathToFile, $data = '', bool $append = false, bool $createDirectories = false){
 
         $pathToFile = $this->_composePath($pathToFile);
+
+        if($createDirectories){
+
+            $this->createDirectory(StringUtils::getPath($pathToFile), true);
+        }
 
         $filePointer = fopen($pathToFile, $append ? 'a' : 'w');
 

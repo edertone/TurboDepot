@@ -279,7 +279,7 @@ class LocalizedFilesManager extends FilesManager{
     /**
      * TODO - Implement
      */
-    public function saveFile($pathToFile, $data = '', $append = false){
+    public function saveFile($pathToFile, $data = '', bool $append = false, bool $createDirectories = false){
     }
 
 
