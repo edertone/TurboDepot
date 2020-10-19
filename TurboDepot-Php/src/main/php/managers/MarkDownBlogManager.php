@@ -12,7 +12,8 @@
 
 namespace org\turbodepot\src\main\php\managers;
 
-use Exception;
+use UnexpectedValueException;
+use Throwable;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
 use org\turbocommons\src\main\php\utils\StringUtils;
 use org\turbodepot\src\main\php\model\MarkDownBlogPostObject;
@@ -114,9 +115,9 @@ class MarkDownBlogManager extends BaseStrictClass{
                     $post = $this->createPostInstanceFromPath($postRoot.DIRECTORY_SEPARATOR.$similarDirName);
                 }
 
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
 
-                $post = null;
+                throw new UnexpectedValueException('Could not find a blog post with the specified criteria');
             }
         }
 
@@ -133,6 +134,11 @@ class MarkDownBlogManager extends BaseStrictClass{
      * @return array A list with the $count number of latest blog posts instances, sorted by newest first
      */
     public function getLatestPosts(string $language, int $count){
+
+        if($count <= 0){
+
+            throw new UnexpectedValueException('count must be a positive integer');
+        }
 
         $years = $this->_fm->getDirectoryList($this->_rootPath, 'nameDesc');
 
@@ -240,7 +246,7 @@ class MarkDownBlogManager extends BaseStrictClass{
 
             $post->text = $this->_fm->readFile($this->_rootPath.DIRECTORY_SEPARATOR.$postPath.DIRECTORY_SEPARATOR.'text.md');
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
 
             return null;
         }

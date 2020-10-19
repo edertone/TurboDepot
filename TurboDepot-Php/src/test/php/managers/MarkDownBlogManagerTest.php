@@ -14,6 +14,7 @@ namespace org\turbosite\src\test\php\managers;
 use PHPUnit\Framework\TestCase;
 use org\turbodepot\src\main\php\managers\MarkDownBlogManager;
 use org\turbodepot\src\main\php\managers\FilesManager;
+use org\turbotesting\src\main\php\utils\AssertUtils;
 
 
 /**
@@ -82,6 +83,8 @@ class MarkDownBlogManagerTest extends TestCase {
     public function testConstruct(){
 
         $this->assertTrue($this->sut instanceof MarkDownBlogManager);
+
+        AssertUtils::throwsException(function() { $this->sut->unexistantProp = 1; }, '/property unexistantProp does not exist/');
     }
 
 
@@ -99,11 +102,12 @@ class MarkDownBlogManagerTest extends TestCase {
         // TODO
 
         // Test wrong values
+        AssertUtils::throwsException(function() { $this->sut->getPost('1018-10-25', 'en', 'text'); }, '/Could not find a blog post with the specified criteria/');
+        AssertUtils::throwsException(function() { $this->sut->getPost('1018-10-25', 'en', 'text', 0); }, '/Could not find a blog post with the specified criteria/');
         // TODO
 
         // Test exceptions
         // TODO
-        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 
@@ -134,11 +138,17 @@ class MarkDownBlogManagerTest extends TestCase {
     public function testGetLatestPosts(){
 
         // Test empty values
+        AssertUtils::throwsException(function() { $this->sut->getLatestPosts('en', 0); }, '/count must be a positive integer/');
         // TODO
 
         // Test ok values
-        $latestPosts = $this->sut->getLatestPosts('en', 10);
+        $latestPosts = $this->sut->getLatestPosts('en', 1);
+        $this->assertSame(1, count($latestPosts));
 
+        $this->assertSame('Pad a string to a certain length with another string on Javascript, Typescript and Php',
+            $latestPosts[0]->title);
+
+        $latestPosts = $this->sut->getLatestPosts('en', 10);
         $this->assertSame(5, count($latestPosts));
 
         $this->assertSame('Pad a string to a certain length with another string on Javascript, Typescript and Php',
