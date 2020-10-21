@@ -484,12 +484,20 @@ describe('TerminalManagerTest', function() {
         expect(execResult.failed).toBe(false);
         expect(execResult.output).toMatch(/[0-9][0-9]\.[0-9][0-9]/);
 
+        execResult = this.sut.exec('-h');
+        expect(execResult.failed).toBe(false);
+        expect(execResult.output).toContain('NODE_PATH');
+
         // Test wrong values
         // Test exceptions
         this.sut.baseCommand = '';
         execResult = this.sut.exec('?????');
         expect(execResult.failed).toBe(true);
-        expect(execResult.output).toContain('?????'); 
+        expect(execResult.output).toContain('?????');
+         
+        execResult = this.sut.exec('node -r 345345');
+        expect(execResult.failed).toBe(true);
+        expect(execResult.output).toContain("Cannot find module '345345'"); 
     });
     
 });

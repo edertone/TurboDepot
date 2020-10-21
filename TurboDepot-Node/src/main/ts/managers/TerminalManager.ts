@@ -237,17 +237,24 @@ export class TerminalManager {
         // Aux method that tries to capture the command error
         let captureError = (e:any) => {
             
+            let errorMessage = '';
+            
             if(e.stderr && !StringUtils.isEmpty(e.stderr.toString())){
                 
-                return e.stderr.toString();
+                errorMessage = e.stderr.toString();
             }
             
             if(e.stdout && !StringUtils.isEmpty(e.stdout.toString())){
                 
-                return e.stdout.toString();
+                errorMessage += '\n\n' + e.stdout.toString();
+            }
+            
+            if(StringUtils.isEmpty(errorMessage)){
+                
+                errorMessage = e.toString();
             }
                 
-            return 'Unknown error executing ' + finalCommand + '\n' + e.toString();
+            return errorMessage;
         };
         
         if(liveOutput){
