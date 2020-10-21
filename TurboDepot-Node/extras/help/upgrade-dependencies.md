@@ -10,5 +10,7 @@ This project uses libraries and dependencies from a variety of sources. To make 
     Update the package.json versions based on the command result, by running:
     
       npm install libraryname1@latest libraryname2@latest libraryname3@latest
-        
+
+      npm install --save-dev libraryname1@latest libraryname2@latest libraryname3@latest (For the dev dependencies)
+      
 - Run the project tests as explained on help and make sure everything works as expected

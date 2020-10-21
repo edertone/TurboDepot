@@ -1,6 +1,6 @@
 {
   "name": "turbodepot-node",
-  "version": "6.3.0",
+  "version": "6.4.0",
   "description": "General purpose multi storage library (ORM, Logs, Users, Files, Objects)",
   "scripts": {
     "test": "node node_modules/jasmine/bin/jasmine --config=src/test/js/jasmine.json",
@@ -11,12 +11,11 @@
     "url": "https://github.com/edertone/TurboDepot"
   },
   "dependencies": {
-    "turbocommons-ts": "^3.0.1"
+    "turbocommons-ts": "^3.7.0"
   },
   "devDependencies": {
-    "jasmine": "^3.5.0",
+    "jasmine": "^3.6.2",
     "selenium-webdriver": "^4.0.0-alpha.4",
-    "turbodepot-node": "^6.0.0",
     "xhr2": "^0.2.0"
   },
   "keywords": [
