@@ -783,6 +783,8 @@ class UsersManager extends BaseStrictClass{
      * @param string $userName The username for the user we want to login
      * @param string $password The password for the user we want to login
      *
+     * @throws UnexpectedValueException If login failed
+     *
      * @return stdClass An instance with the following properties if login succeeded:<br>
      *         ->token Will contain a string with the user token<br>
      *         ->user Will contain the UserObject instance for the logged user<br>
