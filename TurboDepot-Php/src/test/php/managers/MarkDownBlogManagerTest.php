@@ -14,6 +14,7 @@ namespace org\turbosite\src\test\php\managers;
 use PHPUnit\Framework\TestCase;
 use org\turbodepot\src\main\php\managers\MarkDownBlogManager;
 use org\turbodepot\src\main\php\managers\FilesManager;
+use org\turbodepot\src\main\php\model\MarkDownBlogPostObject;
 use org\turbotesting\src\main\php\utils\AssertUtils;
 
 
@@ -85,6 +86,8 @@ class MarkDownBlogManagerTest extends TestCase {
         $this->assertTrue($this->sut instanceof MarkDownBlogManager);
 
         AssertUtils::throwsException(function() { $this->sut->unexistantProp = 1; }, '/property unexistantProp does not exist/');
+
+        AssertUtils::throwsException(function() { new MarkDownBlogManager($this->tempFolder.'/nonexistant'); }, '/rootPath is not a valid directory:.*nonexistant/');
     }
 
 
@@ -96,14 +99,25 @@ class MarkDownBlogManagerTest extends TestCase {
     public function testGetPost(){
 
         // Test empty values
-        // TODO
+        $emptyTempFolder = $this->filesManager->createTempDirectory('TurboSitePhp-MarkDownBlogManagerTest-getPost');
+        $sut2 = new MarkDownBlogManager($emptyTempFolder);
+        AssertUtils::throwsException(function() use ($sut2) { $sut2->getPost('', '', ''); }, '/Invalid date/');
+        AssertUtils::throwsException(function() use ($sut2) { $sut2->getPost('2018-10-25', '', ''); }, '/Could not find a blog post with the specified criteria/');
+        AssertUtils::throwsException(function() use ($sut2) { $sut2->getPost('2018-10-25', 'en', 'conver'); }, '/Could not find a blog post with the specified criteria/');
+        AssertUtils::throwsException(function() use ($sut2) { $sut2->getPost('2018-10-25', 'en', 'convert-string-to-camelcase-javascript-typescript-php'); }, '/Could not find a blog post with the specified criteria/');
+         // TODO
 
         // Test ok values
+        $this->assertTrue($this->sut->getPost('2018-10-25', 'en', 'convert-string-to-camelcase-javascript-typescript-php') instanceof MarkDownBlogPostObject);
         // TODO
 
         // Test wrong values
         AssertUtils::throwsException(function() { $this->sut->getPost('1018-10-25', 'en', 'text'); }, '/Could not find a blog post with the specified criteria/');
         AssertUtils::throwsException(function() { $this->sut->getPost('1018-10-25', 'en', 'text', 0); }, '/Could not find a blog post with the specified criteria/');
+        AssertUtils::throwsException(function() { $this->sut->getPost('1018345341025', 'en', 'text'); }, '/Invalid date/');
+        AssertUtils::throwsException(function() { $this->sut->getPost('-10', 'en', 'text'); }, '/Invalid date/');
+        AssertUtils::throwsException(function() { $this->sut->getPost('10183453410-25', 'en', 'text'); }, '/Invalid date/');
+        AssertUtils::throwsException(function() { $this->sut->getPost('10183453410-25--', 'en', 'text'); }, '/Invalid date/');
         // TODO
 
         // Test exceptions
@@ -139,7 +153,11 @@ class MarkDownBlogManagerTest extends TestCase {
 
         // Test empty values
         AssertUtils::throwsException(function() { $this->sut->getLatestPosts('en', 0); }, '/count must be a positive integer/');
-        // TODO
+
+        $emptyTempFolder = $this->filesManager->createTempDirectory('TurboSitePhp-MarkDownBlogManagerTest-getLatestPosts');
+        $sut2 = new MarkDownBlogManager($emptyTempFolder);
+        $this->assertSame(0, count($sut2->getLatestPosts('en', 10)));
+        // TODO - more empty values
 
         // Test ok values
         $latestPosts = $this->sut->getLatestPosts('en', 1);
@@ -161,9 +179,11 @@ class MarkDownBlogManagerTest extends TestCase {
         $this->assertSame('Blog post test 1', $latestPosts[3]->title);
 
         $this->assertSame('Blog post test 18/9/2014', $latestPosts[4]->title);
-        // TODO - more tests
+        // TODO - more ok tests
 
         // Test wrong values
+        $this->filesManager->createDirectory($emptyTempFolder.'/2020/10/22', true);
+        $this->assertSame(0, count($sut2->getLatestPosts('en', 10)));
         // TODO
 
         // Test exceptions

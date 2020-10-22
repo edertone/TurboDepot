@@ -60,6 +60,12 @@ class MarkDownBlogManager extends BaseStrictClass{
     public function __construct(string $rootPath){
 
        $this->_rootPath = StringUtils::formatPath($rootPath);
+
+       if(!is_dir($this->_rootPath)){
+
+           throw new UnexpectedValueException('rootPath is not a valid directory: '.$rootPath);
+       }
+
        $this->_fm = new FilesManager();
        $this->_markDownManager = new MarkDownManager();
     }
@@ -81,7 +87,11 @@ class MarkDownBlogManager extends BaseStrictClass{
      */
     public function getPost(string $date, string $language, string $keywords, int $minKeywordsSimilarity = 20){
 
-        $dateParts = explode('-', $date);
+        if(count($dateParts = explode('-', $date)) !== 3){
+
+            throw new UnexpectedValueException('Invalid date');
+        }
+
         $postFolder = $language.'-'.$keywords;
         $postRoot = $dateParts[0].DIRECTORY_SEPARATOR.$dateParts[1].DIRECTORY_SEPARATOR.$dateParts[2];
 
@@ -138,6 +148,11 @@ class MarkDownBlogManager extends BaseStrictClass{
         if($count <= 0){
 
             throw new UnexpectedValueException('count must be a positive integer');
+        }
+
+        if(empty($years = $this->_fm->getDirectoryList($this->_rootPath, 'nameDesc'))){
+
+            return [];
         }
 
         $years = $this->_fm->getDirectoryList($this->_rootPath, 'nameDesc');
