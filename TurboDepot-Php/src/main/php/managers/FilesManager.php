@@ -676,7 +676,7 @@ class FilesManager extends BaseStrictClass{
      *
      * @param string $path Absolute or relative path to the directory we want to calculate its size
      *
-     * @return int the size of the file in bytes. An exception will be thrown if value cannot be obtained
+     * @return int the size of the directory in bytes. An exception will be thrown if value cannot be obtained
      */
     public function getDirectorySize(string $path){
 
