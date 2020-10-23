@@ -6,6 +6,7 @@ TurboDepot gives you total control over your application storage requirements: A
 
 - Php (7 or more)
 - Javascript or Typescript (on NodeJs)
+- Mysql / MariaDb
 
 We want to increase this list. So! if you want to translate the library to your language of choice, please contact us! We need your help to port this library to as many languages as possible, and more importantly, we need to code the SAME unit tests across all the implemented languages. This is the only way to guarantee that the library delivers exactly the same behavior everywhere.
 
@@ -13,6 +14,7 @@ We want to increase this list. So! if you want to translate the library to your 
 
 - All the library configuration is centralized on a single JSON file (not mandatory)
 - Super easy ORM: Save, read, list, filter, and manipulate application DB objects without caring about writing SQL queries (plain SQL can still be executed when necessary)
+- Database tables and columns are created automatically when new properties are defined on the objects being saved.
 - All the stored database or file system elements are saved in a human-readable way, so you can still easily manipulate them outside of this library at any time
 - Write and read to log files and manage their lifetime and space usage
 - Save, read, list, and manage users, their permissions, tokens login, and security checks
