@@ -17,5 +17,11 @@
 7 - For now we are not publishing the library to composer, cause it requires the composer.json file to be on github root
     - so skip composer publishing
 
-8 - Upload the lib to the respective site or server
-    TODO
+8 - Get the downloadable zip file for the library and update the files inside with the new versions
+    - docs, readme, compiled code, etc..
+    
+9 - Upload the new zip version to turbodepot website for direct download
+    - review that zip download work as expected
+
+10 - Upload the new generated docs to the turbodepot website
+    - review that links to docs still work

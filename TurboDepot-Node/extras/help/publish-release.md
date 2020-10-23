@@ -25,8 +25,8 @@
    
 11 - Verify that new version appears for the package at www.npmjs.com/~edertone 
    
-12 - Get the downloadable zip file and update the files inside with the new versions
-   - docs, readme, compiled code, etc..  
+12 - Get the downloadable zip files for each target and update the files inside with the new versions
+    - docs, readme, compiled code, etc..
 
 13 - Upload the new zip version to turbodepot website for direct download
     - review that zip download works as expected
