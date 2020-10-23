@@ -103,9 +103,12 @@ export class ConsoleManager {
     
     
     /**
-     * Show a multiple list of warnings to the user
-     * If quit parameter is true, the application will also exit with error code 1 after all errors are output (which
-     * means exit with error)
+     * Show a multiple list of warnings to the user, one after the other on a new line.
+     * 
+     * @param messages The list of texts to show as warnings
+     * @param quit False by default, the application will die with error code 1 (which means exit with error) after the last warning is displayed 
+     * 
+     * @return void
      */
     warnings(messages:string[], quit = false) {
         
@@ -146,8 +149,8 @@ export class ConsoleManager {
     /**
      * Show a multiple list of errors to the user, one after the other on a new line.
      * 
-     * @param messages The list of texts to show as an error
-     * @param quit True by default, the application will die when the error message is shown with error code 1 (which means exit with error)
+     * @param messages The list of texts to show as errors
+     * @param quit True by default, the application will die with error code 1 (which means exit with error) after the last error is displayed 
      * 
      * @return void
      */
