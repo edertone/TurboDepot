@@ -11,6 +11,7 @@
 // Managers package
 export { ConsoleManager } from './managers/ConsoleManager';
 export { FilesManager } from './managers/FilesManager';
+export { MarkDownManager } from './managers/MarkDownManager';
 export { TerminalManager } from './managers/TerminalManager';
 
 // Model package

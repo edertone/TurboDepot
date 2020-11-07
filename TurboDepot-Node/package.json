@@ -11,6 +11,7 @@
     "url": "https://github.com/edertone/TurboDepot"
   },
   "dependencies": {
+    "showdown": "^1.9.1",
     "turbocommons-ts": "^3.7.0"
   },
   "devDependencies": {
