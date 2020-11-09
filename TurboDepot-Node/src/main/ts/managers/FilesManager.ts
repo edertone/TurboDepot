@@ -287,37 +287,37 @@ export class FilesManager{
     
     
     /**
-     * Find all the elements on a directory which name matches the specified regexp pattern
+     * Find all the elements on a directory that match a specific regexp pattern
      *
      * @param path Absolute or relative path where the search will be performed
      *
      * @param searchRegexp A regular expression that files or folders must match to be included
-     *        into the results (Note that search is dependant on the $searchMode parameter).
+     *        into the results (Note that search is dependant on the $searchMode parameter to search only in the item name or the full path).
      *        Here are some useful patterns:<br>
-     *        /.*\.txt$/i   - Match all items which name ends with '.txt' (case insensitive)<br>
-     *        /^some.*./   - Match all items which name starts with 'some'<br>
-     *        /text/       - Match all items which name contains 'text'<br>
-     *        /^file\.txt$/ - Match all items which name is exactly 'file.txt'<br>
-     *        /^.*\.(jpg|jpeg|png|gif)$/i - Match all items which name ends with .jpg,.jpeg,.png or .gif (case insensitive)<br>
+     *        /.*\.txt$/i   - Match all items which end with '.txt' (case insensitive)<br>
+     *        /^some.*./   - Match all items which start with 'some'<br>
+     *        /text/       - Match all items which contain 'text'<br>
+     *        /^file\.txt$/ - Match all items which are exactly 'file.txt'<br>
+     *        /^.*\.(jpg|jpeg|png|gif)$/i - Match all items which end with .jpg,.jpeg,.png or .gif (case insensitive)<br>
      *        /^(?!.*\.(jpg|png|gif)$)/i - Match all items that do NOT end with .jpg, .png or .gif (case insensitive)
      *
-     * @param returnFormat Defines how will be returned the array of results. Three values are possible:<br>
+     * @param returnFormat Defines how the array of results will be returned. Three values are possible:<br>
      *        - If set to 'name' each result element will contain its file (with extension) or folder name<br>
-     *        - If set to 'relative' each result element will contain its file (with extension) or folder name plus its path relative to the search root<br>
-     *        - If set to 'absolute' each result element will contain its file (with extension) or folder name plus its full OS absolute path
+     *        - If set to 'relative' each result element will contain the path relative to the search root including the file or folder name (with extension)<br>
+     *        - If set to 'absolute' each result element will contain the full OS absolute path including the file or folder name (with extension)
      *
      * @param searchItemsType Defines the type for the directory elements to search: 'files' to search only files, 'folders'
      *        to search only folders, 'both' to search on all the directory contents
      *
      * @param depth Defines the maximum number of subfolders where the search will be performed:<br>
-     *        - If set to -1 the search will be performed on the whole folder contents<br>
+     *        - If set to -1 (default) the search will be performed on the whole folder contents<br>
      *        - If set to 0 the search will be performed only on the path root elements<br>
-     *        - If set to 2 the search will be performed on the root, first and second depth level of subfolders
+     *        - If set to N the search will be performed on the root, first and N depth level of subfolders
      *
-     * @param excludeRegexp A regular expression that will exclude all the results that match it anywhere on the item full path or name
+     * @param excludeRegexp A regular expression that will exclude all the results that match when tested against the item full OS absolute path
      *
      * @param searchMode Defines how searchRegexp will be used to find matches:
-     *        - If set to 'name' The regexp will be tested only against the file or folder name<br>
+     *        - If set to 'name' (default) The regexp will be tested only against the file or folder name<br>
      *        - If set to 'absolute' The regexp will be tested against the full OS absolute path of the file or folder<br>
      *
      * @return A list formatted as defined in returnFormat, with all the elements that meet the search criteria
