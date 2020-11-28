@@ -292,19 +292,20 @@ export class FilesManager{
      * @param path Absolute or relative path where the search will be performed
      *
      * @param searchRegexp A regular expression that files or folders must match to be included
-     *        into the results (Note that search is dependant on the $searchMode parameter to search only in the item name or the full path).
+     *        into the results (Note that search is dependant on the searchMode parameter to search only in the item name or the full path).
      *        Here are some useful patterns:<br>
-     *        /.*\.txt$/i   - Match all items which end with '.txt' (case insensitive)<br>
-     *        /^some.*./   - Match all items which start with 'some'<br>
-     *        /text/       - Match all items which contain 'text'<br>
+     *        /.*\.txt$/i - Match all items which end with '.txt' (case insensitive)<br>
+     *        /^some.*./ - Match all items which start with 'some'<br>
+     *        /text/ - Match all items which contain 'text'<br>
      *        /^file\.txt$/ - Match all items which are exactly 'file.txt'<br>
      *        /^.*\.(jpg|jpeg|png|gif)$/i - Match all items which end with .jpg,.jpeg,.png or .gif (case insensitive)<br>
      *        /^(?!.*\.(jpg|png|gif)$)/i - Match all items that do NOT end with .jpg, .png or .gif (case insensitive)
      *
-     * @param returnFormat Defines how the array of results will be returned. Three values are possible:<br>
-     *        - If set to 'name' each result element will contain its file (with extension) or folder name<br>
-     *        - If set to 'relative' each result element will contain the path relative to the search root including the file or folder name (with extension)<br>
-     *        - If set to 'absolute' each result element will contain the full OS absolute path including the file or folder name (with extension)
+     * @param returnFormat Defines how the array of results will be returned. 4 values are possible:<br>
+     *        'relative' - Each result element will contain the path relative to the search root including the file (with extension) or folder name<br>
+     *        'absolute' - Each result element will contain the full OS absolute path including the file (with extension) or folder name<br>
+     *        'name' - Each result element will contain its file (with extension) or folder name<br>
+     *        'name-noext' - Each result element will contain its file (without extension) or folder name
      *
      * @param searchItemsType Defines the type for the directory elements to search: 'files' to search only files, 'folders'
      *        to search only folders, 'both' to search on all the directory contents
@@ -363,9 +364,22 @@ export class FilesManager{
 
             for (let i = 0; i < result.length; i++){
 
-                result[i] = (returnFormat === 'name') ?
-                    StringUtils.getPathElement(result[i]) :
-                    StringUtils.replace(result[i], path + this.dirSep(), '');
+                if(returnFormat === 'relative'){
+
+                    result[i] = StringUtils.replace(result[i], path + this.dirSep(), '');
+
+                }else if(returnFormat === 'name'){
+
+                    result[i] = StringUtils.getPathElement(result[i]);
+
+                }else if(returnFormat === 'name-noext'){
+
+                    result[i] = StringUtils.getPathElementWithoutExt(result[i]);
+
+                }else{
+
+                    throw new Error('invalid returnFormat: ' + returnFormat);
+                }
             }
         }
 

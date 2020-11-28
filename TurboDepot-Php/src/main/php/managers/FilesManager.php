@@ -274,17 +274,18 @@ class FilesManager extends BaseStrictClass{
      * @param string $searchRegexp A regular expression that files or folders must match to be included
      *        into the results (Note that search is dependant on the $searchMode parameter to search only in the item name or the full path).
      *        Here are some useful patterns:<br>
-     *        '/.*\.txt$/i'   - Match all items which end with '.txt' (case insensitive)<br>
-     *        '/^some.*./'   - Match all items which start with 'some'<br>
-     *        '/text/'       - Match all items which contain 'text'<br>
+     *        '/.*\.txt$/i' - Match all items which end with '.txt' (case insensitive)<br>
+     *        '/^some.*./' - Match all items which start with 'some'<br>
+     *        '/text/'  - Match all items which contain 'text'<br>
      *        '/^file\.txt$/' - Match all items which are exactly 'file.txt'<br>
      *        '/^.*\.(jpg|jpeg|png|gif)$/i' - Match all items which end with .jpg,.jpeg,.png or .gif (case insensitive)<br>
      *        '/^(?!.*\.(jpg|png|gif)$)/i' - Match all items that do NOT end with .jpg, .png or .gif (case insensitive)
      *
-     * @param string $returnFormat Defines how the array of results will be returned. Three values are possible:<br>
-     *        - If set to 'name' each result element will contain its file (with extension) or folder name<br>
-     *        - If set to 'relative' each result element will contain the path relative to the search root including the file or folder name (with extension)<br>
-     *        - If set to 'absolute' each result element will contain the full OS absolute path including the file or folder name (with extension)
+     * @param string $returnFormat Defines how the array of results will be returned. 4 values are possible:<br>
+     *        'relative' - Each result element will contain the path relative to the search root including the file (with extension) or folder name<br>
+     *        'absolute' - Each result element will contain the full OS absolute path including the file (with extension) or folder name<br>
+     *        'name' - Each result element will contain its file (with extension) or folder name<br>
+     *        'name-noext' - Each result element will contain its file (without extension) or folder name
      *
      * @param string $searchItemsType Defines the type for the directory elements to search: 'files' to search only files, 'folders'
      *        to search only folders, 'both' to search on all the directory contents
@@ -343,9 +344,22 @@ class FilesManager extends BaseStrictClass{
 
             for ($i = 0, $l = count($result); $i < $l; $i++){
 
-                $result[$i] = ($returnFormat === 'name') ?
-                    StringUtils::getPathElement($result[$i]) :
-                    StringUtils::replace($result[$i], $path.DIRECTORY_SEPARATOR, '');
+                if($returnFormat === 'relative'){
+
+                    $result[$i] = StringUtils::replace($result[$i], $path.DIRECTORY_SEPARATOR, '');
+
+                }elseif($returnFormat === 'name'){
+
+                    $result[$i] = StringUtils::getPathElement($result[$i]);
+
+                }elseif($returnFormat === 'name-noext'){
+
+                    $result[$i] = StringUtils::getPathElementWithoutExt($result[$i]);
+
+                }else{
+
+                    throw new UnexpectedValueException('invalid returnFormat: '.$returnFormat);
+                }
             }
         }
 

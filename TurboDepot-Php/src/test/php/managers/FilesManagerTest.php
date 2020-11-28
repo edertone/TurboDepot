@@ -898,6 +898,97 @@ class FilesManagerTest extends TestCase {
         $this->assertSame([], $this->sut->findDirectoryItems($temp2Folder, '/^.*\.(jpg|png)$/i', 'name', 'both', -1, '/g$/i'));
         $this->assertSame(['1.jpg', '1.png'], $this->sut->findDirectoryItems($temp2Folder, '/^.*\.(jpg|png)$/i', 'name', 'both', -1, '/0/i'));
 
+        // Test resultFormat = 'name-noext'
+
+        // Test finding all *.txt files on the folder
+        $this->assertSame(4 * 4 * 5, count($this->sut->findDirectoryItems($this->tempFolder, '/.*\.txt$/', 'name-noext')));
+        $this->assertSame(4 * 4 * 5, count($this->sut->findDirectoryItems($this->tempFolder, '/.*\.txt$/', 'name-noext', 'files')));
+        $this->assertSame(0, count($this->sut->findDirectoryItems($this->tempFolder, '/.*\.txt$/', 'name-noext', 'folders')));
+
+        // Test finding all files or folders on the 1st folder depth
+        $this->assertSame(4, count($this->sut->findDirectoryItems($this->tempFolder, '/.*$/', 'name-noext', 'both', 0)));
+        $this->assertSame(0, count($this->sut->findDirectoryItems($this->tempFolder, '/.*$/', 'name-noext', 'files', 0)));
+        $this->assertSame(4, count($this->sut->findDirectoryItems($this->tempFolder, '/.*$/', 'name-noext', 'folders', 0)));
+
+        // Test finding all *.txt files on the 1st 2d and 3d folder depth
+        $this->assertSame(0, count($this->sut->findDirectoryItems($this->tempFolder, '/.*\.txt$/', 'name-noext', 'both', 0)));
+        $this->assertSame(0, count($this->sut->findDirectoryItems($this->tempFolder, '/.*\.txt$/', 'name-noext', 'files', 0)));
+        $this->assertSame(0, count($this->sut->findDirectoryItems($this->tempFolder, '/.*\.txt$/', 'name-noext', 'folders', 0)));
+        $this->assertSame(20, count($this->sut->findDirectoryItems($this->tempFolder, '/.*\.txt$/', 'name-noext', 'both', 1)));
+        $this->assertSame(20, count($this->sut->findDirectoryItems($this->tempFolder, '/.*\.txt$/', 'name-noext', 'files', 1)));
+        $this->assertSame(0, count($this->sut->findDirectoryItems($this->tempFolder, '/.*\.txt$/', 'name-noext', 'folders', 1)));
+        $this->assertSame(40, count($this->sut->findDirectoryItems($this->tempFolder, '/.*\.txt$/', 'name-noext', 'both', 2)));
+        $this->assertSame(40, count($this->sut->findDirectoryItems($this->tempFolder, '/.*\.txt$/', 'name-noext', 'files', 2)));
+        $this->assertSame(0, count($this->sut->findDirectoryItems($this->tempFolder, '/.*\.txt$/', 'name-noext', 'folders', 2)));
+
+        // Test finding all files starting with somefile on the folder
+        $this->assertSame(4 * 4 * 5, count($this->sut->findDirectoryItems($this->tempFolder, '/^somefile.*/', 'name-noext')));
+        $this->assertSame(4 * 4 * 5, count($this->sut->findDirectoryItems($this->tempFolder, '/^somefile.*/', 'name-noext', 'files')));
+        $this->assertSame(0, count($this->sut->findDirectoryItems($this->tempFolder, '/^somefile.*/', 'name-noext', 'folders')));
+
+        // Test finding all files starting with samefile on the folder
+        $this->assertSame(0, count($this->sut->findDirectoryItems($this->tempFolder, '/^samefile.*/', 'name-noext')));
+
+        // Test finding all files with an exact name on the folder
+        $this->assertSame(['somefile-0-0-2'], $this->sut->findDirectoryItems($this->tempFolder, '/^somefile-0-0-2.txt$/', 'name-noext'));
+        $this->assertSame(['somefile-0-1-2'], $this->sut->findDirectoryItems($this->tempFolder, '/^somefile-0-1-2.txt$/', 'name-noext'));
+        $this->assertSame(['somefile-2-2-2'], $this->sut->findDirectoryItems($this->tempFolder, '/^somefile-2-2-2.txt$/', 'name-noext'));
+
+        // Test finding all files named *-4.txt on the folder
+        $this->assertSame(16, count($this->sut->findDirectoryItems($this->tempFolder, '/^.*-4.txt$/', 'name-noext')));
+        $this->assertSame(16, count($this->sut->findDirectoryItems($this->tempFolder, '/^.*-4.txt$/', 'name-noext', 'files')));
+        $this->assertSame(0, count($this->sut->findDirectoryItems($this->tempFolder, '/^.*-4.txt$/', 'name-noext', 'folders')));
+        $this->assertSame(0, count($this->sut->findDirectoryItems($this->tempFolder, '/^.*-4.txt$/', 'name-noext', 'both', 0)));
+
+        // Test finding all folders with an exact name on the folder
+        $this->assertSame(['folder-3-3'], $this->sut->findDirectoryItems($this->tempFolder, '/^folder-3-3$/', 'name-noext'));
+        $this->assertSame([], $this->sut->findDirectoryItems($this->tempFolder, '/^folder-3-3$/', 'name-noext', 'files'));
+        $this->assertSame(['folder-3-3'], $this->sut->findDirectoryItems($this->tempFolder, '/^folder-3-3$/', 'name-noext', 'folders'));
+        $this->assertSame(['folder-1-2'], $this->sut->findDirectoryItems($this->tempFolder, '/^folder-1-2$/', 'name-noext'));
+        $this->assertSame([], $this->sut->findDirectoryItems($this->tempFolder, '/^folder-1-2$/', 'name-noext', 'files'));
+        $this->assertSame(['folder-1-2'], $this->sut->findDirectoryItems($this->tempFolder, '/^folder-1-2$/', 'name-noext', 'folders'));
+        $this->assertSame([], $this->sut->findDirectoryItems($this->tempFolder, '/^folder-1-2$/', 'name-noext', 'both', 0));
+        $this->assertSame([], $this->sut->findDirectoryItems($this->tempFolder, '/^folder-1-2$/', 'name-noext', 'files', 0));
+        $this->assertSame([], $this->sut->findDirectoryItems($this->tempFolder, '/^folder-1-2$/', 'name-noext', 'folders', 0));
+
+        // Test finding all folders ending with 0-3 or 0-2
+        $this->assertSame(['folder-0-2', 'folder-0-3'], $this->sut->findDirectoryItems($this->tempFolder, '/^.*(0-3|0-2)$/i', 'name-noext'));
+        $this->assertSame([], $this->sut->findDirectoryItems($this->tempFolder, '/^.*(0-3|0-2)$/i', 'name-noext', 'files'));
+        $this->assertSame(['folder-0-2', 'folder-0-3'], $this->sut->findDirectoryItems($this->tempFolder, '/^.*(0-3|0-2)$/i', 'name-noext', 'folders'));
+
+        // Create a folder with some dummy image files
+        $temp2Folder = $this->sut->createTempDirectory('TurboDepot-FilesManagerTest-2');
+
+        for ($k = 0; $k < 2; $k++) {
+
+            $this->sut->saveFile($temp2Folder.DIRECTORY_SEPARATOR.$k.'.jpg', 'fake image data');
+            $this->sut->saveFile($temp2Folder.DIRECTORY_SEPARATOR.$k.'.png', 'fake image data');
+            $this->sut->saveFile($temp2Folder.DIRECTORY_SEPARATOR.$k.'.gif', 'fake image data');
+        }
+
+        // Test finding all files ending with .jpg or .png
+        $this->assertSame(['0', '0', '1', '1'], $this->sut->findDirectoryItems($temp2Folder, '/^.*\.(jpg|png)$/i', 'name-noext'));
+        $this->assertSame(['0', '0', '1', '1'], $this->sut->findDirectoryItems($temp2Folder, '/^.*\.(jpg|png)$/i', 'name-noext', 'files'));
+        $this->assertSame([], $this->sut->findDirectoryItems($temp2Folder, '/^.*\.(jpg|png)$/i', 'name-noext', 'folders'));
+
+        // Test finding all files that NOT end with .jpg
+        $this->assertSame(['0', '0', '1', '1'], $this->sut->findDirectoryItems($temp2Folder, '/^(?!.*\.(jpg)$)/i', 'name-noext'));
+        $this->assertSame(['0', '0', '1', '1'], $this->sut->findDirectoryItems($temp2Folder, '/^(?!.*\.(jpg)$)/i', 'name-noext', 'files'));
+        $this->assertSame([], $this->sut->findDirectoryItems($temp2Folder, '/^(?!.*\.(jpg)$)/i', 'name-noext', 'folders'));
+
+        // Test finding all files that NOT end with .jpg and NOT end with .png
+        $this->assertSame(['0', '1'], $this->sut->findDirectoryItems($temp2Folder, '/^(?!.*\.(jpg|png)$)/i', 'name-noext'));
+        $this->assertSame(['0', '1'], $this->sut->findDirectoryItems($temp2Folder, '/^(?!.*\.(jpg|png)$)/i', 'name-noext', 'files'));
+        $this->assertSame([], $this->sut->findDirectoryItems($temp2Folder, '/^(?!.*\.(jpg|png)$)/i', 'name-noext', 'folders'));
+
+        // Test finding all files that NOT end with .jpg and NOT end with .png and NOT end with gif
+        $this->assertSame($this->sut->findDirectoryItems($temp2Folder, '/^(?!.*\.(jpg|png|gif)$)/i', 'name-noext'), []);
+
+        // Test some exclusion patterns
+        $this->assertSame(['0', '1'], $this->sut->findDirectoryItems($temp2Folder, '/^.*\.(jpg|png)$/i', 'name-noext', 'both', -1, '/.jpg$/i'));
+        $this->assertSame([], $this->sut->findDirectoryItems($temp2Folder, '/^.*\.(jpg|png)$/i', 'name-noext', 'both', -1, '/g$/i'));
+        $this->assertSame(['1', '1'], $this->sut->findDirectoryItems($temp2Folder, '/^.*\.(jpg|png)$/i', 'name-noext', 'both', -1, '/0/i'));
+
         // Test resultFormat = 'relative'
 
         // Test finding all *.txt files on the folder
@@ -1006,9 +1097,11 @@ class FilesManagerTest extends TestCase {
         $this->assertSame(6, count($this->sut->findDirectoryItems($this->tempFolder, '/folder-0-1(\/|\\\\)folder-0-2(\/|\\\\)folder-0-3/', 'name', 'both', -1, '', 'absolute')));
 
         // Test wrong values
-        // Not necessary
+        $this->assertSame(0, count($this->sut->findDirectoryItems($this->tempFolder, '/.*\.txt$/', 'noformat', 'both', 0)));
 
         // Test exceptions
+        AssertUtils::throwsException(function(){ $this->sut->findDirectoryItems($this->tempFolder, '/^.*-4.txt$/', 'noformat'); }, '/invalid returnFormat: noformat/');
+        AssertUtils::throwsException(function(){ $this->sut->findDirectoryItems($this->tempFolder, '/folder-0-1/', 'x', 'both', -1, '', 'absolute'); }, '/invalid returnFormat: x/');
         // Not necessary
     }
 
