@@ -259,7 +259,7 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Save to database the specified users role for the currently active domain or update it if already exists.
+     * Save (create) to database the specified users role for the currently active domain or update it if already exists.
      *
      * @param string $roleName The name for the role we want to save or update
      * @param string $description The description we want to set to the role
