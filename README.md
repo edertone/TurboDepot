@@ -29,7 +29,7 @@ We want to increase this list. So! if you want to translate the library to your 
 
 ### Documentation
 
-**A detailed code specification is available online. You can check it [here](https://turbodepot.org)**
+**A detailed code specification is available online. You can check it [here](https://turboframework.org/en/libs/turbodepot)**
 
 ### How to use it
 
@@ -58,14 +58,14 @@ filesManager.mirrorDirectory('path/to/source/directory', 'path/to/destination/di
 
 ### Dependencies
 
-This library only requires the latest [turbocommons](https://turbocommons.org) library version
+This library only requires the latest [turbocommons](https://https://turboframework.org/en/libs/turbocommons) library version
 
 ### Support
 
 TurboDepot is 100% free and open-source, but we will be really pleased to receive any help, support, comments, or donations to help us improve this library. If you like it, spread the word!
 
-> You can get more info at the official site: [turbodepot.org](https://turbodepot.org)
+> You can get more info at the official site: [https://turboframework.org/en/libs/turbodepot](https://turboframework.org/en/libs/turbodepot)
 
 ### Donate
 	
-[![Donate](https://turbodepot.org/view/views/home/donate-button.png)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=53MJ6SY66WZZ2&lc=ES&item_name=TurboDepot&no_note=0&cn=A%c3%b1adir%20instrucciones%20especiales%20para%20el%20vendedor%3a&no_shipping=2&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted)
+[![Donate](https://turboframework.org/view/views/home/donate-button.png)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=53MJ6SY66WZZ2&lc=ES&item_name=TurboDepot&no_note=0&cn=A%c3%b1adir%20instrucciones%20especiales%20para%20el%20vendedor%3a&no_shipping=2&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted)
