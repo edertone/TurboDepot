@@ -58,7 +58,7 @@ filesManager.mirrorDirectory('path/to/source/directory', 'path/to/destination/di
 
 ### Dependencies
 
-This library only requires the latest [turbocommons](https://https://turboframework.org/en/libs/turbocommons) library version
+This library only requires the latest [turbocommons](https://turboframework.org/en/libs/turbocommons) library version
 
 ### Support
 
