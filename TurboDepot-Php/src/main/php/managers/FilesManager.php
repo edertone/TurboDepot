@@ -131,15 +131,33 @@ class FilesManager extends BaseStrictClass{
         $pathToFile1 = $this->_composePath($pathToFile1, false, true);
         $pathToFile2 = $this->_composePath($pathToFile2, false, true);
 
-        if (filesize($pathToFile1) === filesize($pathToFile2)){
+        if (filesize($pathToFile1) !== filesize($pathToFile2)){
 
-            $file1Hash = md5_file($pathToFile1);
-            $file2Hash = md5_file($pathToFile2);
-
-            return $file1Hash === $file2Hash;
+            return false;
         }
 
-        return false;
+        $chunksize = 4096;
+        $fp_a = fopen($pathToFile1, 'rb');
+        $fp_b = fopen($pathToFile2, 'rb');
+
+        while (!feof($fp_a) && !feof($fp_b)) {
+
+            $d_a = fread($fp_a, $chunksize);
+            $d_b = fread($fp_b, $chunksize);
+
+            if ($d_a === false || $d_b === false || $d_a !== $d_b) {
+
+                fclose($fp_a);
+                fclose($fp_b);
+
+                return false;
+            }
+        }
+
+        fclose($fp_a);
+        fclose($fp_b);
+
+        return true;
     }
 
 

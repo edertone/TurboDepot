@@ -3,7 +3,7 @@
     "metadata": {
         "name": "turbodepot-php",
         "description": "General purpose multi storage library (ORM, Logs, Users, Files, Objects)",
-        "builderVersion": "6.0.0"
+        "builderVersion": "7.0.2"
     },
     "validate": {
         "runBeforeBuild": true,
@@ -37,8 +37,8 @@
                 },
                 {
                     "path": "src/test",
-                    "maxPercentErrorLevel": 5,
-                    "maxPercentErrorDifference": 1,
+                    "maxPercentErrorLevel": 7,
+                    "maxPercentErrorDifference": 2,
                     "report": "html"
                 }
             ],

@@ -155,6 +155,8 @@ export class FilesManager{
 
         if (this.getFileSize(pathToFile1) === this.getFileSize(pathToFile2)){
 
+            // TODO - This method (hashes) is not 100% effective and has to loop through all the file, so is less performant.
+            // We must use the same method as the PHP version is using now
             let file1Hash = this.crypto.createHash('md5').update(this.readFile(pathToFile1), 'utf8').digest('hex');
             let file2Hash = this.crypto.createHash('md5').update(this.readFile(pathToFile2), 'utf8').digest('hex');
             
