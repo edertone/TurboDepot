@@ -12,7 +12,7 @@ There's a general purpose **pad()** method inside the StringUtils class which le
 
 ### Pad zeros to a string in Php
 
-Download the latest TurboCommons phar file from the [downloads](https://turbocommons.org/en/download) section, place it on your project as a dependency and run the following code:
+Download the latest TurboCommons phar file from the [downloads](https://turboframework.org/en/download) section, place it on your project as a dependency and run the following code:
 
 ```
 require '%path-to-your-project-dependencies-folder%/turbocommons-php-X.X.X.phar';
@@ -34,7 +34,7 @@ abcd000000
 
 ### Pad zeros to a string on a website
 
-Download the latest turbocommons-es5.js file from the [downloads](https://turbocommons.org/en/download) section or use npm to add the dependecy to your project (npm install turbocommons-es5). Then run the following code: 
+Download the latest turbocommons-es5.js file from the [downloads](https://turboframework.org/en/download) section or use npm to add the dependecy to your project (npm install turbocommons-es5). Then run the following code: 
 
 ```
 <script src="turbocommons-es5/turbocommons-es5.js"></script>
@@ -64,7 +64,7 @@ The recommended way is to use npm to obtain the turbocommons dependency by execu
 npm install turbocommons-ts
 ```
 
-Or you can download the latest turbocommons-ts files from the [downloads](https://turbocommons.org/en/download) section and copy the dependency by yourself. Then run the following code:
+Or you can download the latest turbocommons-ts files from the [downloads](https://turboframework.org/en/download) section and copy the dependency by yourself. Then run the following code:
 
 ```
 import { StringUtils } from 'turbocommons-ts';

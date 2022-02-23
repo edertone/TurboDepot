@@ -5,7 +5,7 @@
     "metadata": {
         "name": "turbodepot-node",
         "description": "General purpose multi storage library (ORM, Logs, Users, Files, Objects)",
-        "builderVersion": "5.0.0"
+        "builderVersion": "7.0.2"
     },
     
     "validate": {
@@ -58,11 +58,12 @@
     
     "release": {
     },
-    
-    "test": [
-        {
-            "type": "jasmine",
-            "jasmineConfig": "src/test/js/jasmine.json"
-        }
-    ]
+    "test": {
+        "enabledTests": [
+            {
+                "type": "jasmine",
+                "jasmineConfig": "src/test/js/jasmine.json"
+            }
+        ]
+    }
 }
