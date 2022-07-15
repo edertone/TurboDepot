@@ -233,6 +233,27 @@ class MarkDownBlogManager extends BaseStrictClass{
     }
 
 
+    // TODO
+    public function getPostsPaginated(string $language, int $page, int $pageCount){
+
+        // TODO - obtain the list of posts by pagination
+    }
+
+
+    // TODO
+    public function getNextPost(){
+
+        // TODO - obtain the post that comes after the one we define here
+    }
+
+
+    // TODO
+    public function getPrevPost(){
+
+        // TODO - obtain the post that comes before the one we define here
+    }
+
+
     /**
      * Obtain a MarkDownBlogPostObject instace from a given blog post filesystem path.
      *
