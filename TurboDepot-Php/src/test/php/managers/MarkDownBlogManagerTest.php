@@ -167,18 +167,20 @@ class MarkDownBlogManagerTest extends TestCase {
             $latestPosts[0]->title);
 
         $latestPosts = $this->sut->getLatestPosts('en', 10);
-        $this->assertSame(5, count($latestPosts));
+        $this->assertSame(6, count($latestPosts));
 
         $this->assertSame('Pad a string to a certain length with another string on Javascript, Typescript and Php',
             $latestPosts[0]->title);
 
         $this->assertSame('Convert string to CamelCase, UpperCamelCase or LowerCamelCase in Javascript, typescript and Php', $latestPosts[1]->title);
 
-        $this->assertSame('Blog post test 2', $latestPosts[2]->title);
+        $this->assertSame('another-blog-post-on-the-same-day', $latestPosts[2]->title);
 
-        $this->assertSame('Blog post test 1', $latestPosts[3]->title);
+        $this->assertSame('Blog post test 2', $latestPosts[3]->title);
 
-        $this->assertSame('Blog post test 18/9/2014', $latestPosts[4]->title);
+        $this->assertSame('Blog post test 1', $latestPosts[4]->title);
+
+        $this->assertSame('Blog post test 18/9/2014', $latestPosts[5]->title);
         // TODO - more ok tests
 
         // Test wrong values

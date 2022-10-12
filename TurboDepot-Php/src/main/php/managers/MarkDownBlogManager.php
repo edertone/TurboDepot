@@ -197,7 +197,7 @@ class MarkDownBlogManager extends BaseStrictClass{
 
             if($this->_fm->isDirectory($this->_rootPath.$sep.$path)){
 
-                $posts = $this->_fm->getDirectoryList($this->_rootPath.$sep.$path, 'mDateDesc');
+                $posts = $this->_fm->getDirectoryList($this->_rootPath.$sep.$path, 'nameDesc');
 
                 foreach ($posts as $post) {
 
