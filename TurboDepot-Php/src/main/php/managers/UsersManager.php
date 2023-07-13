@@ -46,7 +46,9 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * The users domain on which this instance is currently operating
+     * The users domain on which this instance is currently operating.
+     * A domain is like a folder to store users and roles. Each domain is independent from the others allowing us to store isolated
+     * groups of users. Default domain name is empty and behaves as the "root folder"
      *
      * @var string
      */
