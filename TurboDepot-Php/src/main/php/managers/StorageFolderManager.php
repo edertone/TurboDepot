@@ -113,7 +113,8 @@ class StorageFolderManager extends BaseStrictClass{
 
 
     /**
-     * Gives the filesystem location to the storage folder root
+     * Gives the filesystem location to the storage folder root. It contains several folders with different purposes for our application.
+     * Avoid storing anything on this root, always use the specific subfolder for your needs.
      *
      * @return string
      */
@@ -125,6 +126,8 @@ class StorageFolderManager extends BaseStrictClass{
 
     /**
      * Gives the filesystem location to the storage/cache folder
+     * This folder purpose is to store all the data which may be temporarily or undefinitely cached by our application. It is normally safe to delete the folder contents.
+     * at any time we want.
      *
      * @return string
      */
@@ -136,6 +139,8 @@ class StorageFolderManager extends BaseStrictClass{
 
     /**
      * Gives the filesystem location to the storage/custom folder
+     * This folder has no specific purpose. It is a place where any custom user data may be stored. For example, it may be
+     * allowed for our users to acces this folder and place there anything they want.
      *
      * @return string
      */
@@ -147,6 +152,7 @@ class StorageFolderManager extends BaseStrictClass{
 
     /**
      * Gives the filesystem location to the storage/executable folder
+     * This folder purpose is to store executable binaries that are required by the application to perform operations
      *
      * @return string
      */
@@ -157,7 +163,8 @@ class StorageFolderManager extends BaseStrictClass{
 
 
     /**
-     * Gives the filesystem location to the storage/data folder
+     * Gives the filesystem location to the storage/data folder.
+     * This folder purpose is to store all the data and files which may be used by our application to persist information
      *
      * @return string
      */
