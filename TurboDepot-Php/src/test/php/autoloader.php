@@ -1,7 +1,7 @@
 <?php
 
 
-require_once __DIR__.'/../libs/turbocommons-php-3.7.0.phar';
+require_once __DIR__.'/../libs/turbocommons-php-3.10.0.phar';
 require_once __DIR__.'/../libs/turbotesting-php-7.5.0.phar';
 require_once __DIR__.'/../../main/php/autoloader.php';
 

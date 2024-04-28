@@ -19,14 +19,8 @@
         "filesContent": {
             "tabsForbidden": {
                 "enabled": true,
-                "affectedPaths": [
-                    "src",
-                    "extras"
-                ],
-                "excludes": [
-                    ".svg",
-                    ".properties"
-                ]
+                "affectedPaths": ["src", "extras"],
+                "excludes": [".svg", ".properties", ".zip", ".xlsx"]
             },
             "copyPasteDetect":[
                 {
@@ -79,6 +73,7 @@
     "test": {
         "enabledTests": [
             {
+                "enabled": true,
                 "type": "phpUnit",
                 "testsRoot": "src/test",
                 "coverageReport": true,

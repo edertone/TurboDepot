@@ -18,6 +18,7 @@ use UnexpectedValueException;
 use org\turbocommons\src\main\php\utils\StringUtils;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
 use org\turbocommons\src\main\php\utils\ArrayUtils;
+use org\turbocommons\src\main\php\utils\ConversionUtils;
 
 
 /**
@@ -1156,6 +1157,27 @@ class FilesManager extends BaseStrictClass{
         }
 
         return $contents;
+    }
+
+
+    /**
+     * Read and return the content of a file. Not suitable for big files (More than 5 MB) cause the script memory
+     * may get full and the execution fail
+     *
+     * @param string $pathToFile An Operating system absolute or relative path containing some file
+     *
+     * @return string The file contents as a string. If the file is not found or cannot be read, an exception will be thrown.
+     */
+    public function readFileAsBase64($pathToFile){
+
+        $pathToFile = $this->_composePath($pathToFile, false, true);
+
+        if(($contents = file_get_contents($pathToFile, true)) === false){
+
+            throw new UnexpectedValueException('Error reading file - '.$pathToFile);
+        }
+
+        return ConversionUtils::stringToBase64($contents);
     }
 
 
