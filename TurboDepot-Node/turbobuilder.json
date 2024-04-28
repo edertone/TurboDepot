@@ -13,6 +13,11 @@
             "readmeFileMandatory": false
         },
         "filesContent" : {
+            "tabsForbidden": {
+                "enabled": true,
+                "affectedPaths": ["src", "extras"],
+                "excludes": [".xlsx"]
+            },
             "copyPasteDetect":[
                 {
                     "path": "src/main",
@@ -61,6 +66,7 @@
     "test": {
         "enabledTests": [
             {
+                "enabled": true,
                 "type": "jasmine",
                 "jasmineConfig": "src/test/js/jasmine.json"
             }

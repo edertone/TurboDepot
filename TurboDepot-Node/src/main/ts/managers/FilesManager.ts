@@ -1158,6 +1158,22 @@ export class FilesManager{
 
         return this.fs.readFileSync(pathToFile, "utf8");
     }
+    
+    
+    /**
+     * Read and return the content of a file encoded as a base 64 string. Not suitable for big files (More than 5 MB) 
+     * cause the script memory may get full and the execution fail
+     *
+     * @param pathToFile An Operating system absolute or relative path containing some file
+     *
+     * @return The file contents as a base64 string. If the file is not found or cannot be read, an exception will be thrown.
+     */
+    readFileAsBase64(pathToFile: string){
+
+        pathToFile = this._composePath(pathToFile, false, true);
+
+        return this.fs.readFileSync(pathToFile, {encoding: 'base64'});
+    }
 
 
     /**
