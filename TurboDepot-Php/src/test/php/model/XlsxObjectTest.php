@@ -160,6 +160,21 @@ class XlsxObjectTest extends TestCase {
         $this->assertSame('A', $this->sut->getCell(0, 59));
         $this->assertSame('C', $this->sut->getCell(238, 59));
 
+        // This sheet is a bit special because it contains hidden rows that alter the xlsx values when read
+        $this->sut = new XlsxObject(self::$filesManager->readFile(self::$basePath.DIRECTORY_SEPARATOR.'1 sheet with hidden rows.xlsx'));
+        $this->assertInstanceOf(XlsxObject::class, $this->sut);
+        $this->assertSame(75, $this->sut->countRows());
+        $this->assertSame(7, $this->sut->countColumns());
+        $this->assertSame(525, $this->sut->countCells());
+        $this->assertSame('test', $this->sut->getCell(0, 0));
+        $this->assertSame(null, $this->sut->getCell(1, 0));
+        $this->assertSame('42', $this->sut->getCell(14, 0));
+        $this->assertSame('tete', $this->sut->getCell(9, 2));
+        $this->assertSame('Negro', $this->sut->getCell(48, 2));
+        $this->assertSame('2', $this->sut->getCell(49, 3));
+        $this->assertSame('6500', $this->sut->getCell(16, 4));
+        $this->assertSame('20', $this->sut->getCell(45, 4));
+
         // Test wrong values
         // Test exceptions
         AssertUtils::throwsException(function() { $c = new XlsxObject(123123); }, '/constructor expects a string value/');

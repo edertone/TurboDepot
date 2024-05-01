@@ -200,15 +200,14 @@ class XlsxObject extends TableObject{
         // Parse the rows
         foreach ($sheet->sheetData->row as $xlrow) {
 
-            // Calculate current row index by removing all letters from the sheet row index (for example A1)
-            $xlRowIndex = preg_replace("/^\D+/", "", (string)$xlrow->c['r']) - 1;
+            $xlRowIndex = (string)$xlrow['r'] - 1;
 
             if($xlRowIndex >= $table->countRows()){
 
                 $table->addRows($xlRowIndex - $table->countRows() + 1);
             }
 
-            // In each row, grab it's value
+            // Obtain the value for each row cell
             foreach ($xlrow->c as $cell) {
 
                 $xlColIndex = $this->_columnNameToIndex($cell['r']);
