@@ -807,7 +807,8 @@ class DataBaseManager extends BaseStrictClass {
 
         } catch (Throwable $e) {
 
-            if(strpos(strtolower($e->getMessage()), 'duplicate key') === false){
+            // If the error is not related to a duplicate foreign key, we will throw the exception
+            if(preg_match('/duplicate (foreign )?key/i', $e->getMessage()) === 0){
 
                 throw new UnexpectedValueException('Could not add unique index '.$indexName.' to table '.$tableName.': '.$this->_lastError);
             }
@@ -846,7 +847,8 @@ class DataBaseManager extends BaseStrictClass {
 
         } catch (Throwable $e) {
 
-            if(strpos(strtolower($e->getMessage()), 'duplicate key') === false){
+            // If the error is not related to a duplicate foreign key, we will throw the exception
+            if(preg_match('/duplicate (foreign )?key/i', $e->getMessage()) === 0){
 
                 throw new UnexpectedValueException('Could not add foreignKey '.$fkName.' to table '.$tableName.': '.$this->_lastError);
             }
