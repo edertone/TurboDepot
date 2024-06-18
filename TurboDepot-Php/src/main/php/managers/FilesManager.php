@@ -320,7 +320,7 @@ class FilesManager extends BaseStrictClass{
      *        - If set to 'name' (default) The regexp will be tested only against the file or folder name<br>
      *        - If set to 'absolute' The regexp will be tested against the full OS absolute path of the file or folder<br>
      *
-     * @return array A list formatted as defined in returnFormat, with all the elements that meet the search criteria
+     * @return array A list formatted as defined in returnFormat, with all the elements that meet the search criteria, sorted ascending
      */
     public function findDirectoryItems($path,
                                        string $searchRegexp,
@@ -381,6 +381,8 @@ class FilesManager extends BaseStrictClass{
                 }
             }
         }
+
+        sort($result);
 
         return $result;
     }
@@ -517,6 +519,17 @@ class FilesManager extends BaseStrictClass{
      */
     public function createDirectory($path, bool $recursive = false){
 
+        if(!is_string($path) || StringUtils::isEmpty($path)){
+
+            throw new UnexpectedValueException('Path must be a non empty string');
+        }
+
+        // Test for not allowed chars * " < > | ?
+        if(preg_match('/[*"<>|?\r\n]/', $path)) {
+
+            throw new UnexpectedValueException('Forbidden * " < > | ? chars found in path: '.$path);
+        }
+
         $path = $this->_composePath($path);
 
         // If folder already exists we won't create it
@@ -543,7 +556,7 @@ class FilesManager extends BaseStrictClass{
             // But if the folder to create does not exist at the time of catching the exception, we will throw it, cause it will be another kind of error.
             if(!is_dir($path)){
 
-                throw $e;
+                throw new UnexpectedValueException($e->getMessage().' '.$path);
             }
 
             return false;

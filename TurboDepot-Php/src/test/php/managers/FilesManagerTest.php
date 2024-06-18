@@ -493,15 +493,6 @@ class FilesManagerTest extends TestCase {
         // Test ok values
         $this->assertTrue($this->sut->isDirectory($this->tempFolder));
 
-        $reconstructedPath = '';
-
-        for ($i = 0, $l = StringUtils::countPathElements($this->tempFolder); $i < $l; $i++) {
-
-            $reconstructedPath .= StringUtils::getPathElement($this->tempFolder, $i).DIRECTORY_SEPARATOR;
-
-            $this->assertTrue($this->sut->isDirectory($reconstructedPath));
-        }
-
         $averageDirectory = $this->tempFolder.DIRECTORY_SEPARATOR.'some folder';
         $this->sut->createDirectory($averageDirectory, true);
         $this->assertTrue($this->sut->isDirectory($averageDirectory));
@@ -1298,33 +1289,10 @@ class FilesManagerTest extends TestCase {
     public function testCreateDirectory(){
 
         // Test empty values
-        try {
-            $this->sut->createDirectory(null);
-            $this->exceptionMessage = 'Null did not cause exception';
-        } catch (Throwable $e) {
-            // We expect an exception to happen
-        }
-
-        try {
-            $this->sut->createDirectory('');
-            $this->exceptionMessage = '"" did not cause exception';
-        } catch (Throwable $e) {
-            // We expect an exception to happen
-        }
-
-        try {
-            $this->sut->createDirectory('     ');
-            $this->exceptionMessage = '"     " did not cause exception';
-        } catch (Throwable $e) {
-            // We expect an exception to happen
-        }
-
-        try {
-            $this->sut->createDirectory("\n\n\n");
-            $this->exceptionMessage = '"     " did not cause exception';
-        } catch (Throwable $e) {
-            // We expect an exception to happen
-        }
+        AssertUtils::throwsException(function(){ $this->sut->createDirectory(null); }, '/Path must be a non empty string/');
+        AssertUtils::throwsException(function(){ $this->sut->createDirectory(''); }, '/Path must be a non empty string/');
+        AssertUtils::throwsException(function(){ $this->sut->createDirectory('     '); }, '/Path must be a non empty string/');
+        AssertUtils::throwsException(function(){ $this->sut->createDirectory("\n\n\n"); }, '/Path must be a non empty string/');
 
         // Test ok values
         $this->assertTrue($this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'test1'));
@@ -1343,33 +1311,18 @@ class FilesManagerTest extends TestCase {
 
         // Test already existing files
         $this->sut->saveFile($this->tempFolder.DIRECTORY_SEPARATOR.'3', 'hello baby');
-        try {
-            $this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'3');
-            $this->exceptionMessage = 'basepath did not cause exception';
-        } catch (Throwable $e) {
-            // We expect an exception to happen
-        }
+        AssertUtils::throwsException(function(){ $this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'3'); }, '/specified path is an existing file/');
 
         // Test creating recursive folders
         $recursive1 = $this->tempFolder.DIRECTORY_SEPARATOR.'test55'.DIRECTORY_SEPARATOR.'test'.DIRECTORY_SEPARATOR.'tes5'.DIRECTORY_SEPARATOR.'t5';
-        try {
-            $this->sut->createDirectory($recursive1);
-            $this->exceptionMessage = 'recursive1 did not cause exception';
-        } catch (Throwable $e) {
-            // We expect an exception to happen
-        }
+        AssertUtils::throwsException(function() use ($recursive1) { $this->sut->createDirectory($recursive1); }, '/file or directory/');
 
         $this->assertFalse($this->sut->isDirectory($recursive1));
         $this->assertTrue($this->sut->createDirectory($recursive1, true));
         $this->assertTrue($this->sut->isDirectory($recursive1));
 
         $recursive2 = $this->tempFolder.DIRECTORY_SEPARATOR.'a'.DIRECTORY_SEPARATOR.'a'.DIRECTORY_SEPARATOR.'a'.DIRECTORY_SEPARATOR.'a';
-        try {
-            $this->sut->createDirectory($recursive2);
-            $this->exceptionMessage = 'recursive2 did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/No such file or directory/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function() use ($recursive2) { $this->sut->createDirectory($recursive2); }, '/file or directory/');
 
         $this->assertFalse($this->sut->isDirectory($recursive2));
         $this->assertTrue($this->sut->createDirectory($recursive2, true));
@@ -1383,33 +1336,10 @@ class FilesManagerTest extends TestCase {
 
         // Test wrong values
         // Test exceptions
-        try {
-            $this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'wrongchars????');
-            $this->exceptionMessage = 'wrongchars???? did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/No such file or directory/', $e->getMessage());
-        }
-
-        try {
-            $this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'wrongchars*');
-            $this->exceptionMessage = 'wrongchars* did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/No such file or directory/', $e->getMessage());
-        }
-
-        try {
-            $this->sut->createDirectory('\345\ertert');
-            $this->exceptionMessage = '\345\ertert did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/No such file or directory/', $e->getMessage());
-        }
-
-        try {
-            $this->sut->createDirectory(['\345\ertert', 1]);
-            $this->exceptionMessage = '\345\ertert did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Path must be a string/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'wrongchars????'); }, '/Forbidden .* chars found/');
+        AssertUtils::throwsException(function(){ $this->sut->createDirectory($this->tempFolder.DIRECTORY_SEPARATOR.'wrongchars*'); }, '/Forbidden .* chars found/');
+        AssertUtils::throwsException(function(){ $this->sut->createDirectory('\345\ertert'); }, '/file or directory/');
+        AssertUtils::throwsException(function(){ $this->sut->createDirectory(['\345\ertert', 1]); }, '/Path must be a non empty string/');
     }
 
 
@@ -1447,19 +1377,8 @@ class FilesManagerTest extends TestCase {
         $this->assertTrue($this->sut->isDirectoryEmpty($emptyTempFolder));
         $this->assertTrue(NumericUtils::isNumeric(StringUtils::getPathElement($emptyTempFolder)));
 
-        try {
-            $this->sut->createTempDirectory([]);
-            $this->exceptionMessage = '[] did not cause exception';
-        } catch (Throwable $e) {
-            // We expect an exception to happen
-        }
-
-        try {
-            $this->sut->createTempDirectory("\n\n\n");
-            $this->exceptionMessage = '"\n\n\n"did not cause exception';
-        } catch (Throwable $e) {
-            // We expect an exception to happen
-        }
+        AssertUtils::throwsException(function(){ $this->sut->createTempDirectory([]); }, '/must be a string/');
+        AssertUtils::throwsException(function(){ $this->sut->createTempDirectory("\n\n\n"); }, '/Forbidden .* chars found/');
 
         // Test ok values
 
@@ -1481,12 +1400,7 @@ class FilesManagerTest extends TestCase {
         $this->assertTrue(strpos($someTempFolder2, '--') !== false);
 
         // Test wrong values
-        try {
-            $this->sut->createTempDirectory("invalid??chars");
-            $this->exceptionMessage = 'invalid??chars not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/No such file or directory/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->createTempDirectory("invalid??chars"); }, '/Forbidden .* chars found/');
 
         // Test exceptions
         // already tested

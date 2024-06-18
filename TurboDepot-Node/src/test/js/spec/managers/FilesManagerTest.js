@@ -7,7 +7,7 @@
 
 const path = require('path');
 const os = require('os');
-const { StringUtils, ConversionUtils } = require('turbocommons-ts');
+const { StringUtils, ArrayUtils } = require('turbocommons-ts');
 const { FilesManager } = require(path.resolve('target/turbodepot-node/dist/ts/index'));
 
 
@@ -235,7 +235,24 @@ describe('FilesManager', function() {
     
     it('should have a correctly implemented findDirectoryItems method', function() {
 
-        // TODO - translate from php      
+        // Test empty values
+        expect(() => { this.sut.findDirectoryItems(null); }).toThrowError(Error, /Path must be a string/);
+        expect(() => { this.sut.findDirectoryItems(0); }).toThrowError(Error, /Path must be a string/);
+        expect(() => { this.sut.findDirectoryItems(''); }).toThrowError(Error, /Path does not exist/);
+        expect(() => { this.sut.findDirectoryItems('       '); }).toThrowError(Error, /Path does not exist/);
+        
+        // Test ok values
+        expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/file/'), [])).toBe(true);
+        expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/.*/'), [])).toBe(true);
+        expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/^name$/'), [])).toBe(true);
+        expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/file/', 'relative', 'files'), [])).toBe(true);
+        expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/.*/', 'relative', 'files'), [])).toBe(true);
+        expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/^name$/', 'relative', 'files'), [])).toBe(true);
+        expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/file/', 'relative', 'folders'), [])).toBe(true);
+        expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/.*/', 'relative', 'folders'), [])).toBe(true);
+        expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/^name$/', 'relative', 'folders'), [])).toBe(true);
+
+        // TODO - translate all missing tests from php      
     });
     
     
@@ -253,7 +270,58 @@ describe('FilesManager', function() {
     
     it('should have a correctly implemented createDirectory method', function() {
 
-        // TODO - translate from php      
+        // Test empty values
+        expect(() => { this.sut.createDirectory(null); }).toThrowError(Error, /Path must be a non empty string/);
+        expect(() => { this.sut.createDirectory(''); }).toThrowError(Error, /Path must be a non empty string/);
+        expect(() => { this.sut.createDirectory('     '); }).toThrowError(Error, /Path must be a non empty string/);
+        expect(() => { this.sut.createDirectory("\n\n\n"); }).toThrowError(Error, /Path must be a non empty string/);
+
+        // Test ok values
+        expect(this.sut.createDirectory(this.tempFolder + '/' + 'test1')).toBe(true);
+        expect(this.sut.isDirectory(this.tempFolder + '/' + 'test1')).toBe(true);
+        
+        expect(this.sut.createDirectory(this.tempFolder + '/' + '1234')).toBe(true);
+        expect(this.sut.isDirectory(this.tempFolder + '/' + '1234')).toBe(true);
+
+        expect(this.sut.createDirectory(this.tempFolder + '/' + '-go-')).toBe(true);
+        expect(this.sut.isDirectory(this.tempFolder + '/' + '-go-')).toBe(true);
+
+        // Test already existing folders
+        expect(!this.sut.createDirectory(this.tempFolder + '/' + 'test1')).toBe(true);
+        expect(!this.sut.createDirectory(this.tempFolder + '/' + '1234')).toBe(true);
+        expect(!this.sut.createDirectory(this.tempFolder + '/' + '-go-')).toBe(true);
+
+        // Test already existing files
+        this.sut.saveFile(this.tempFolder + '/' + '3', 'hello baby');
+        expect(() => { this.sut.createDirectory(this.tempFolder + '/' + '3'); }).toThrowError(Error, /specified path is an existing/);
+
+        // Test creating recursive folders
+        let recursive1 = this.tempFolder + '/' + 'test55' + '/' + 'test' + '/' + 'tes5' + '/' + 't5';
+        expect(() => { this.sut.createDirectory(recursive1); }).toThrowError(Error, /file or directory/);
+
+        expect(this.sut.isDirectory(recursive1)).toBe(false);
+        expect(this.sut.createDirectory(recursive1, true)).toBe(true);
+        expect(this.sut.isDirectory(recursive1)).toBe(true);
+
+        let recursive2 = this.tempFolder + '/' + 'a' + '/' + 'a' + '/' + 'a' + '/' + 'a';
+        expect(() => { this.sut.createDirectory(recursive2); }).toThrowError(Error, /file or directory/); 
+
+        expect(this.sut.isDirectory(recursive2)).toBe(false);
+        expect(this.sut.createDirectory(recursive2, true)).toBe(true);
+        expect(this.sut.isDirectory(recursive2)).toBe(true);
+
+        let sut2 = new FilesManager(this.tempFolder);
+        expect(sut2.isDirectory('subfolder-tocreate')).toBe(false);
+        expect(sut2.createDirectory('subfolder-tocreate', true)).toBe(true);
+        expect(sut2.isDirectory('subfolder-tocreate')).toBe(true);
+        expect(sut2.isDirectory(this.tempFolder + '/' + 'subfolder-tocreate')).toBe(true);
+
+        // Test wrong values
+        // Test exceptions
+        expect(() => { this.sut.createDirectory(this.tempFolder + '/' + 'wrongchars????'); }).toThrowError(Error, /Forbidden .* chars found/);
+        expect(() => { this.sut.createDirectory(this.tempFolder + '/' + 'wrongchars*'); }).toThrowError(Error, /Forbidden .* chars found/);
+        expect(() => { this.sut.createDirectory('\\345\\ertert'); }).toThrowError(Error, /file or directory/);
+        expect(() => { this.sut.createDirectory(['\\345\\ertert', 1]); }).toThrowError(Error, /Path must be a non empty string/);
     });
     
     
@@ -471,7 +539,7 @@ describe('FilesManager', function() {
         expect(this.sut.isDirectory(this.tempFolder + '/dir1/dir2')).toBe(false);
         expect(this.sut.isFile(this.tempFolder + '/dir1/dir2/file.txt')).toBe(false);
         expect(this.sut.saveFile(this.tempFolder + '/dir1/dir2/file.txt', 'test', false, true)).toBe(true);
-        expect('test', this.sut.readFile(this.tempFolder + '/dir1/dir2/file.txt')).toBe('test');
+        expect(this.sut.readFile(this.tempFolder + '/dir1/dir2/file.txt')).toBe('test');
 
         // Test wrong values
         expect(() => { this.sut.saveFile('nonexistantpath/nonexistantfile'); }).toThrowError(Error, /Could not write to file/);

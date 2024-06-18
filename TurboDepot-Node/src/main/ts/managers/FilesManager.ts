@@ -323,7 +323,7 @@ export class FilesManager{
      *        - If set to 'name' (default) The regexp will be tested only against the file or folder name<br>
      *        - If set to 'absolute' The regexp will be tested against the full OS absolute path of the file or folder<br>
      *
-     * @return A list formatted as defined in returnFormat, with all the elements that meet the search criteria
+     * @return A list formatted as defined in returnFormat, with all the elements that meet the search criteria, sorted ascending
      */
     findDirectoryItems(path: string,
                        searchRegexp: string|RegExp,
@@ -385,7 +385,7 @@ export class FilesManager{
             }
         }
 
-        return result;
+        return result.sort((a, b) => a.localeCompare(b));
     }
 
 
@@ -520,6 +520,17 @@ export class FilesManager{
      */
     createDirectory(path: string, recursive = false){
 
+        if(!StringUtils.isString(path) || StringUtils.isEmpty(path)){
+
+            throw new Error('Path must be a non empty string');
+        }
+
+        // Test for not allowed chars * " < > | ?
+        if(/[*"<>|?\r\n]/.test(path)) {
+
+            throw new Error('Forbidden * " < > | ? chars found in path: ' + path);
+        }
+        
         path = this._composePath(path);
 
         // If folder already exists we won't create it
@@ -543,17 +554,7 @@ export class FilesManager{
             
             }else{
             
-                let reconstructedPath = '';
-                    
-                for (let i = 0; i < StringUtils.countPathElements(path); i++) {
-                    
-                    reconstructedPath += StringUtils.getPathElement(path, i) + this.dirSep();
-                    
-                    if(!this.isDirectory(reconstructedPath)){
-                        
-                        this.fs.mkdirSync(reconstructedPath);
-                    }
-                }
+                this.fs.mkdirSync(path, { recursive: true });
             }
             
         }catch(e){
@@ -563,7 +564,7 @@ export class FilesManager{
             // But if the folder to create does not exist at the time of catching the exception, we will throw it, cause it will be another kind of error.
             if(!this.isDirectory(path)){
 
-                throw e;
+                throw new Error(e.message + ' ' + path);
             }
 
             return false;
