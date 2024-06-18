@@ -937,13 +937,13 @@ class CacheManagerTest extends TestCase {
         $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot)));
         $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot.'someSection1')));
         $this->assertTrue($this->filesManager->isDirectory(
-            $zoneRoot.'someSection1'.DIRECTORY_SEPARATOR.($this->filesManager->getDirectoryList($zoneRoot.'someSection1')[0])));
+            $zoneRoot.'someSection1'.DIRECTORY_SEPARATOR.($this->filesManager->getDirectoryList($zoneRoot.'someSection1', 'nameAsc')[0])));
 
         $this->sut->save('someSection2', 'someId2', 'someData2');
         $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot)));
         $this->assertSame(1, count($this->filesManager->getDirectoryList($zoneRoot.'someSection2')));
         $this->assertTrue($this->filesManager->isDirectory(
-            $zoneRoot.'someSection2'.DIRECTORY_SEPARATOR.($this->filesManager->getDirectoryList($zoneRoot.'someSection2')[0])));
+            $zoneRoot.'someSection2'.DIRECTORY_SEPARATOR.($this->filesManager->getDirectoryList($zoneRoot.'someSection2', 'nameAsc')[0])));
 
         $this->sut->clearZone();
         $this->assertSame(2, count($this->filesManager->getDirectoryList($zoneRoot)));

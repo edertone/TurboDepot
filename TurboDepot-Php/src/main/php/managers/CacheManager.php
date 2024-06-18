@@ -54,7 +54,7 @@ class CacheManager extends BaseStrictClass{
      * be named and used for whatever purpose we want. Inside each of the zones, we can store cache "sections" which are another independent
      * cache areas which can be also used and named for anything we want. Each section contains all the cached data that we generate.
      *
-     * All the data is stored on plain file system, so take it into consideration when fast response times are cryitcal.
+     * All the data is stored on plain file system, so take it into consideration when fast response times are crytcal.
      *
      * The expiration of the cache data is managed entirely by this class, so no cron or scheduled tasks should be required to clear outdated
      * cache items.
