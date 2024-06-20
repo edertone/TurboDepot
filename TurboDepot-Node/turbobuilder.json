@@ -16,7 +16,7 @@
             "tabsForbidden": {
                 "enabled": true,
                 "affectedPaths": ["src", "extras"],
-                "excludes": [".xlsx"]
+                "excludes": [".xlsx", ".zip"]
             },
             "copyPasteDetect":[
                 {
@@ -37,7 +37,7 @@
                     "path": "extras/copyright headers/TsFiles-Header.txt",
                     "affectedPaths": ["src"],
                     "includes": ["ts"],
-                    "excludes": []
+                    "excludes": ["test/resources"]
                 },
                 {
                     "path": "extras/copyright headers/JsFiles-Header.txt",

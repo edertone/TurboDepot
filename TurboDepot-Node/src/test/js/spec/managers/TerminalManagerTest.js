@@ -411,7 +411,7 @@ describe('TerminalManagerTest', function() {
         
         // Test wrong values
         // Test exceptions
-        expect(() => { this.sut.createTempDirectory('invalid?chars*'); }).toThrowError(Error, /invalid argument/);        
+        expect(() => { this.sut.createTempDirectory('invalid?chars*'); }).toThrowError(Error, /Forbidden .* chars found/);        
     });
     
     
@@ -452,7 +452,7 @@ describe('TerminalManagerTest', function() {
         
         // Test wrong values
         // Test exceptions
-        expect(() => { this.sut.createTempDirectory('invalid?chars*'); }).toThrowError(Error, /invalid argument/); 
+        expect(() => { this.sut.createTempDirectory('invalid?chars*'); }).toThrowError(Error, /Forbidden .* chars found/); 
         
         expect(path.resolve(process.cwd())).toBe(this.initialDir);
     });

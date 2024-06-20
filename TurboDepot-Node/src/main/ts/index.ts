@@ -15,5 +15,6 @@ export { MarkDownManager } from './managers/MarkDownManager';
 export { TerminalManager } from './managers/TerminalManager';
 
 // Model package
+export { ZipObject } from './model/ZipObject';
 
 // Utils package
