@@ -45,13 +45,15 @@ final class UserObject extends DataBaseObject{
 
     /**
      * List of roles that are applied to this user, sorted by preference
-     * @var string
+     * @var string[]
      */
     public $roles = [];
 
 
     /**
-     * The username that is used for login
+     * The username that is used for login.
+     * NOTICE: User name values cannot be repeated on the same domain.
+     *
      * @var string
      */
     public $userName = '';
@@ -75,5 +77,3 @@ final class UserObject extends DataBaseObject{
      */
     public $data = '';
 }
-
-?>

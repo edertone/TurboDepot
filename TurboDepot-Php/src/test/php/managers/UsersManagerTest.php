@@ -12,10 +12,13 @@
 namespace org\turbodepot\src\test\php\managers;
 
 use PHPUnit\Framework\TestCase;
+use Throwable;
+use stdClass;
 use org\turbodepot\src\main\php\managers\UsersManager;
 use org\turbotesting\src\main\php\utils\AssertUtils;
 use org\turbodepot\src\main\php\model\UserObject;
 use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
+use org\turbodepot\src\test\resources\managers\usersManager\Test1CustomFieldsObject;
 
 
 /**
@@ -126,6 +129,9 @@ class UsersManagerTest extends TestCase {
         $this->assertSame(['', 'domain1', 'domain2', 'domain3'], $this->db->tableGetColumnValues('usr_domain', 'name'));
         $this->assertSame(['default domain', 'description1-edited', '', ''], $this->db->tableGetColumnValues('usr_domain', 'description'));
 
+        $this->assertTrue($this->sut->saveDomain('見 in 見る', ''));
+        $this->assertSame(['', 'domain1', 'domain2', 'domain3', '見 in 見る'], $this->db->tableGetColumnValues('usr_domain', 'name'));
+
         // Test wrong values
         // Test exceptions
         AssertUtils::throwsException(function() { $this->sut->saveDomain('   ', ''); }, '/domainName must be a non empty string/');
@@ -226,6 +232,9 @@ class UsersManagerTest extends TestCase {
         $this->assertTrue($this->sut->saveRole('role2', 'description 2 edited'));
         $this->assertSame(['', 'description 2 edited'], $this->db->tableGetColumnValues('usr_role', 'description'));
 
+        $this->assertTrue($this->sut->saveRole('見 in 見る', '見 in 見る'));
+        $this->assertSame(['role1', 'role2', '見 in 見る'], $this->db->tableGetColumnValues('usr_role', 'name'));
+
         //         // Test wrong values
         //         // Test exceptions
         AssertUtils::throwsException(function() { $this->sut->saveRole('   ', ''); }, '/roleName must be a non empty string/');
@@ -252,6 +261,42 @@ class UsersManagerTest extends TestCase {
         // TODO
 
         $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /** test */
+    public function testIsUserAssignedToRole(){
+
+        // Test empty values
+        AssertUtils::throwsException(function() { $this->sut->isUserAssignedToRole(null, null); }, '/null given/');
+        AssertUtils::throwsException(function() { $this->sut->isUserAssignedToRole(0, 0); }, '/Invalid or non existant role specified/');
+        AssertUtils::throwsException(function() { $this->sut->isUserAssignedToRole('', ''); }, '/roleName must be a non empty string/');
+
+        // Test ok values
+        $this->sut->saveRole('admin', '');
+
+        $user = new UserObject();
+        $user->userName = 'user';
+        $user->roles = ['admin'];
+        $this->sut->saveUser($user);
+        $this->assertTrue($this->sut->isUserAssignedToRole('user', 'admin'));
+
+        $this->sut->saveRole('specialRole', '');
+        $user->roles = ['admin', 'specialRole'];
+        $this->sut->saveUser($user);
+        $this->assertTrue($this->sut->isUserAssignedToRole('user', 'admin'));
+        $this->assertTrue($this->sut->isUserAssignedToRole('user', 'specialRole'));
+
+        $this->sut->saveRole('nottobefound', '');
+        $user->roles = ['specialRole'];
+        $this->sut->saveUser($user);
+        $this->assertFalse($this->sut->isUserAssignedToRole('user', 'admin'));
+        $this->assertFalse($this->sut->isUserAssignedToRole('user', 'nottobefound'));
+
+        // Test exceptions
+        // Test wrong values
+        AssertUtils::throwsException(function() { $this->sut->isUserAssignedToRole('', 'admin'); }, '/username must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->isUserAssignedToRole('234234', 'admin'); }, '/Invalid user/');
     }
 
 
@@ -309,7 +354,7 @@ class UsersManagerTest extends TestCase {
         $user->userName = 'user';
         $user->description = 'user description';
         AssertUtils::throwsException(function() use ($user) { $this->sut->saveUser($user); }, '/Saving a user with a domain .different domain. that doesn\'t match the current one ../');
-        AssertUtils::throwsException(function() use ($user) { $this->sut->setDomain('different domain'); }, '/Domain does not exist different domain/');
+        AssertUtils::throwsException(function() { $this->sut->setDomain('different domain'); }, '/Domain does not exist different domain/');
 
         $this->sut->saveDomain('different domain', '');
         $this->sut->setDomain('different domain');
@@ -375,6 +420,153 @@ class UsersManagerTest extends TestCase {
 
         AssertUtils::throwsException(function() use ($user) { $this->sut->saveUser($user); },
             '/<usr_userobject> table contains a column which must exist as a basic property on object being saved: .*<extraone> exists on <usr_userobject> but not on provided tableDef.*/');
+    }
+
+
+    /** test */
+    public function testSaveUserCustomFields(){
+
+        // Test empty values
+        AssertUtils::throwsException(function() { $this->sut->saveUserCustomFields(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->saveUserCustomFields(null); }, '/must be of the type string/');
+        AssertUtils::throwsException(function() { $this->sut->saveUserCustomFields(null, null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->saveUserCustomFields('', ''); }, '/Argument 2 .*DataBaseObject/');
+        AssertUtils::throwsException(function() { $this->sut->saveUserCustomFields([], []); }, '/must be of the type string, array given/');
+
+        // Test ok values
+        // Create user add some custom fields with default values at the UserCustomFieldsObject class and test are correctly saved on bd
+        $user1 = new UserObject();
+        $user1->userName = 'user';
+        $this->sut->saveUser($user1);
+        $this->sut->saveUserCustomFields($user1->userName, new Test1CustomFieldsObject());
+        $this->assertSame(['user'], $this->db->tableGetColumnValues('usr_userobject', 'username'));
+        $this->assertSame(['some name'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'name'));
+        $this->assertSame([''], $this->db->tableGetColumnValues('usr_userobject_customfields', 'surnames'));
+        $this->assertSame(['23434534'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'phone'));
+        $this->assertSame(['barcelona'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'city'));
+        $this->assertSame([''], $this->db->tableGetColumnValues('usr_userobject_customfields', 'district'));
+
+        // Modify saved values for the user and test new values are correctly saved to bd
+        $updatedCustomFields = new Test1CustomFieldsObject();
+        $updatedCustomFields->name = 'new name';
+        $updatedCustomFields->surnames = 'new surname';
+        $updatedCustomFields->phone = '111222333';
+        $updatedCustomFields->city = 'madrid';
+        $updatedCustomFields->district = 'center';
+
+        $this->sut->saveUserCustomFields($user1->userName, $updatedCustomFields);
+        $this->assertSame(['new name'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'name'));
+        $this->assertSame(['new surname'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'surnames'));
+        $this->assertSame(['111222333'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'phone'));
+        $this->assertSame(['madrid'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'city'));
+        $this->assertSame(['center'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'district'));
+        $this->assertSame(1, $this->db->tableCountRows('usr_userobject_customfields'));
+
+        // Save a second user and add custom fields, make sure vales are also correct and independent
+        $user2 = new UserObject();
+        $user2->userName = 'user2';
+        $this->sut->saveUser($user2);
+
+        $customFieldsUser2 = new Test1CustomFieldsObject();
+        $customFieldsUser2->name = 'user2 name';
+        $customFieldsUser2->surnames = 'user2 surname';
+        $customFieldsUser2->phone = '222333444';
+        $customFieldsUser2->city = 'valencia';
+        $customFieldsUser2->district = 'west';
+
+        $this->sut->saveUserCustomFields($user2->userName, $customFieldsUser2);
+        $this->assertSame(['1','2'], $this->db->tableGetColumnValues('usr_userobject', 'dbid'));
+        $this->assertSame(['1', '2'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'dbid'));
+        $this->assertSame(['user', 'user2'], $this->db->tableGetColumnValues('usr_userobject', 'username'));
+        $this->assertSame(['new name', 'user2 name'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'name'));
+        $this->assertSame(['new surname', 'user2 surname'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'surnames'));
+        $this->assertSame(['111222333', '222333444'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'phone'));
+        $this->assertSame(['madrid', 'valencia'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'city'));
+        $this->assertSame(['center', 'west'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'district'));
+
+        // Delete user 1 and make sure only user 2 data exists
+        $this->sut->deleteUser($user1->userName);
+        $this->assertSame(['2'], $this->db->tableGetColumnValues('usr_userobject', 'dbid'));
+        $this->assertSame(['user2'], $this->db->tableGetColumnValues('usr_userobject', 'username'));
+        $this->assertSame(['2'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'dbid'));
+        $this->assertSame(['user2 name'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'name'));
+        $this->assertSame(['user2 surname'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'surnames'));
+        $this->assertSame(['222333444'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'phone'));
+        $this->assertSame(['valencia'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'city'));
+        $this->assertSame(['west'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'district'));
+
+        // Delete user 2 and make sure all tables are empty
+        $this->sut->deleteUser($user2->userName);
+        $this->assertSame([], $this->db->tableGetColumnValues('usr_userobject', 'dbid'));
+        $this->assertSame([], $this->db->tableGetColumnValues('usr_userobject', 'username'));
+        $this->assertSame([], $this->db->tableGetColumnValues('usr_userobject_customfields', 'dbid'));
+
+        // Test exceptions
+        AssertUtils::throwsException(function() { $this->sut->saveUserCustomFields('string', new stdClass()); }, '/must be an instance of .*DataBaseObject/');
+        AssertUtils::throwsException(function() { $this->sut->saveUserCustomFields([1,2,3], new Test1CustomFieldsObject()); }, '/must be of the type string, array given/');
+    }
+
+
+    /** test */
+    public function testSaveUserCustomFields_verify_concurrentAccess(){
+
+        $customFields1 = new Test1CustomFieldsObject();
+        $customFields1->name = 'John Doe';
+
+        $customFields2 = new Test1CustomFieldsObject();
+        $customFields2->name = 'Jane Smith';
+
+        $user = new UserObject();
+        $user->userName = 'user';
+        $this->sut->saveUser($user);
+
+        // Simulate concurrent modification
+        $this->sut->saveUserCustomFields($user->userName, $customFields1);
+        $this->sut->saveUserCustomFields($user->userName, $customFields2);
+
+        $this->assertSame(['1'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'dbid'));
+        $this->assertSame(['Jane Smith'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'name'));
+    }
+
+
+    /** test */
+    public function testSaveUserCustomFields_verify_transaction_rolls_back_correctly(){
+
+        $user = new UserObject();
+        $user->userName = 'user';
+        $this->sut->saveUser($user);
+
+        // Set an invalid field to custom fields
+        $customFields = new Test1CustomFieldsObject();
+        $customFields->name = 'valid name';
+        $customFields->surnames = ['invalid array while expecting string'];
+
+        try {
+
+            $this->sut->saveUserCustomFields($user->userName, $customFields);
+
+        } catch (Throwable $e) {
+
+            // Ensure no partial changes are made
+            $this->assertContains('Could not save user custom fields', $e->getMessage());
+            $this->assertSame(0, $this->db->tableCountRows('usr_userobject_customfields'));
+        }
+    }
+
+
+    /** test */
+    public function testSaveUserCustomFields_verify_transaction_rolls_back_correctly_for_multiple_tables(){
+
+        // TODO - start a transaction, create a user, try to add invalid custom fields and verify nothing has been saved
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /** test */
+    public function testSaveUserCustomFields_verify_table_gets_correctly_modified_after_trying_to_save_different_set_of_custom_fields(){
+
+        // TODO - start a transaction, create a user, try to add invalid custom fields and verify nothing has been saved
+        $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
 
@@ -709,13 +901,13 @@ class UsersManagerTest extends TestCase {
 
 
     /** test */
-    public function testGetUserFromToken(){
+    public function testfindUserByToken(){
 
         // Test empty values
-        AssertUtils::throwsException(function() { $this->sut->getUserFromToken(); }, '/Too few arguments to function/');
-        AssertUtils::throwsException(function() { $this->sut->getUserFromToken(null); }, '/must be of the type string, null given/');
-        AssertUtils::throwsException(function() { $this->sut->getUserFromToken(''); }, '/token must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->getUserFromToken('', ''); }, '/token must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->findUserByToken(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->findUserByToken(null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->findUserByToken(''); }, '/token must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->findUserByToken('', ''); }, '/token must be a non empty string/');
 
         // Test ok values
         $user = new UserObject();
@@ -724,7 +916,7 @@ class UsersManagerTest extends TestCase {
         $this->sut->setUserPassword($user->userName, 'psw');
         $token = $this->sut->login('user', 'psw')->token;
 
-        $userRead = $this->sut->getUserFromToken($token);
+        $userRead = $this->sut->findUserByToken($token);
         $this->assertSame($user->userName, $userRead->userName);
         $this->assertSame($user->getDbId(), $userRead->getDbId());
 
@@ -734,13 +926,13 @@ class UsersManagerTest extends TestCase {
         $this->sut->setUserPassword($user2->userName, 'psw2');
         $token2 = $this->sut->login('user2', 'psw2')->token;
 
-        $userRead = $this->sut->getUserFromToken($token2);
+        $userRead = $this->sut->findUserByToken($token2);
         $this->assertSame($user2->userName, $userRead->userName);
         $this->assertSame($user2->getDbId(), $userRead->getDbId());
 
         // Test wrong values
         // Test exceptions
-        AssertUtils::throwsException(function() { $this->sut->getUserFromToken('nonexistanttoken'); }, '/Invalid token: nonexistanttoken/');
+        AssertUtils::throwsException(function() { $this->sut->findUserByToken('nonexistanttoken'); }, '/Invalid token: nonexistanttoken/');
     }
 
 

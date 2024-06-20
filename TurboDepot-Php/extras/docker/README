@@ -1,0 +1,13 @@
+If you want to use one of the predefined turbobuilder docker multi containers,
+simply create a multicontainer.txt file inside this folder and write inside the name for the multi container to use. For example:
+
+php7.4-apache2.4-mariadb10.4
+
+
+Docker multi container names can be found at the turbobilder-node repository:
+
+    src/main/resources/docker-multi-containers
+    
+If yow want to use your own docker multi container, remove the multicontainer.txt file and copy the multi container files into this folder, then modify it to your taste.
+
+Turbobuilder will autodetect your custom multi container and run it instead of the predefined one.

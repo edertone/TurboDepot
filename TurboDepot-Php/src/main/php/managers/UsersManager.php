@@ -12,6 +12,7 @@
 
 namespace org\turbodepot\src\main\php\managers;
 
+use ReflectionObject;
 use Throwable;
 use stdClass;
 use DateTime;
@@ -22,6 +23,8 @@ use org\turbocommons\src\main\php\utils\ConversionUtils;
 use org\turbodepot\src\main\php\model\UserObject;
 use org\turbocommons\src\main\php\utils\StringUtils;
 use org\turbocommons\src\main\php\utils\ArrayUtils;
+use org\turbodepot\src\main\php\model\DataBaseObject;
+use PharIo\Version\AndVersionConstraintGroup;
 
 
 /**
@@ -32,7 +35,7 @@ class UsersManager extends BaseStrictClass{
 
     /**
      * Defines the number of seconds that user tokens will be active since they are created. After the number of seconds has passed,
-     * tokens will expire and a login will be necessary to obtain a new token. (Note that  tokenLifeTimeReinit will affect this value)
+     * tokens will expire and a login will be necessary to obtain a new token. (Note that isTokenLifeTimeRecycled will affect this value)
      */
     public $tokenLifeTime = 3600;
 
@@ -93,6 +96,13 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
+     * The name of the table that contains user extra custom fields
+     * @var string
+     */
+    private $_tableUserCustomFieldsObject;
+
+
+    /**
      * The name of the roles table
      * @var string
      */
@@ -147,6 +157,7 @@ class UsersManager extends BaseStrictClass{
 
         $this->_tableDomain = $this->_databaseObjectsManager->tablesPrefix.'domain';
         $this->_tableUserObject = $this->_databaseObjectsManager->tablesPrefix.'userobject';
+        $this->_tableUserCustomFieldsObject = $this->_databaseObjectsManager->tablesPrefix.'userobject_customfields';
         $this->_tableRole = $this->_databaseObjectsManager->tablesPrefix.'role';
         $this->_tableUserPsw = $this->_databaseObjectsManager->tablesPrefix.'userobject_password';
         $this->_tableUserMail = $this->_databaseObjectsManager->tablesPrefix.'userobject_mails';
@@ -196,7 +207,7 @@ class UsersManager extends BaseStrictClass{
 
         } catch (Throwable $e) {
 
-            if($this->_db->tableSyncFromDefinition($this->_tableDomain, [
+            if($this->_db->tableAlterToFitDefinition($this->_tableDomain, [
                 'columns' => ['name varchar(250) NOT NULL', 'description varchar(5000) NOT NULL'],
                 'primaryKey' => ['name']])){
 
@@ -282,7 +293,7 @@ class UsersManager extends BaseStrictClass{
 
         } catch (Throwable $e) {
 
-            if($this->_db->tableSyncFromDefinition($this->_tableRole, [
+            if($this->_db->tableAlterToFitDefinition($this->_tableRole, [
                 'columns' => ['domain varchar(250) NOT NULL', 'name varchar(250) NOT NULL', 'description varchar(5000) NOT NULL'],
                 'primaryKey' => ['domain', 'name'],
                 'foreignKey' => [[$this->_tableRole.'_'.$this->_tableDomain.'_fk', ['domain'], $this->_tableDomain, ['name']]]])){
@@ -320,16 +331,44 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Check if the specified user has the specified role assigned.
+     * Users may have more than one roles, this method tests if a specific user has the given role assigned or not.
+     *
+     * @param string $userName   The name for the user that we want to check
+     * @param string $roleName The role name that we want to check
+     *
+     * @throws UnexpectedValueException If the role does not exist
+     *
+     * @return boolean True if the role is assigned to the user, false otherwise
      */
-    public function deleteRole(string $roleName){
+    public function isUserAssignedToRole(string $userName, string $roleName){
 
-        // TODO
+        if(!$this->isRole($roleName)){
+
+            throw new UnexpectedValueException('Invalid or non existant role specified');
+        }
+
+        return in_array($roleName, $this->findUserByUserName($userName)->roles);
     }
 
 
     /**
-     * Save to database the provided user instance or update it if it already exists
+     * TODO
+     */
+    public function deleteRole(string $roleName){
+
+        // TODO - After deleting a role, we must clear it from all the users that use it, but without deleting the users
+        // TODO - check any impact that deleting the role would have. Maybe if it is the only one that exists, we cannot leave
+        // users without a role?
+    }
+
+
+    /**
+     * Save to database the provided user instance or update it if it already exists.
+     *
+     * Notice that to update the user password you must call an independent method: setUserPassword()
+     *
+     * @see UsersManager::setUserPassword
      *
      * @param UserObject $user The User instance that we want to save
      *
@@ -381,8 +420,71 @@ class UsersManager extends BaseStrictClass{
      */
     public function isUser(string $userName){
 
-        return count($this->_databaseObjectsManager->getByPropertyValues(UserObject::class,
+        return count($this->_databaseObjectsManager->findByPropertyValues(UserObject::class,
             ['userName' => $userName, 'domain' => $this->_domain])) === 1;
+    }
+
+
+    /**
+     * Save custom information (extra arbitrary fields) for the provided user.
+     * Any existing custom info previously saved will be overwritten.
+     *
+     * @param string $userName The name for an existing user to which we want to set the custom fields.
+     * @param DataBaseObject $customFields An extended DataBaseObject containing the values for all the extra properties we want
+     *        to store for this user. This will be used to define the data types and value for each custom field we want to store
+     *
+     * @throws UnexpectedValueException If the custom fields cannot be saved.
+     *
+     * @return int The dbId of the user if the custom fields were successfully saved.
+     */
+    public function saveUserCustomFields(string $userName, DataBaseObject $customFields){
+
+        // Validate inputs
+        $userDbId = $this->_getUserDBId($userName);
+        $this->_databaseObjectsManager->validateObject($customFields);
+
+        try {
+
+            $this->_db->transactionBegin();
+
+            // Generate a table definition for the custom fields to save, and alter the database if necessary to fit it
+            $tableDef = [
+                'primaryKey' => ['dbid'],
+                'foreignKey' => [[$this->_tableUserCustomFieldsObject.'_'.$this->_tableUserObject.'_fk', ['dbid'], $this->_tableUserObject, ['dbid']]],
+                'columns' => ['dbid '.$this->_unsignedBigIntSqlTypeDef]
+            ];
+
+            // Store the values for each column on the table data structure
+            $tableData = ['dbid' => $userDbId];
+
+            foreach ($this->_databaseObjectsManager->getBasicProperties($customFields) as $property) {
+
+                $tableDef['columns'][] = strtolower($property).' '.$this->_databaseObjectsManager->getSQLTypeFromObjectProperty($customFields, $property);
+                $tableData[strtolower($property)] = $customFields->{$property};
+            }
+
+            $this->_db->tableAlterToFitDefinition($this->_tableUserCustomFieldsObject, $tableDef);
+            $this->_db->tableAddOrUpdateRow($this->_tableUserCustomFieldsObject, ['dbid' => $userDbId], $tableData);
+            $this->_db->transactionCommit();
+
+            return $userDbId;
+
+        } catch (Throwable $e) {
+
+            $this->_db->transactionRollback();
+
+            throw new UnexpectedValueException('Could not save user custom fields: '.$e->getMessage());
+        }
+    }
+
+
+    /**
+     * TODO
+     * @param string $userName
+     * @param DataBaseObject $customFields
+     */
+    public function getUserCustomFields(string $userName, DataBaseObject $customFields){
+
     }
 
 
@@ -408,7 +510,7 @@ class UsersManager extends BaseStrictClass{
 
         } catch (Throwable $e) {
 
-            if($this->_db->tableSyncFromDefinition($this->_tableUserPsw, [
+            if($this->_db->tableAlterToFitDefinition($this->_tableUserPsw, [
                 'columns' => ['dbid '.$this->_unsignedBigIntSqlTypeDef, 'password varchar(500) NOT NULL'],
                 'primaryKey' => ['dbid'],
                 'foreignKey' => [[$this->_tableUserPsw.'_'.$this->_tableUserObject.'_fk', ['dbid'], $this->_tableUserObject, ['dbid']]]
@@ -435,9 +537,9 @@ class UsersManager extends BaseStrictClass{
      */
     private function _getUserDBId(string $userName){
 
-        $user = $this->_databaseObjectsManager->getByPropertyValues(UserObject::class, ['userName' => $userName, 'domain' => $this->_domain]);
+        $user = $this->_databaseObjectsManager->findByPropertyValues(UserObject::class, ['userName' => $userName, 'domain' => $this->_domain]);
 
-        if(count($user) < 1){
+        if(empty($user)){
 
             throw new UnexpectedValueException('Non existing user: '.$userName.' on domain '.$this->_domain);
         }
@@ -480,9 +582,9 @@ class UsersManager extends BaseStrictClass{
 
         } catch (Throwable $e) {
 
-            if($this->_db->tableSyncFromDefinition($this->_tableUserMail, [
+            if($this->_db->tableAlterToFitDefinition($this->_tableUserMail, [
                 'columns' => ['dbid '.$this->_unsignedBigIntSqlTypeDef, 'mail varchar(250) NOT NULL', 'isverified tinyint(1) NOT NULL',
-                              'comments varchar(5000) NOT NULL', 'data varchar(25000) NOT NULL'],
+                              'comments varchar(1000) NOT NULL', 'data TEXT NOT NULL'],
                 'primaryKey' => ['dbid', 'mail'],
                 'foreignKey' => [[$this->_tableUserMail.'_'.$this->_tableUserObject.'_fk', ['dbid'], $this->_tableUserObject, ['dbid']]]])){
 
@@ -588,23 +690,51 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * TODO
-     * @param string $token
-     * @throws UnexpectedValueException
-     * @return \org\turbodepot\src\main\php\model\DataBaseObject
+     * Get a user instance from the database using the provided token.
+     *
+     * @param string $token The previously obtained token that represents the user we want to retrieve
+     *
+     * @throws UnexpectedValueException If the token is not valid
+     *
+     * @return UserObject The user instance if the token is valid
      */
-    public function getUserFromToken(string $token){
+    public function findUserByToken(string $token){
 
         StringUtils::forceNonEmptyString($token, 'token');
 
         $tokenData = $this->_db->tableGetRows($this->_tableToken, ['token' => $token]);
 
-        if(count($tokenData) <= 0){
+        if(empty($tokenData)){
 
             throw new UnexpectedValueException('Invalid token: '.$token);
         }
 
-        return $this->_databaseObjectsManager->getByDbId(UserObject::class, $tokenData[0]['dbid']);
+        return $this->_databaseObjectsManager->findByDbId(UserObject::class, $tokenData[0]['dbid']);
+    }
+
+
+    /**
+     * Get a user instance from the database using the provided username string.
+     *
+     * @param string $userName A valid user name
+     *
+     * @throws UnexpectedValueException If the user name is not valid
+     *
+     * @return UserObject The user instance if the user name is valid
+     */
+    public function findUserByUserName(string $userName){
+
+        StringUtils::forceNonEmptyString($userName, 'username');
+
+        $user = $this->_databaseObjectsManager->findByPropertyValues(UserObject::class,
+            ['userName' => $userName, 'domain' => $this->_domain]);
+
+        if(count($user) === 1){
+
+            return $user[0];
+        }
+
+        throw new UnexpectedValueException('Invalid user');
     }
 
 
@@ -623,7 +753,7 @@ class UsersManager extends BaseStrictClass{
         $result = 0;
         $userDBId = $this->_getUserDBId($userName);
 
-        if(count($mails) <= 0){
+        if(empty($mails)){
 
             return $this->_db->tableDeleteRows($this->_tableUserMail, ['dbid' => $userDBId]);
         }
@@ -655,6 +785,7 @@ class UsersManager extends BaseStrictClass{
 
         StringUtils::forceNonEmptyString($userName, 'userName');
 
+        // TODO - It seems that the domain is not being taken into consideration here?????
         if($this->_databaseObjectsManager->deleteByPropertyValues(UserObject::class, ['userName' => $userName]) === 0){
 
             throw new UnexpectedValueException('Trying to delete non existant user: '.$userName);
@@ -794,7 +925,7 @@ class UsersManager extends BaseStrictClass{
      */
     public function login(string $userName, string $password){
 
-        $user = $this->_databaseObjectsManager->getByPropertyValues(UserObject::class,
+        $user = $this->_databaseObjectsManager->findByPropertyValues(UserObject::class,
             ['userName' => $userName, 'domain' => $this->_domain]);
 
         if(count($user) === 1){
@@ -864,7 +995,7 @@ class UsersManager extends BaseStrictClass{
 
         } catch (Throwable $e) {
 
-            if($this->_db->tableSyncFromDefinition($this->_tableToken, [
+            if($this->_db->tableAlterToFitDefinition($this->_tableToken, [
                 'columns' => ['token varchar(150) NOT NULL', 'dbid '.$this->_unsignedBigIntSqlTypeDef, 'expires '.$this->_db->getSQLDateTimeType(false)],
                 'primaryKey' => ['dbid'],
                 'foreignKey' => [[$this->_tableToken.'_'.$this->_tableUserObject.'_fk', ['dbid'], $this->_tableUserObject, ['dbid']]]])){
@@ -941,6 +1072,33 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
+     * @see DataBaseManager::transactionBegin
+     */
+    public function transactionBegin(){
+
+        $this->_db->transactionBegin();
+    }
+
+
+    /**
+     * @see DataBaseManager::transactionCommit
+     */
+    public function transactionCommit(){
+
+        $this->_db->transactionCommit();
+    }
+
+
+    /**
+     * @see DataBaseManager::transactionRollback
+     */
+    public function transactionRollback(){
+
+        $this->_db->transactionRollback();
+    }
+
+
+    /**
      * Perform the logout to destroy the specified user token
      *
      * @param string $token The token that represents the user we want to logout
@@ -967,5 +1125,3 @@ class UsersManager extends BaseStrictClass{
         return true;
     }
 }
-
-?>
