@@ -114,9 +114,9 @@ export class ConsoleManager {
         
         if(messages.length > 0){
 
-            for(let i = 0; i < messages.length; i++){
+            for(const element of messages){
                 
-                console.log(this.colorWarning, messages[i]);
+                console.log(this.colorWarning, element);
             }
             
             if(quit){
@@ -158,9 +158,9 @@ export class ConsoleManager {
         
         if(messages.length > 0){
 
-            for(let i = 0; i < messages.length; i++){
-                
-                console.log(this.colorError, messages[i]);
+            for(const element of messages){
+                            
+                console.log(this.colorError, element);
             }
             
             if(quit){

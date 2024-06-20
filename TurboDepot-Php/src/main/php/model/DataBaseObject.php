@@ -49,7 +49,7 @@ abstract class DataBaseObject extends BaseStrictClass{
      * Date type that can be used to constrain object properties which must be always defined as ISO 8601 strings
      * with a mandatory UTC +0 timezone (yyyy-mm-ddTHH:MM:SS.UUUUUU+00:00), or an exception will be thrown.
      *
-     * The UTC offset is mandatory so all the dates are standarized and consistent.Local timezone may be applied at the presentation layer
+     * The UTC offset is mandatory so all the dates are standarized and consistent. Local timezone may be applied at the presentation layer
      * if necessary.
      *
      * Accepted size values are 0 for seconds precision, 3 for miliseconds and 6 for microseconds
@@ -187,7 +187,7 @@ abstract class DataBaseObject extends BaseStrictClass{
      *
      * @param array $locales The list of locales that are used on localized properties by this instance, sorted by preference
      */
-    public final function __construct(array $locales = []){
+    final public function __construct(array $locales = []){
 
         $this->setup();
 
@@ -227,7 +227,7 @@ abstract class DataBaseObject extends BaseStrictClass{
      *
      * @return null|int
      */
-    public final function getDbId(){
+    final public function getDbId(){
 
         return $this->dbId;
     }
@@ -238,7 +238,7 @@ abstract class DataBaseObject extends BaseStrictClass{
      *
      * @return null|string
      */
-    public final function getDbUUID(){
+    final public function getDbUUID(){
 
         return $this->dbUUID;
     }
@@ -249,7 +249,7 @@ abstract class DataBaseObject extends BaseStrictClass{
      *
      * @return null|string
      */
-    public final function getDbCreationDate(){
+    final public function getDbCreationDate(){
 
         return $this->dbCreationDate;
     }
@@ -260,7 +260,7 @@ abstract class DataBaseObject extends BaseStrictClass{
      *
      * @return null|string
      */
-    public final function getDbModificationDate(){
+    final public function getDbModificationDate(){
 
         return $this->dbModificationDate;
     }
@@ -274,7 +274,7 @@ abstract class DataBaseObject extends BaseStrictClass{
      *
      * @return null|string
      */
-    public final function getDbDeleted(){
+    final public function getDbDeleted(){
 
         return $this->dbDeleted;
     }
@@ -285,7 +285,7 @@ abstract class DataBaseObject extends BaseStrictClass{
      *
      * @return boolean True if this instance is localized, false if not
      */
-    public final function isMultiLanguage(){
+    final public function isMultiLanguage(){
 
         if($this->_isMultiLanguage === null){
 
@@ -311,7 +311,7 @@ abstract class DataBaseObject extends BaseStrictClass{
      *
      * @return array The list of locales.
      */
-    public final function getLocales(){
+    final public function getLocales(){
 
         if($this->isMultiLanguage()){
 
@@ -331,7 +331,7 @@ abstract class DataBaseObject extends BaseStrictClass{
      *
      * @return void
      */
-    public final function setLocales(array $locales){
+    final public function setLocales(array $locales){
 
         $localesCount = count($locales);
         $instanceLocales = array_keys($this->_locales);
@@ -344,7 +344,7 @@ abstract class DataBaseObject extends BaseStrictClass{
                 throw new UnexpectedValueException('Class is multi language and expects a list of locales');
             }
 
-        }else if($locales !== []){
+        }elseif($locales !== []){
 
             throw new UnexpectedValueException('Class is not multi language and does not expect a list of locales');
         }
@@ -392,5 +392,3 @@ abstract class DataBaseObject extends BaseStrictClass{
         return $locales;
     }
 }
-
-?>

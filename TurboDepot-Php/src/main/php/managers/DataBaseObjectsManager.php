@@ -196,30 +196,32 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             for ($i = 0, $object = $objectsToSave[$i]; $i < $objectsToSaveCount; $i++) {
 
-                $this->_validateDataBaseObject($object);
+                $this->validateObject($object);
 
                 $tableName = $this->getTableNameFromObject($object);
                 $tableData = $this->_updateTablesToFitObject($object, $tableName);
-                $tableData['dbmodificationdate'] = (new DateTime(null, new DateTimeZone('UTC')))->format($this->_sqlDateFormat);
+                $resultsModificationDate[$i] = $tableData['dbmodificationdate'] = (new DateTime("now", new DateTimeZone('UTC')))->format($this->_sqlDateFormat);
 
                 // Create or update the object into the database
                 if($tableData['dbid'] === null){
 
-                    $tableData['dbcreationdate'] = $tableData['dbmodificationdate'];
+                    $resultsCreationDate[$i] = $tableData['dbcreationdate'] = $tableData['dbmodificationdate'];
+
                     $this->_db->tableAddRows($tableName, [$tableData]);
                     $tableData['dbid'] = $this->_insertArrayPropsToDb($object, $tableName, $this->_db->getLastInsertId());
                     $this->_insertMultiLanguagePropsToDb($object, $tableName, $tableData['dbid']);
 
                 }else{
 
+                    // We are updating an existing object, so the creation date field will be ignored in the update query
+                    unset($tableData['dbcreationdate']);
+
                     $this->_db->tableUpdateRow($tableName, ['dbid' => $tableData['dbid']], $tableData);
                     $this->_insertArrayPropsToDb($object, $tableName, $tableData['dbid'], true);
                     $this->_insertMultiLanguagePropsToDb($object, $tableName, $tableData['dbid'], true);
                 }
 
-                $resultsDbId[] = $tableData['dbid'];
-                $resultsCreationDate[] = str_replace('+00:00', '', $tableData['dbcreationdate']).'+00:00';
-                $resultsModificationDate[] = $tableData['dbmodificationdate'].'+00:00';
+                $resultsDbId[$i] = $tableData['dbid'];
             }
 
         } catch (Throwable $e) {
@@ -235,8 +237,15 @@ class DataBaseObjectsManager extends BaseStrictClass{
         for ($i = 0; $i < $objectsToSaveCount; $i++) {
 
             $this->_setPrivatePropertyValue($objectsToSave[$i], 'dbId', $resultsDbId[$i]);
-            $this->_setPrivatePropertyValue($objectsToSave[$i], 'dbCreationDate', $resultsCreationDate[$i]);
-            $this->_setPrivatePropertyValue($objectsToSave[$i], 'dbModificationDate', $resultsModificationDate[$i]);
+
+            if($objectsToSave[$i]->getDbCreationDate() === null){
+
+                // Apply a UTC timezone format to the date so we can set it to the php object again
+                $this->_setPrivatePropertyValue($objectsToSave[$i], 'dbCreationDate', $resultsCreationDate[$i].'+00:00');
+            }
+
+            // Apply a UTC timezone format to the date so we can set it to the php object again
+            $this->_setPrivatePropertyValue($objectsToSave[$i], 'dbModificationDate', $resultsModificationDate[$i].'+00:00');
         }
 
         return is_array($objects) ? $resultsDbId : $resultsDbId[0];
@@ -255,7 +264,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     private function _insertArrayPropsToDb(DataBaseObject $object, string $tableName, int $dbId, $deleteBeforeInsert = false){
 
-        foreach ($this->_getArrayTypedProperties($object) as $property) {
+        foreach ($this->getArrayTypedProperties($object) as $property) {
 
             $column = strtolower($property);
 
@@ -295,8 +304,9 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         // TODO - Regarding $deleteBeforeInsert: multilan properties must be updated instead of deleted and inserted !??!?!?!
 
-        foreach ($this->_getMultiLanguageTypedProperties($object) as $property) {
+        foreach ($this->getMultiLanguageTypedProperties($object) as $property) {
 
+            $rowToAdd = [];
             $propertyTable = $tableName.'_'.strtolower($property);
 
             if($deleteBeforeInsert){
@@ -304,12 +314,23 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 $this->_db->tableDeleteRows($propertyTable, ['dbid' => $object->getDbId()]);
             }
 
-            $rowToAdd = ['dbid' => $dbId];
+            foreach ($this->_getMultiLanguagePropertyAllLocalesList($object, $propertyTable) as $locale) {
 
-            foreach ($object->getLocales() as $locale) {
-
-                $rowToAdd[$locale === '' ? '_' : $locale] = $this->_getMultiLanguagePropertyValue($object, $property, $locale);
+                $rowToAdd[$locale] = $this->_getMultiLanguagePropertyValue($object, $property, $locale);
             }
+
+            // All object properties that are defined by user as datetime must be converted to a valid mysql date format before
+            // being stored, otherwise an exception will happen
+            if(isset($object->{$property}) && $this->_isDateTypeProperty($object, $property)){
+
+                foreach ($rowToAdd as $key => $value) {
+
+                    $rowToAdd[$key] = (new DateTime($value, new DateTimeZone('UTC')))
+                        ->format($this->_sqlDateFormat);
+                }
+            }
+
+            $rowToAdd['dbid'] = $dbId;
 
             $this->_db->tableAddRows($propertyTable, [$rowToAdd]);
         }
@@ -331,60 +352,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
         $reflectionProperty = (new ReflectionObject($object))->getParentClass()->getProperty($property);
         $reflectionProperty->setAccessible(true);
         $reflectionProperty->setValue($object, $value);
-    }
-
-
-    /**
-     * Obtain the value for the provided object property using reflection. This means that we are also able to access the values
-     * of protected and private properties
-     *
-     * @param DataBaseObject $object The instance that we want to read
-     * @param string $property The name for the property that we want to read from the object instance
-     *
-     * @return mixed The property value
-     */
-    private function _getPropertyValue(DataBaseObject $object, string $property){
-
-        $reflectionObject = new ReflectionObject($object);
-
-        try {
-
-            $reflectionProperty = $reflectionObject->getProperty($property);
-
-        } catch (Throwable $e) {
-
-            $reflectionProperty = $reflectionObject->getParentClass()->getProperty($property);
-        }
-
-        $reflectionProperty->setAccessible(true);
-
-        return $reflectionProperty->getValue($object);
-    }
-
-
-    /**
-     * Get an object multi language property value for the specified locale
-     *
-     * @param DataBaseObject $object The object for which we want to obtain the property value
-     * @param string $property The name for the property
-     * @param string $locale The language we want to get for the localized property
-     *
-     * @return mixed The value for the specified multi language property for the specified locale
-     */
-    private function _getMultiLanguagePropertyValue(DataBaseObject $object, string $property, string $locale){
-
-        $locales = $object->getLocales();
-        $localesData = $this->_getPropertyValue($object, '_locales');
-
-        for ($i = 1, $l = count($locales); $i < $l; $i++) {
-
-            if($locale === $locales[$i]){
-
-                return $localesData[$locales[$i]][$property];
-            }
-        }
-
-        return $object->{$property};
     }
 
 
@@ -420,13 +387,25 @@ class DataBaseObjectsManager extends BaseStrictClass{
      *
      * @return array The generated table as an associative array
      */
-    public function convertObjectToTableData(DataBaseObject $object){
+    private function _convertObjectToTableData(DataBaseObject $object){
 
         $tableData = [];
 
-        foreach ($this->_getBasicProperties($object) as $property) {
+        foreach ($this->getBasicProperties($object, true) as $property) {
 
-            if(is_array($tableData[strtolower($property)] = $this->_getPropertyValue($object, $property))){
+            $columnName = strtolower($property);
+
+            $tableData[$columnName] = $this->_getPropertyValue($object, $property);
+
+            // All object properties that are defined by user as datetime must be converted to a valid mysql date format before being stored
+            // otherwise an exception will happen
+            if(isset($object->{$property}) && $this->_isDateTypeProperty($object, $property)){
+
+                $tableData[$columnName] = (new DateTime($tableData[$columnName], new DateTimeZone('UTC')))
+                    ->format($this->_sqlDateFormat);
+            }
+
+            if(is_array($tableData[$columnName])){
 
                 throw new UnexpectedValueException('unexpected array value for property: '.$property);
             }
@@ -448,7 +427,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $object = new $class();
 
-        $objectbasicProperties = $this->_getBasicProperties($object, false);
+        $objectbasicProperties = $this->getBasicProperties($object, false);
 
         $this->_setPrivatePropertyValue($object, 'dbId', (int)$tableData['dbid']);
         $this->_setPrivatePropertyValue($object, 'dbCreationDate', $tableData['dbcreationdate']);
@@ -540,7 +519,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
         }
 
         // If types definition are mandatory, we will check here that all the object properties have a defined data type
-        if(count($typesSetup) > 0 && $this->_getPropertyValue($object, '_isTypingMandatory')){
+        if(!empty($typesSetup) && $this->_getPropertyValue($object, '_isTypingMandatory')){
 
             throw new UnexpectedValueException($property.' has no defined type but typing is mandatory. Define a type or disable this restriction by setting _isTypingMandatory = false');
         }
@@ -553,6 +532,21 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             throw new UnexpectedValueException('Could not detect property '.$property.' type: '.$e->getMessage());
         }
+    }
+
+
+    /**
+     * Aux method to evaluate if the property of an object is typed as date.
+     *
+     * @param DataBaseObject $object The object to test
+     * @param string $property The property to test on the object
+     *
+     * @return boolean true if the property is typed as date, false otherwise. This works with all basic and non basic
+     *         properties like multi language
+     */
+    private function _isDateTypeProperty(DataBaseObject $object, string $property){
+
+        return $this->_getTypeFromObjectProperty($object, $property)[0] === DataBaseObject::DATETIME;
     }
 
 
@@ -733,13 +727,15 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * All the properties that require a specific db table to be stored like arrays, multilanguage and so will be excluded from this list.
      *
      * @param DataBaseObject $object A valid database object instance
+     * @param bool $includeBaseProperties If true all the private internal object properties will also be listed. If false, only
+     *             the custom public properties will be in the list
      *
      * @return string[] An array with all the basic property names, sorted as they must be on the object database table.
      */
-    private function _getBasicProperties(DataBaseObject $object, bool $includeBaseObjectProperties = true){
+    public function getBasicProperties(DataBaseObject $object, bool $includeBaseProperties = false){
 
         $basicProperties = [];
-        $excludedProps = array_merge($this->_getArrayTypedProperties($object), $this->_getMultiLanguageTypedProperties($object));
+        $excludedProps = array_merge($this->getArrayTypedProperties($object), $this->getMultiLanguageTypedProperties($object));
 
         foreach (array_keys(get_object_vars($object)) as $property) {
 
@@ -749,18 +745,19 @@ class DataBaseObjectsManager extends BaseStrictClass{
             }
         }
 
-        return $includeBaseObjectProperties ? array_unique(array_merge($this->_baseObjectProperties, $basicProperties)) : $basicProperties;
+        return $includeBaseProperties ? array_unique(array_merge($this->_baseObjectProperties, $basicProperties)) : $basicProperties;
     }
 
 
     /**
      * Obtain a list with all the properties that are typed as arrays for the provided object
+     * Notice that these properties need an extra database table to be stored as are not basic types.
      *
      * @param DataBaseObject $object A valid database object instance
      *
      * @return string[] An array with all the property names for those that store array values
      */
-    private function _getArrayTypedProperties(DataBaseObject $object){
+    public function getArrayTypedProperties(DataBaseObject $object){
 
         $result = [];
         $types = $this->_getPropertyValue($object, '_types');
@@ -774,7 +771,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
                     $result[] = $property;
                 }
 
-            }else if(is_array($object->{$property})){
+            }elseif(is_array($object->{$property})){
 
                 $result[] = $property;
             }
@@ -785,13 +782,38 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
+     * Obtain the value for any of the object properties, even the private ones.
+     * If not public, reflection will be used. This means that we are also able to access the values
+     * of protected and private properties
+     *
+     * @param DataBaseObject $object The instance that we want to read
+     * @param string $property The name for the property that we want to read from the object instance
+     *
+     * @return mixed The property value
+     */
+    private function _getPropertyValue(DataBaseObject $object, string $property){
+
+        if(isset($object->{$property})){
+
+            return $object->{$property};
+        }
+
+        $reflectionObject = new ReflectionObject($object);
+        $reflectionProperty = $reflectionObject->getProperty($property);
+        $reflectionProperty->setAccessible(true);
+
+        return $reflectionProperty->getValue($object);
+    }
+
+
+    /**
      * Obtain a list with all the properties that are typed as multi language for the provided object
      *
      * @param DataBaseObject $object A valid database object instance
      *
      * @return string[] An array with all the property names for those that are defined to store multi language values
      */
-    private function _getMultiLanguageTypedProperties(DataBaseObject $object){
+    public function getMultiLanguageTypedProperties(DataBaseObject $object){
 
         $result = [];
 
@@ -805,6 +827,61 @@ class DataBaseObjectsManager extends BaseStrictClass{
         }
 
         return $result;
+    }
+
+
+    /**
+     * Get an object multi language property value for the specified locale
+     *
+     * @param DataBaseObject $object The object for which we want to obtain the property value
+     * @param string $property The name for the property
+     * @param string $locale The language we want to get for the localized property
+     *
+     * @return mixed The value for the specified multi language property for the specified locale
+     */
+    private function _getMultiLanguagePropertyValue(DataBaseObject $object, string $property, string $locale){
+
+        $locales = $object->getLocales();
+        $localeLowerCase = strtolower($locale);
+
+        for ($i = 1, $l = count($locales); $i < $l; $i++) {
+
+            if($localeLowerCase === strtolower($locales[$i])){
+
+                $localesData = $this->_getPropertyValue($object, '_locales');
+                return $localesData[$locales[$i]][$property];
+            }
+        }
+
+        return $object->{$property};
+    }
+
+
+    /**
+     * Auxilary method to obtain the full list of available locales for a provided database object property.
+     * It will get the list from the object itself but also from the stored database table (if exist)
+     *
+     * @param DataBaseObject $object The object to inspect
+     * @param string $propertyTable The table were the multi locales property is stored
+     *
+     * @return array Full list of the property available locales. IMPORTANT: All will be lower case
+     */
+    private function _getMultiLanguagePropertyAllLocalesList(DataBaseObject $object, $propertyTable){
+
+        // Generate a list with all the possible locales: the undefined locale, those on db and those on the object
+        $localeslist = array_merge([''], $object->getLocales());
+
+        if($this->_db->tableExists($propertyTable)){
+
+            $localeslist = array_merge($localeslist, $this->_db->tableGetColumnNames($propertyTable));
+        }
+
+        // Replace the undefined locale and the dbid column name with a '_', and then make the array unique
+        return array_unique(array_map(function($v) {
+
+            return ($v === '' || $v === 'dbid') ? '_' : strtolower($v);
+
+        }, $localeslist));
     }
 
 
@@ -831,12 +908,12 @@ class DataBaseObjectsManager extends BaseStrictClass{
                      'resizeColumns' => $this->isColumnResizedWhenValueisBigger,
                      'deleteColumns' => $this->isColumnDeletedWhenMissingOnObject ? 'yes' : 'fail'];
 
-        foreach ($this->_getBasicProperties($object) as $property) {
+        foreach ($this->getBasicProperties($object, true) as $property) {
 
             $tableDef['columns'][] = strtolower($property).' '.$this->getSQLTypeFromObjectProperty($object, $property);
 
-            if(!in_array($property, $this->_baseObjectProperties, true) &&
-                in_array(DataBaseObject::NO_DUPLICATES, $this->_getTypeFromObjectProperty($object, $property), true)){
+            if(isset($object->{$property}) &&
+               in_array(DataBaseObject::NO_DUPLICATES, $this->_getTypeFromObjectProperty($object, $property), true)){
 
                 $tableDef['uniqueIndices'][] = [strtolower($property)];
             }
@@ -844,12 +921,15 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         foreach ($this->_getPropertyValue($object, '_uniqueIndices') as $uniqueIndex) {
 
-            $tableDef['uniqueIndices'][] =  array_map(function ($p) {return strtolower($p);}, $uniqueIndex);
+            if(!empty($uniqueIndex)){
+
+                $tableDef['uniqueIndices'][] =  array_map(function ($p) {return strtolower($p);}, $uniqueIndex);
+            }
         }
 
         try {
 
-            $this->_db->tableSyncFromDefinition($tableName, $tableDef);
+            $this->_db->tableAlterToFitDefinition($tableName, $tableDef);
 
         } catch (Throwable $e) {
 
@@ -862,7 +942,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
         }
 
         // Sync all the array typed properties to their respective database tables
-        foreach ($this->_getArrayTypedProperties($object) as $property) {
+        foreach ($this->getArrayTypedProperties($object) as $property) {
 
             $arrayPropTableName = $tableName.'_'.strtolower($property);
 
@@ -877,11 +957,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 $tableDef['columns'][] = 'value '.$this->getSQLTypeFromObjectProperty($object, $property);
             }
 
-            $this->_db->tableSyncFromDefinition($arrayPropTableName, $tableDef);
+            $this->_db->tableAlterToFitDefinition($arrayPropTableName, $tableDef);
         }
 
-        // Sync all multi language propertiesto their respective database tables
-        foreach ($this->_getMultiLanguageTypedProperties($object) as $property) {
+        // Sync all multi language properties to their respective database tables
+        foreach ($this->getMultiLanguageTypedProperties($object) as $property) {
 
             $multiLanPropTableName = $tableName.'_'.strtolower($property);
 
@@ -890,27 +970,36 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 'foreignKey' => [[$multiLanPropTableName.'_dbid_fk', ['dbid'], $tableName, ['dbid']]],
                 'deleteColumns' => 'no'];
 
+            // Always set the 'no locale' column
+            $tableDef['columns'][] = '_ '.$this->getSQLTypeFromObjectProperty($object, $property);
+
             foreach ($object->getLocales() as $locale) {
 
-                $tableDef['columns'][] = ($locale === '' ? '_' : strtolower($locale)).' '.$this->getSQLTypeFromObjectProperty($object, $property);
+                if($locale !== ''){
+
+                    $tableDef['columns'][] = strtolower($locale).' '.$this->getSQLTypeFromObjectProperty($object, $property);
+                }
             }
 
-            $this->_db->tableSyncFromDefinition($multiLanPropTableName, $tableDef);
+            $this->_db->tableAlterToFitDefinition($multiLanPropTableName, $tableDef);
         }
 
-        return $this->convertObjectToTableData($object);
+        return $this->_convertObjectToTableData($object);
     }
 
 
     /**
      * Verifies that the specified DataBaseObject instance is correctly defined to be used by this class
-     * This method tests the object at the language level: No database checks are performed, only class values and types are checked
+     * This method tests the object at the language level: No database checks or queries are performed, only class
+     * values and types are checked to make sure the Object is correctly set up.
      *
      * @param DataBaseObject $object An instance to validate
      *
-     * @return string The validation result
+     * @throws UnexpectedValueException If validation fails, with the failure cause message
+     *
+     * @return void
      */
-    private function _validateDataBaseObject(DataBaseObject $object){
+    public function validateObject(DataBaseObject $object){
 
         $class = get_class($object);
         $className = StringUtils::getPathElement($class);
@@ -962,7 +1051,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
         // Verify that all the object properties are valid regarding naming and type
         $isMultiLanguageObject = $object->isMultiLanguage();
         $objectLocales = $isMultiLanguageObject ? $object->getLocales() : [];
-        $objectMultiLanProperties = $this->_getMultiLanguageTypedProperties($object);
+        $objectMultiLanProperties = $this->getMultiLanguageTypedProperties($object);
 
         foreach(array_keys(get_class_vars($class)) as $classProperty){
 
@@ -1052,6 +1141,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
     /**
      * Validate that the provided value is acceptable to be stored as a DatabaseObject datetime property
+     * Only valid ISO 8601 strings will be accepted
      *
      * @param string $dateValue The value to test
      * @param int $microseconds The number of digits that are accepted for the microseconds precision (0, 3 or 6)
@@ -1093,14 +1183,14 @@ class DataBaseObjectsManager extends BaseStrictClass{
      *
      * @return DataBaseObject An object instance that matches the specified id or null if object not found.
      */
-    public function getByDbId($class, int $dbid) {
+    public function findByDbId($class, int $dbid) {
 
         if($dbid === null || !NumericUtils::isInteger($dbid)){
 
             throw new UnexpectedValueException('dbid non integer value: '.$dbid);
         }
 
-        $result = $this->getByDbIds($class, [$dbid]);
+        $result = $this->findByDbIds($class, [$dbid]);
 
         return $result === [] ? null : $result[0];
     }
@@ -1114,7 +1204,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      *
      * @return DataBaseObject[] An array of object instances with all the objects that match the specified ids, or empty array if no objects found.
      */
-    public function getByDbIds($class, array $dbids) {
+    public function findByDbIds($class, array $dbids) {
 
         $tableName = $this->tablesPrefix.strtolower(StringUtils::getPathElement($class));
 
@@ -1159,7 +1249,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             $tableName = $this->getTableNameFromObject($object);
 
-            foreach ($this->_getArrayTypedProperties($object) as $property) {
+            foreach ($this->getArrayTypedProperties($object) as $property) {
 
                 $object->{$property} = [];
                 $arrayPropTableName = $tableName.'_'.strtolower($property);
@@ -1190,7 +1280,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      *
      * @return array An array of object instances with all the objects that match the specified properties, or empty array if no objects found.
      */
-    public function getByPropertyValues($class, array $propertyValues) {
+    public function findByPropertyValues($class, array $propertyValues) {
 
         $columns = [];
 
@@ -1215,7 +1305,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
     /**
      * TODO
      */
-    public function getByFilter() {
+    public function findByFilter() {
 
         // TODO - Obtain one or more Database objects given a complex filter
     }
@@ -1328,5 +1418,3 @@ class DataBaseObjectsManager extends BaseStrictClass{
         return $this->_db->disconnect();
     }
 }
-
-?>

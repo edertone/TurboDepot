@@ -48,6 +48,18 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
+     * Defines the charset encoding that will be forced by the database connection: utf8, utf8mb4
+     */
+    private $characterSet = 'utf8';
+
+
+    /**
+     * Defines the collate that will be forced by the database connection: utf8_general_ci, utf8mb4_general_ci
+     */
+    private $collate = 'utf8_general_ci';
+
+
+    /**
      * Stores the total accumulated time for all the executed queries since first connection
      */
     private $_accumulatedQueryTime = 0;
@@ -123,19 +135,19 @@ class DataBaseManager extends BaseStrictClass {
 
         if(mysqli_connect_errno()){
 
-            throw new UnexpectedValueException('Could not connect to MYSQL '.mysqli_connect_error());
+            throw new UnexpectedValueException('Could not connect to MYSQL : '.mysqli_connect_error());
         }
 
         // Force MYSQL and PHP to speak each other in unicode  UTF8 format.
-        if(!mysqli_query($id, "SET NAMES 'utf8'")){
+        if(!mysqli_query($id, "SET NAMES ".$this->characterSet." COLLATE ".$this->collate)){
 
-            throw new UnexpectedValueException('Could not set connection encoding');
+            throw new UnexpectedValueException('Could not set connection encoding : '.mysqli_error($id));
         }
 
         // Timezone is set to UTC to prevent date and time problems
         if(!mysqli_query($id, "SET SESSION time_zone = '+00:00'")){
 
-            throw new UnexpectedValueException('Could not set connection to UTC'.mysqli_error($id));
+            throw new UnexpectedValueException('Could not set connection to UTC : '.mysqli_error($id));
         }
 
         $this->_engine = self::MYSQL;
@@ -207,7 +219,7 @@ class DataBaseManager extends BaseStrictClass {
 
         if($this->_engine === self::MYSQL){
 
-            return (mysqli_num_rows(mysqli_query($this->_mysqlConnectionId, "SHOW DATABASES LIKE '".$dataBaseName."'")) === 1);
+            return mysqli_num_rows(mysqli_query($this->_mysqlConnectionId, "SHOW DATABASES LIKE '".$dataBaseName."'")) === 1;
         }
     }
 
@@ -222,7 +234,7 @@ class DataBaseManager extends BaseStrictClass {
     public function dataBaseCreate($dataBaseName){
 
         if($this->_engine === self::MYSQL &&
-           $this->query('CREATE DATABASE '.$dataBaseName) !== false){
+           $this->query('CREATE DATABASE '.$dataBaseName." CHARACTER SET ".$this->characterSet." COLLATE ".$this->collate) !== false){
 
             return true;
         }
@@ -551,7 +563,7 @@ class DataBaseManager extends BaseStrictClass {
      * @param boolean $isNullable If set to true, the generated SQL type definition will allow null values, if set to false the type won't allow null values
      * @param boolean $isUnsigned Only valid for numeric types, If set to true the generated SQL type definition will specify only positive values, if set
      *        to false positive and negative values
-     * @param boolean $isAutoIncrement If set to true, the generated SQL type definition will declare auto increment values
+     * @param boolean $isAutoIncrement Only valid for numeric types, If set to true, the generated SQL type definition will declare auto increment values
      *
      * @return string The SQL type that can be used to declare columns to can store the given value to database tables like SMALLINT,
      *         VARCHAR(20), BIGINT NOT NULL, INT UNSIGNED, etc..
@@ -689,7 +701,7 @@ class DataBaseManager extends BaseStrictClass {
 
         if($this->_engine === self::MYSQL){
 
-            return (mysqli_num_rows(mysqli_query($this->_mysqlConnectionId, "SHOW TABLES LIKE '".$tableName."'")) === 1);
+            return mysqli_num_rows(mysqli_query($this->_mysqlConnectionId, "SHOW TABLES LIKE '".$tableName."'")) === 1;
         }
     }
 
@@ -710,7 +722,7 @@ class DataBaseManager extends BaseStrictClass {
      */
     public function tableCreate($tableName, array $columns, array $primaryKey = [], array $uniqueIndices = [], array $indices = []){
 
-        if(count($columns) <= 0){
+        if(empty($columns)){
 
             throw new UnexpectedValueException('at least one column is expected');
         }
@@ -719,7 +731,7 @@ class DataBaseManager extends BaseStrictClass {
 
         if($this->_engine === self::MYSQL){
 
-            if(count($primaryKey) > 0){
+            if(!empty($primaryKey)){
 
                 $columns[] = 'PRIMARY KEY ('.implode(',', $primaryKey).')';
             }
@@ -860,7 +872,10 @@ class DataBaseManager extends BaseStrictClass {
 
 
     /**
-     * Alter a database table so it matches the definitions provided on tableDef
+     * Alter a database table so it matches the definitions provided on tableDef. If the table does not exist, it will be created.
+     *
+     * This method always tries to be as less destructive as possible. New columns are always added, but old ones that do not exist on the new
+     * definitions will be carefully treated depending on the 'deleteColumns' property
      *
      * @param string $tableName The name of a database table that will be compared to the provided table definition and modified to match it
      * @param array $tableDef Associative array with the table definitons that will be applied to the database table. Following values are accepted as tableDef keys:<br>
@@ -868,15 +883,17 @@ class DataBaseManager extends BaseStrictClass {
      *        - 'primaryKey' An array with all the column names that conform the table primary key<br>
      *        - 'uniqueIndices' An array of arrays where each element contains all the column names for each unique index to create<br>
      *        - 'indices' An array of arrays where each element contains all the column names for each index to create<br>
-     *        - 'deleteColumns' 'yes' to delete the columns that are on db table but not on tableDef, 'no' to ignore them, 'fail' (default) to throw an exception if any exist<br>
-     *        - 'resizeColumns' True if the colum data types should be resized to fit when the tabledef value is bigger<br>
+     *        - 'deleteColumns' (defaults fail) 'yes' to delete columns that are on db but not on tableDef, 'no' to ignore them (let them as they are), 'fail' to throw an exception if any unwanted column exists<br>
+     *        - 'resizeColumns' (defaults false) True if the colum data types should be resized to fit when the tabledef value is bigger<br>
      *        - 'foreignKey' An array of arrays where each element will have the definition for a foreign key (elements must be the same as the $this->tableAddForeignKey() parameters in the same order)
      *
      * @see DataBaseManager::tableAddForeignKey
      *
-     * @return void
+     * @throws UnexpectedValueException If the table could not be modified to fit the requirements
+     *
+     * @return boolean True if the table was correctly modified after the method is called or false if there wasn't any change
      */
-    public function tableSyncFromDefinition($tableName, array $tableDef){
+    public function tableAlterToFitDefinition($tableName, array $tableDef){
 
         $isTableModified = false;
 
@@ -916,7 +933,7 @@ class DataBaseManager extends BaseStrictClass {
                                 break;
 
                             default:
-                                throw new UnexpectedValueException('can\'t sync table: <'.$dbColumn.'> exists on <'.$tableName.'> but not on provided tableDef and deleteColumns flag is false, so data won\'t be destroyed', 3);
+                                throw new UnexpectedValueException('can\'t sync table: <'.$dbColumn.'> exists on <'.$tableName.'> but not on provided tableDef. deleteColumns flag is not "yes", so data won\'t be destroyed', 3);
                         }
                     }
                 }
@@ -1368,6 +1385,7 @@ class DataBaseManager extends BaseStrictClass {
 
             try {
 
+                $this->query('SET autocommit=0');
                 $this->query('START TRANSACTION');
 
             } catch (Throwable $e) {
@@ -1490,12 +1508,6 @@ class DataBaseManager extends BaseStrictClass {
      */
     private function _addQueryToHistory($query, $queryStart, $queryResult){
 
-        // Some queries are not useful
-        if($query === 'START TRANSACTION' || $query === 'ROLLBACK' || $query === 'COMMIT'){
-
-            return;
-        }
-
         $queryEnd = microtime(true);
         $querySeconds = round($queryEnd - $queryStart, 4);
 
@@ -1551,5 +1563,3 @@ class DataBaseManager extends BaseStrictClass {
         return is_string($value) ? "'".$value."'" : $value;
     }
 }
-
-?>

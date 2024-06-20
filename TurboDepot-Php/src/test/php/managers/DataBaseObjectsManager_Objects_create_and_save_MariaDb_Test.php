@@ -751,7 +751,7 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
     /**
     * test
     */
-    public function testSave_simple_object_performs_no_more_than_2_db_queries(){
+    public function testSave_simple_object_performs_no_more_than_6_db_queries(){
 
         $this->assertFalse($this->sut->getDataBaseManager()->isAnyTransactionActive());
         $this->assertSame(0, count($this->sut->getDataBaseManager()->getQueryHistory()));
@@ -761,12 +761,12 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         $this->assertSame(1, $this->sut->save($object));
 
         $this->assertFalse($this->sut->getDataBaseManager()->isAnyTransactionActive());
-        $this->assertSame(3, count($this->sut->getDataBaseManager()->getQueryHistory()));
+        $this->assertSame(6, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
         $object = new Customer();
         $object->name = 'c2';
         $this->assertSame(2, $this->sut->save($object));
-        $this->assertSame(6, count($this->sut->getDataBaseManager()->getQueryHistory()));
+        $this->assertSame(12, count($this->sut->getDataBaseManager()->getQueryHistory()));
     }
 
 
@@ -784,7 +784,7 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         $object->doubleArray = [10.0, 100.454, 0.254676];
         $this->assertSame(1, $this->sut->save($object));
 
-        $this->assertSame(19, count($this->sut->getDataBaseManager()->getQueryHistory()));
+        $this->assertSame(22, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
         $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)',
             'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(40) NOT NULL',
@@ -959,7 +959,7 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         $object->name = 'customer';
         $this->assertSame(1, $this->sut->save($object));
 
-        $this->assertSame(15, count($this->sut->getDataBaseManager()->getQueryHistory()));
+        $this->assertSame(18, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
         $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)',
             'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(20) NOT NULL',
@@ -1242,29 +1242,29 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         $this->assertSame(2, $this->sut->save($object));
 
         $this->assertSame($objectMainTableTypes, $this->db->tableGetColumnDataTypes($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'varchar(20)', '_' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20)', 'en_us' => 'varchar(20)', '_' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
         $this->assertSame(['1', '2'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'dbid'));
         $this->assertSame([null, null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', '_'));
         $this->assertSame([null, null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_us'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'varchar(20) NOT NULL', '_' => 'varchar(20) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalizednotnull'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20) NOT NULL', 'en_us' => 'varchar(20) NOT NULL', '_' => 'varchar(20) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalizednotnull'));
         $this->assertSame(['1', '2'], $this->db->tableGetColumnValues($objectTableName.'_namelocalizednotnull', 'dbid'));
         $this->assertSame(['', ''], $this->db->tableGetColumnValues($objectTableName.'_namelocalizednotnull', '_'));
         $this->assertSame(['', ''], $this->db->tableGetColumnValues($objectTableName.'_namelocalizednotnull', 'en_us'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'datetime', '_' => 'datetime'], $this->db->tableGetColumnDataTypes($objectTableName.'_birthdatelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'datetime', 'en_us' => 'datetime', '_' => 'datetime'], $this->db->tableGetColumnDataTypes($objectTableName.'_birthdatelocalized'));
         $this->assertSame(['1', '2'], $this->db->tableGetColumnValues($objectTableName.'_birthdatelocalized', 'dbid'));
         $this->assertSame([null, null], $this->db->tableGetColumnValues($objectTableName.'_birthdatelocalized', '_'));
         $this->assertSame([null, null], $this->db->tableGetColumnValues($objectTableName.'_birthdatelocalized', 'en_us'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'smallint(6)', '_' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_agelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'smallint(6)', 'en_us' => 'smallint(6)', '_' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_agelocalized'));
         $this->assertSame(['1', '2'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'dbid'));
-        $this->assertSame(['0', null], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', '_'));
+        $this->assertSame(['0', '0'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', '_'));
         $this->assertSame([null, '0'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'en_us'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'tinyint(1)', '_' => 'tinyint(1)'], $this->db->tableGetColumnDataTypes($objectTableName.'_setuplocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'tinyint(1)', 'en_us' => 'tinyint(1)', '_' => 'tinyint(1)'], $this->db->tableGetColumnDataTypes($objectTableName.'_setuplocalized'));
         $this->assertSame(['1', '2'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'dbid'));
-        $this->assertSame(['0', null], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', '_'));
+        $this->assertSame(['0', '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', '_'));
         $this->assertSame([null, '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'en_us'));
 
         // Test saving a third empty instance to the database with a list of the 2 previously saved locales plus a new one
@@ -1272,33 +1272,33 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         $this->assertSame(3, $this->sut->save($object));
 
         $this->assertSame($objectMainTableTypes, $this->db->tableGetColumnDataTypes($objectTableName));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'varchar(20)', '_' => 'varchar(20)', 'es_es' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20)', 'en_us' => 'varchar(20)', '_' => 'varchar(20)', 'es_es' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
         $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'dbid'));
         $this->assertSame([null, null, null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', '_'));
         $this->assertSame([null, null, null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_us'));
         $this->assertSame([null, null, null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'es_es'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'varchar(20) NOT NULL', '_' => 'varchar(20) NOT NULL', 'es_es' => 'varchar(20) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalizednotnull'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20) NOT NULL', 'en_us' => 'varchar(20) NOT NULL', '_' => 'varchar(20) NOT NULL', 'es_es' => 'varchar(20) NOT NULL'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalizednotnull'));
         $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($objectTableName.'_namelocalizednotnull', 'dbid'));
         $this->assertSame(['', '', ''], $this->db->tableGetColumnValues($objectTableName.'_namelocalizednotnull', '_'));
         $this->assertSame(['', '', ''], $this->db->tableGetColumnValues($objectTableName.'_namelocalizednotnull', 'en_us'));
         $this->assertSame(['', '', ''], $this->db->tableGetColumnValues($objectTableName.'_namelocalizednotnull', 'es_es'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'datetime', '_' => 'datetime', 'es_es' => 'datetime'], $this->db->tableGetColumnDataTypes($objectTableName.'_birthdatelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'datetime', 'en_us' => 'datetime', '_' => 'datetime', 'es_es' => 'datetime'], $this->db->tableGetColumnDataTypes($objectTableName.'_birthdatelocalized'));
         $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($objectTableName.'_birthdatelocalized', 'dbid'));
         $this->assertSame([null, null, null], $this->db->tableGetColumnValues($objectTableName.'_birthdatelocalized', '_'));
         $this->assertSame([null, null, null], $this->db->tableGetColumnValues($objectTableName.'_birthdatelocalized', 'en_us'));
         $this->assertSame([null, null, null], $this->db->tableGetColumnValues($objectTableName.'_birthdatelocalized', 'es_es'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'smallint(6)', '_' => 'smallint(6)', 'es_es' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_agelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'smallint(6)', 'en_us' => 'smallint(6)', '_' => 'smallint(6)', 'es_es' => 'smallint(6)'], $this->db->tableGetColumnDataTypes($objectTableName.'_agelocalized'));
         $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'dbid'));
-        $this->assertSame(['0', null, '0'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', '_'));
+        $this->assertSame(['0', '0', '0'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', '_'));
         $this->assertSame([null, '0', '0'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'en_us'));
         $this->assertSame([null, null, '0'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'es_es'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'tinyint(1)', '_' => 'tinyint(1)', 'es_es' => 'tinyint(1)'], $this->db->tableGetColumnDataTypes($objectTableName.'_setuplocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'tinyint(1)', 'en_us' => 'tinyint(1)', '_' => 'tinyint(1)', 'es_es' => 'tinyint(1)'], $this->db->tableGetColumnDataTypes($objectTableName.'_setuplocalized'));
         $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'dbid'));
-        $this->assertSame(['0', null, '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', '_'));
+        $this->assertSame(['0', '0', '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', '_'));
         $this->assertSame([null, '0', '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'en_us'));
         $this->assertSame([null, null, '0'], $this->db->tableGetColumnValues($objectTableName.'_setuplocalized', 'es_es'));
 
@@ -1351,7 +1351,7 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         $object->setupLocalized = false;
         $this->assertSame(1, $this->sut->save($object));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20)', 'en_us' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
         $this->assertSame(['William'], $this->db->tableGetColumnValues($objectTableName, 'name'));
         $this->assertSame(['William USA'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_US'));
 
@@ -1367,7 +1367,7 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         $object->setupLocalized = false;
         $this->assertSame(2, $this->sut->save($object));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'es_es' => 'varchar(20)', 'en_us' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20)', 'es_es' => 'varchar(20)', 'en_us' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
         $this->assertSame(['William', 'Guillermo'], $this->db->tableGetColumnValues($objectTableName, 'name'));
         $this->assertSame(['William USA', null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_US'));
         $this->assertSame([null, 'Guillermo ES'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'es_ES'));
@@ -1384,10 +1384,10 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         $object->setupLocalized = false;
         $this->assertSame(3, $this->sut->save($object));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'fr_fr' => 'varchar(20)', 'es_es' => 'varchar(20)', 'en_us' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20)', 'fr_fr' => 'varchar(20)', 'es_es' => 'varchar(20)', 'en_us' => 'varchar(20)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
         $this->assertSame(['William', 'Guillermo', 'Wilanceau'], $this->db->tableGetColumnValues($objectTableName, 'name'));
-        $this->assertSame(['William USA', null, null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_US'));
-        $this->assertSame([null, 'Guillermo ES', null], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'es_ES'));
+        $this->assertSame(['William USA', null, 'Wilanceau FR'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_US'));
+        $this->assertSame([null, 'Guillermo ES', 'Wilanceau FR'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'es_ES'));
         $this->assertSame([null, null, 'Wilanceau FR'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'fr_FR'));
     }
 
@@ -1403,7 +1403,7 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         $this->db->tableCreate($objectTableName, ['dbid bigint(20) unsigned NOT NULL AUTO_INCREMENT'], ['dbid']);
         $this->assertTrue($this->db->tableExists($objectTableName));
 
-        $this->assertSame('cust1', $this->sut->getByDbId(Customer::class, $this->sut->save($object))->name);
+        $this->assertSame('cust1', $this->sut->findByDbId(Customer::class, $this->sut->save($object))->name);
     }
 
 
@@ -1426,7 +1426,7 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         $this->assertTrue(in_array('commercialname', $this->db->tableGetColumnNames($objectTableName), true));
         $this->assertTrue(in_array('age', $this->db->tableGetColumnNames($objectTableName), true));
         $this->assertTrue(in_array('debt', $this->db->tableGetColumnNames($objectTableName), true));
-        $this->assertSame('cust1', $this->sut->getByDbId(Customer::class, $dbid)->name);
+        $this->assertSame('cust1', $this->sut->findByDbId(Customer::class, $dbid)->name);
     }
 
 
@@ -1449,7 +1449,7 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         $this->assertTrue(in_array('commercialname', $this->db->tableGetColumnNames($objectTableName), true));
         $this->assertTrue(in_array('age', $this->db->tableGetColumnNames($objectTableName), true));
         $this->assertTrue(in_array('debt', $this->db->tableGetColumnNames($objectTableName), true));
-        $this->assertSame('cust1', $this->sut->getByDbId(Customer::class, $dbid)->name);
+        $this->assertSame('cust1', $this->sut->findByDbId(Customer::class, $dbid)->name);
     }
 
 
@@ -1471,7 +1471,7 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
 
         $this->sut->isColumnDeletedWhenMissingOnObject = true;
 
-        $this->assertSame('cust1', $this->sut->getByDbId(Customer::class, $this->sut->save($object))->name);
+        $this->assertSame('cust1', $this->sut->findByDbId(Customer::class, $this->sut->save($object))->name);
         $this->assertTrue(in_array('commercialname', $this->db->tableGetColumnNames($objectTableName), true));
         $this->assertFalse(in_array('invalid', $this->db->tableGetColumnNames($objectTableName), true));
     }
@@ -1499,7 +1499,7 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
 
         $this->sut->isColumnDeletedWhenMissingOnObject = true;
 
-        $this->assertSame('cust1', $this->sut->getByDbId(Customer::class, $this->sut->save($object))->name);
+        $this->assertSame('cust1', $this->sut->findByDbId(Customer::class, $this->sut->save($object))->name);
         $this->assertTrue(in_array('commercialname', $this->db->tableGetColumnNames($objectTableName), true));
         $this->assertTrue(in_array('age', $this->db->tableGetColumnNames($objectTableName), true));
         $this->assertFalse(in_array('invalid', $this->db->tableGetColumnNames($objectTableName), true));
@@ -1809,7 +1809,7 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['name']));
         $this->assertTrue(isset($this->db->tableGetColumnDataTypes($objectTableName)['city']));
         $this->assertFalse(isset($this->db->tableGetColumnDataTypes($objectTableName)['namelocalized']));
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'es_es' => 'varchar(400)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(400)', 'es_es' => 'varchar(400)'], $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
     }
 
 
@@ -1868,8 +1868,8 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
 
         $this->assertSame(1, $this->sut->save($object));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'varchar(20)', 'es_es' => 'varchar(20)'],
-            $this->db->tableGetColumnDataTypes($objectTableName.'_nameLocalized'));
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20)', 'en_us' => 'varchar(20)', 'es_es' => 'varchar(20)'],
+            $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
 
         $this->assertSame(['modified'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'en_US'));
         $this->assertSame(['es name'], $this->db->tableGetColumnValues($objectTableName.'_namelocalized', 'es_ES'));
@@ -2022,13 +2022,13 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_name'));
         $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_setup'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'smallint(6)', 'es_es' => 'smallint(6)', 'fr_fr' => 'smallint(6)', 'en_gb' => 'smallint(6)'],
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'smallint(6)', 'en_us' => 'smallint(6)', 'es_es' => 'smallint(6)', 'fr_fr' => 'smallint(6)', 'en_gb' => 'smallint(6)'],
             $this->db->tableGetColumnDataTypes($objectTableName.'_agelocalized'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'varchar(20)', 'es_es' => 'varchar(20)', 'fr_fr' => 'varchar(20)', 'en_gb' => 'varchar(20)'],
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20)', 'en_us' => 'varchar(20)', 'es_es' => 'varchar(20)', 'fr_fr' => 'varchar(20)', 'en_gb' => 'varchar(20)'],
             $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'tinyint(1)', 'es_es' => 'tinyint(1)', 'fr_fr' => 'tinyint(1)', 'en_gb' => 'tinyint(1)'],
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'tinyint(1)', 'en_us' => 'tinyint(1)', 'es_es' => 'tinyint(1)', 'fr_fr' => 'tinyint(1)', 'en_gb' => 'tinyint(1)'],
             $this->db->tableGetColumnDataTypes($objectTableName.'_setuplocalized'));
 
         $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'dbid'));
@@ -2073,13 +2073,13 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_name'));
         $this->assertFalse($this->sut->getDataBaseManager()->tableExists($objectTableName.'_setup'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'smallint(6)', 'es_es' => 'smallint(6)', 'fr_fr' => 'smallint(6)', 'en_gb' => 'smallint(6)'],
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'smallint(6)', 'en_us' => 'smallint(6)', 'es_es' => 'smallint(6)', 'fr_fr' => 'smallint(6)', 'en_gb' => 'smallint(6)'],
             $this->db->tableGetColumnDataTypes($objectTableName.'_agelocalized'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'varchar(20)', 'es_es' => 'varchar(20)', 'fr_fr' => 'varchar(20)', 'en_gb' => 'varchar(20)'],
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'varchar(20)', 'en_us' => 'varchar(20)', 'es_es' => 'varchar(20)', 'fr_fr' => 'varchar(20)', 'en_gb' => 'varchar(20)'],
             $this->db->tableGetColumnDataTypes($objectTableName.'_namelocalized'));
 
-        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'en_us' => 'tinyint(1)', 'es_es' => 'tinyint(1)', 'fr_fr' => 'tinyint(1)', 'en_gb' => 'tinyint(1)'],
+        $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', '_' => 'tinyint(1)', 'en_us' => 'tinyint(1)', 'es_es' => 'tinyint(1)', 'fr_fr' => 'tinyint(1)', 'en_gb' => 'tinyint(1)'],
             $this->db->tableGetColumnDataTypes($objectTableName.'_setuplocalized'));
 
         $this->assertSame(['1'], $this->db->tableGetColumnValues($objectTableName.'_agelocalized', 'dbid'));
@@ -2210,27 +2210,6 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
      * test
      */
     public function testGetTableNameFromObject(){
-
-        // Test empty values
-        // TODO
-
-        // Test ok values
-        // TODO
-
-        // Test wrong values
-        // TODO
-
-        // Test exceptions
-        // TODO
-
-        $this->markTestIncomplete('This test has not been implemented yet.');
-    }
-
-
-    /**
-     * test
-     */
-    public function testConvertObjectToTableData(){
 
         // Test empty values
         // TODO
