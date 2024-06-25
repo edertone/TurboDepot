@@ -7,7 +7,9 @@
         "description": "General purpose multi storage library (ORM, Logs, Users, Files, Objects)",
         "builderVersion": "7.0.2"
     },
-    
+    "containers": {
+        "docker":[]
+    },
     "validate": {
         "projectStructure" : {                    
             "readmeFileMandatory": false

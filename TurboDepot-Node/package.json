@@ -1,6 +1,6 @@
 {
   "name": "turbodepot-node",
-  "version": "7.1.0",
+  "version": "8.0.0",
   "description": "General purpose multi storage library (ORM, Logs, Users, Files, Objects)",
   "scripts": {
     "test": "node node_modules/jasmine/bin/jasmine --config=src/test/js/jasmine.json",
@@ -12,12 +12,12 @@
   },
   "dependencies": {
     "showdown": "^1.9.1",
-    "turbocommons-ts": "^3.7.0"
+    "turbocommons-ts": "^3.11.0"
   },
   "devDependencies": {
-    "jasmine": "^3.6.2",
-    "selenium-webdriver": "^4.0.0-alpha.4",
-    "xhr2": "^0.2.0"
+    "jasmine": "^5.1.0",
+    "selenium-webdriver": "^4.22.0",
+    "xhr2": "^0.2.1"
   },
   "keywords": [
     "general",

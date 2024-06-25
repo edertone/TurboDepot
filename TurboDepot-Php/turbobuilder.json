@@ -5,6 +5,14 @@
         "description": "General purpose multi storage library (ORM, Logs, Users, Files, Objects)",
         "builderVersion": "7.0.2"
     },
+    "containers": {
+        "docker":[
+            {
+                "path": "php7-4_apache2-4_mariadb10-4-dev",
+                "startPolicy": "lazy"
+            }
+        ]
+    },
     "validate": {
         "runBeforeBuild": true,
         "projectStructure": {

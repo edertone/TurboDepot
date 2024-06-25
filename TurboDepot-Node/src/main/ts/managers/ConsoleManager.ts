@@ -10,6 +10,7 @@
 
 declare let console: any;
 declare let process: any;
+declare function require(name: string): any;
 
 
 /**
@@ -168,5 +169,23 @@ export class ConsoleManager {
                 process.exit(1);
             }
         }    
+    }
+    
+    
+    /**
+     * Show a message to wait for the user to press a key. All node process will be stopped till the user presses the key. 
+     * 
+     * @return void
+     */
+    waitForKeyPress() {
+        
+        let pauseCommand = 'pause';
+        
+        if(process.platform !== 'win32'){
+            
+            pauseCommand = 'read';
+        }
+        
+        require('child_process').spawnSync(pauseCommand + " _ ", {shell: true, stdio: [0, 1, 2]});    
     }
 }

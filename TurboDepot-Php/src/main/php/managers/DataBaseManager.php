@@ -1133,7 +1133,7 @@ class DataBaseManager extends BaseStrictClass {
      * Add all the values for one or more rows to the specified database table
      *
      * @param string $tableName The name for the table we want to update
-     * @param array $rowValues An array of associative arrays with all the data for a single table row, where each array key is the column name and
+     * @param array $rows An array of associative arrays with all the data for a single table row, where each array key is the column name and
      *              each array value the column value
      *
      * @return boolean True if the row was correctly added
