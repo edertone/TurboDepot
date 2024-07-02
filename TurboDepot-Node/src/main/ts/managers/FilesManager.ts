@@ -828,63 +828,68 @@ export class FilesManager{
 
             throw new Error('cannot mirror a directory into itself: ' + sourcePath);
         }
+        
+        // Get the full list of source items to mirror
+        const sourceItems = this.getDirectoryList(sourcePath);
 
-        // Recursively Loop all the source items and copy to destination all those that are different or do not exist
-        for (let sourceItem of this.getDirectoryList(sourcePath)) {
+        // Loop all source Items. If not found on destination, we will mirror them.
+        for (let sourceItem of sourceItems) {
 
-            let sourceItemPath = sourcePath + this.dirSep() + sourceItem;
-            let destItemPath = destPath + this.dirSep() + sourceItem;
-            let isDestItemPathADir = this.isDirectory(destItemPath);
-            let isDestItemPathAFile = this.isFile(destItemPath);
+            const sourceItemPath = sourcePath + this.dirSep() + sourceItem;
+            const destItemPath = destPath + this.dirSep() + sourceItem;
             
             if(this.isDirectory(sourceItemPath)){
 
-                if(isDestItemPathAFile){
+                // If a file exists with the same name, it will be removed
+                if(this.isFile(destItemPath)){
 
                     this.deleteFile(destItemPath, timeout);
                 }
 
-                if(!isDestItemPathADir){
+                // If a folder exists with the same name, we must verify that it is equal by calling mirror inside it.
+                // Otherwise, we will directly copy the source directory
+                if(this.isDirectory(destItemPath)){
 
+                    this.mirrorDirectory(sourceItemPath, destItemPath, timeout);
+                
+                }else{
+                    
                     this.createDirectory(destItemPath);
+                    this.copyDirectory(sourceItemPath, destItemPath, true);
                 }
-
-                this.mirrorDirectory(sourceItemPath, destItemPath, timeout);
 
             }else{
 
-                if(isDestItemPathADir){
+                // If a dir exists with the same name, it will be removed
+                if(this.isDirectory(destItemPath)){
 
                     this.deleteDirectory(destItemPath, true, timeout);
                 }
 
-                if((!isDestItemPathAFile || !this.isFileEqualTo(sourceItemPath, destItemPath)) &&
-                   !this.copyFile(sourceItemPath, destItemPath)){
+                // If no file exists or it contains different data, the source file will be copied to destination
+                if((!this.isFile(destItemPath) || !this.isFileEqualTo(sourceItemPath, destItemPath)) &&
+                    !this.copyFile(sourceItemPath, destItemPath)){
 
                     throw new Error('Could not copy file from source <' + sourceItemPath + '> to destination <' + destItemPath + '>');
                 }
             }
         }
 
-        // Recursively loop destination items and delete all the ones that do not exist on source
-        for (let destItem of this.getDirectoryList(destPath)) {
+        // get all destination items, and substract the source items.
+        // Any element that still appears on the list must be removed
+        const destinationItemsToRemove = this.getDirectoryList(destPath).filter(item => sourceItems.indexOf(item) < 0);
 
-            let sourceItemPath = sourcePath + this.dirSep() + destItem;
-            let destItemPath = destPath + this.dirSep() + destItem;
-
-            if(this.isDirectory(destItemPath)){
-
-                if(!this.isDirectory(sourceItemPath)){
-
-                    this.deleteDirectory(destItemPath, true, timeout);
-
-                }else{
-
-                    this.mirrorDirectory(sourceItemPath, destItemPath, timeout);
-                }
-
-            }else if(!this.isFile(sourceItemPath)){
-
+        // Delete items in destination that don't exist in source
+        for (let destItem of destinationItemsToRemove) {
+            
+            const destItemPath = destPath + this.dirSep() + destItem;
+            
+            if (this.isDirectory(destItemPath)) {
+                
+                this.deleteDirectory(destItemPath, true, timeout);
+                
+            } else {
+                
                 this.deleteFile(destItemPath, timeout);
             }
         }

@@ -827,61 +827,65 @@ class FilesManager extends BaseStrictClass{
             throw new UnexpectedValueException('cannot mirror a directory into itself: '.$sourcePath);
         }
 
-        // Recursively Loop all the source items and copy to destination all those that are different or do not exist
-        foreach ($this->getDirectoryList($sourcePath) as $sourceItem){
+        // Get the full list of source items to mirror
+        $sourceItems = $this->getDirectoryList($sourcePath);
+
+        // Loop all source Items. If not found on destination, we will mirror them.
+        foreach ($sourceItems as $sourceItem) {
 
             $sourceItemPath = $sourcePath.DIRECTORY_SEPARATOR.$sourceItem;
             $destItemPath = $destPath.DIRECTORY_SEPARATOR.$sourceItem;
-            $isDestItemPathADir = is_dir($destItemPath);
-            $isDestItemPathAFile = is_file($destItemPath);
 
-            if(is_dir($sourceItemPath)){
+            if (is_dir($sourceItemPath)) {
 
-                if($isDestItemPathAFile){
+                // If a file exists with the same name, it will be removed
+                if (is_file($destItemPath)) {
 
                     $this->deleteFile($destItemPath, $timeout);
                 }
 
-                if(!$isDestItemPathADir){
+                // If a folder exists with the same name, we must verify that it is equal by calling mirror inside it.
+                // Otherwise, we will directly copy the source directory
+                if (is_dir($destItemPath)) {
+
+                    $this->mirrorDirectory($sourceItemPath, $destItemPath, $timeout);
+
+                }else{
 
                     $this->createDirectory($destItemPath);
+                    $this->copyDirectory($sourceItemPath, $destItemPath, true);
                 }
 
-                $this->mirrorDirectory($sourceItemPath, $destItemPath, $timeout);
+            } else {
 
-            }else{
-
-                if($isDestItemPathADir){
+                // If a dir exists with the same name, it will be removed
+                if (is_dir($destItemPath)) {
 
                     $this->deleteDirectory($destItemPath, true, $timeout);
                 }
 
-                if((!$isDestItemPathAFile || !$this->isFileEqualTo($sourceItemPath, $destItemPath)) &&
-                   !$this->copyFile($sourceItemPath, $destItemPath)){
+                // If no file exists or it contains different data, the source file will be copied to destination
+                if((!is_file($destItemPath) || !$this->isFileEqualTo($sourceItemPath, $destItemPath)) &&
+                    !$this->copyFile($sourceItemPath, $destItemPath)) {
 
-                    throw new UnexpectedValueException('Could not copy file from source <'.$sourceItemPath.'> to destination <'.$destItemPath.'>');
+                    throw new UnexpectedValueException('Could not copy file from source <' . $sourceItemPath . '> to destination <' . $destItemPath . '>');
                 }
             }
         }
 
-        // Recursively loop destination items and delete all the ones that do not exist on source
-        foreach ($this->getDirectoryList($destPath) as $destItem){
+        // get all destination items, and substract the source items.
+        // Any element that still appears on the list must be removed
+        $destinationItemsToRemove = array_diff($this->getDirectoryList($destPath), $sourceItems);
 
-            $sourceItemPath = $sourcePath.DIRECTORY_SEPARATOR.$destItem;
+        foreach ($destinationItemsToRemove as $destItem) {
+
             $destItemPath = $destPath.DIRECTORY_SEPARATOR.$destItem;
 
-            if(is_dir($destItemPath)){
+            if (is_dir($destItemPath)) {
 
-                if(!is_dir($sourceItemPath)){
+                $this->deleteDirectory($destItemPath, true, $timeout);
 
-                    $this->deleteDirectory($destItemPath, true, $timeout);
-
-                }else{
-
-                    $this->mirrorDirectory($sourceItemPath, $destItemPath, $timeout);
-                }
-
-            }elseif(!is_file($sourceItemPath)){
+            } else {
 
                 $this->deleteFile($destItemPath, $timeout);
             }
