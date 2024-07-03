@@ -190,9 +190,9 @@ class DataBaseObjectsManager extends BaseStrictClass{
         $objectsToSave = is_array($objects) ? $objects : [$objects];
         $objectsToSaveCount = count($objectsToSave);
 
-        $this->_db->transactionBegin();
-
         try {
+
+            $this->_db->transactionBegin();
 
             for ($i = 0, $object = $objectsToSave[$i]; $i < $objectsToSaveCount; $i++) {
 
@@ -224,14 +224,14 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 $resultsDbId[$i] = $tableData['dbid'];
             }
 
+            $this->_db->transactionCommit();
+
         } catch (Throwable $e) {
 
             $this->_db->transactionRollback();
 
             throw $e;
         }
-
-        $this->_db->transactionCommit();
 
         // After transaction is ok, update all the objects with the values that have changed
         for ($i = 0; $i < $objectsToSaveCount; $i++) {
@@ -1381,7 +1381,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Erase one or more DatabaseObject instances from database given the value of some user properties. Method is transactional
+     * Erase one or more DatabaseObject instances from database given the value of some object properties. Method is transactional
      * so if any of the objects can't be deleted, none will be.
      *
      * If $this->isTrashEnabled is true, the object instances will be moved to trash. Otherwise they will be permanently deleted

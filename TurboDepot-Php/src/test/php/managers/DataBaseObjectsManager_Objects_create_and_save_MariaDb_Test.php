@@ -751,7 +751,7 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
     /**
     * test
     */
-    public function testSave_simple_object_performs_no_more_than_6_db_queries(){
+    public function testSave_simple_object_performs_no_more_than_5_db_queries(){
 
         $this->assertFalse($this->sut->getDataBaseManager()->isAnyTransactionActive());
         $this->assertSame(0, count($this->sut->getDataBaseManager()->getQueryHistory()));
@@ -761,12 +761,12 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         $this->assertSame(1, $this->sut->save($object));
 
         $this->assertFalse($this->sut->getDataBaseManager()->isAnyTransactionActive());
-        $this->assertSame(6, count($this->sut->getDataBaseManager()->getQueryHistory()));
+        $this->assertSame(5, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
         $object = new Customer();
         $object->name = 'c2';
         $this->assertSame(2, $this->sut->save($object));
-        $this->assertSame(12, count($this->sut->getDataBaseManager()->getQueryHistory()));
+        $this->assertSame(10, count($this->sut->getDataBaseManager()->getQueryHistory()));
     }
 
 
@@ -784,7 +784,7 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         $object->doubleArray = [10.0, 100.454, 0.254676];
         $this->assertSame(1, $this->sut->save($object));
 
-        $this->assertSame(22, count($this->sut->getDataBaseManager()->getQueryHistory()));
+        $this->assertSame(21, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
         $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)',
             'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(40) NOT NULL',
@@ -959,7 +959,7 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         $object->name = 'customer';
         $this->assertSame(1, $this->sut->save($object));
 
-        $this->assertSame(18, count($this->sut->getDataBaseManager()->getQueryHistory()));
+        $this->assertSame(17, count($this->sut->getDataBaseManager()->getQueryHistory()));
 
         $this->assertSame(['dbid' => 'bigint(20) unsigned NOT NULL', 'dbuuid' => 'varchar(36)',
             'dbcreationdate' => 'datetime(6) NOT NULL', 'dbmodificationdate' => 'datetime(6) NOT NULL', 'dbdeleted' => 'datetime(6)', 'name' => 'varchar(20) NOT NULL',

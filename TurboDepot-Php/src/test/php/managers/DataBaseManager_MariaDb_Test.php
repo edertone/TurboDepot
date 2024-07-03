@@ -208,7 +208,142 @@ class DataBaseManager_MariaDb_Test extends TestCase {
     }
 
 
-    // TODO - implement all missing tests
-}
+    /**
+     * test
+     */
+    public function test_data_is_correctly_stored_into_db_after_basic_operations_nothing_missing(){
 
-?>
+        // We will create a basic table and insert several rows.
+        // Then make sure that every row is correctly stored
+        $this->sut->tableCreate('a', ['c bigint']);
+        $this->sut->tableAddRows('a', [['c' => '1']]);
+        $this->assertSame(1, $this->sut->tableCountRows('a'));
+
+        $this->sut->tableAddRows('a', [['c' => '2']]);
+        $this->assertSame(2, $this->sut->tableCountRows('a'));
+    }
+
+
+    /**
+     * test
+     */
+    public function test_transaction_commit_stores_the_data(){
+
+        // We will create a basic table and insert several rows.
+        // Then make sure that every row is correctly stored
+        $this->sut->tableCreate('a', ['c bigint']);
+
+        $this->sut->transactionBegin();
+        $this->sut->tableAddRows('a', [['c' => '1']]);
+        $this->sut->tableAddRows('a', [['c' => '2']]);
+        $this->assertSame(2, $this->sut->tableCountRows('a'));
+
+        $this->sut->transactionCommit();
+        $this->assertSame(2, $this->sut->tableCountRows('a'));
+    }
+
+
+    /**
+     * test
+     */
+    public function test_transaction_rollback_removes_data_from_previous_calls(){
+
+        // We will create a basic table and insert several rows.
+        // Then make sure that every row is correctly stored
+        $this->sut->tableCreate('a', ['c bigint']);
+
+        $this->sut->transactionBegin();
+        $this->sut->tableAddRows('a', [['c' => '1']]);
+        $this->sut->tableAddRows('a', [['c' => '2']]);
+        $this->assertSame(2, $this->sut->tableCountRows('a'));
+
+        $this->sut->transactionRollback();
+        $this->assertSame(0, $this->sut->tableCountRows('a'));
+    }
+
+
+    /**
+     * test
+     */
+    public function test_transaction_rollback_removes_data_from_previous_calls_on_different_tables(){
+
+        $this->sut->tableCreate('a', ['c bigint']);
+        $this->sut->tableCreate('b', ['c bigint']);
+
+        $this->sut->transactionBegin();
+        $this->sut->tableAddRows('a', [['c' => '1']]);
+        $this->sut->tableAddRows('b', [['c' => '2']]);
+        $this->assertSame(1, $this->sut->tableCountRows('a'));
+        $this->assertSame(1, $this->sut->tableCountRows('b'));
+
+        $this->sut->transactionRollback();
+        $this->assertSame(0, $this->sut->tableCountRows('a'));
+        $this->assertSame(0, $this->sut->tableCountRows('b'));
+    }
+
+
+    /**
+     * test
+     */
+    public function test_chained_transactions_store_the_data_correctly(){
+
+        $this->sut->tableCreate('a', ['c bigint']);
+
+        $this->sut->transactionBegin();
+        $this->sut->tableAddRows('a', [['c' => '1']]);
+
+        $this->sut->transactionBegin();
+        $this->sut->tableAddRows('a', [['c' => '2']]);
+
+        $this->sut->transactionCommit();
+        $this->sut->transactionCommit();
+        $this->assertSame(2, $this->sut->tableCountRows('a'));
+    }
+
+
+    /**
+     * test
+     */
+    public function test_chained_transactions_store_the_data_correctly_2(){
+
+        $this->sut->tableCreate('a', ['c bigint']);
+
+        $this->sut->transactionBegin();
+
+        $this->sut->transactionBegin();
+        $this->sut->tableAddRows('a', [['c' => '1']]);
+        $this->sut->transactionCommit();
+
+        $this->sut->transactionBegin();
+        $this->sut->tableAddRows('a', [['c' => '2']]);
+        $this->sut->transactionCommit();
+
+        $this->sut->transactionCommit();
+
+        $this->assertSame(2, $this->sut->tableCountRows('a'));
+    }
+
+
+    /**
+     * test
+     */
+    public function test_chained_transactions_whitout_enough_commits_delete_the_data_once_rollback_is_called(){
+
+        $this->sut->tableCreate('a', ['c bigint']);
+
+        $this->sut->transactionBegin();
+        $this->sut->transactionBegin();
+
+        $this->sut->tableAddRows('a', [['c' => '1']]);
+        $this->sut->transactionCommit();
+
+        $this->sut->tableAddRows('a', [['c' => '2']]);
+
+        $this->sut->transactionRollback();
+        $this->assertSame(0, $this->sut->tableCountRows('a'));
+    }
+
+
+    // TODO - implement all missing tests
+    // TODO - implement more custom tests
+}

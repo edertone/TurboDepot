@@ -1385,7 +1385,6 @@ class DataBaseManager extends BaseStrictClass {
 
             try {
 
-                $this->query('SET autocommit=0');
                 $this->query('START TRANSACTION');
 
             } catch (Throwable $e) {
