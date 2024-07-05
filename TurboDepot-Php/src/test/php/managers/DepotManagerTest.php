@@ -320,13 +320,13 @@ class DepotManagerTest extends TestCase {
         // Not necessary
 
         // Test exceptions
-        $this->setup->depots[0]->googleDrive->apiClientRoot = 'invalid path';
+        $this->setup->depots[0]->googleDrive->composerVendorPath = 'invalid path';
         $this->sut = new DepotManager($this->setup);
 
-        AssertUtils::throwsException(function(){ $this->sut->getGoogleDriveManager(); }, '/Specified googleApiPhpCLientRoot folder is not valid/');
+        AssertUtils::throwsException(function(){ $this->sut->getGoogleDriveManager(); }, '/Specified vendorRoot folder is not valid/');
 
         // Set a valid api client root and check missing serviceAccountCredentials file
-        $this->setup->depots[0]->googleDrive->apiClientRoot = __DIR__.'/../../resources/managers/depotManager/fake-api-root';
+        $this->setup->depots[0]->googleDrive->composerVendorPath = __DIR__.'/../../resources/managers/depotManager/fake-composer-root/vendor';
         $this->sut = new DepotManager($this->setup);
 
         AssertUtils::throwsException(function(){ $this->sut->getGoogleDriveManager(); }, '/Could not find serviceAccountCredentials file/');

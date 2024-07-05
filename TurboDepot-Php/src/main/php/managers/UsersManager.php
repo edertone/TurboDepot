@@ -24,7 +24,6 @@ use org\turbodepot\src\main\php\model\UserObject;
 use org\turbocommons\src\main\php\utils\StringUtils;
 use org\turbocommons\src\main\php\utils\ArrayUtils;
 use org\turbodepot\src\main\php\model\DataBaseObject;
-use PharIo\Version\AndVersionConstraintGroup;
 
 
 /**
@@ -550,9 +549,9 @@ class UsersManager extends BaseStrictClass{
 
     /**
      * Save an email account to the specified user. It will be updated if it already exists on the provided user.
-     * All new email accounts that are added to a user will be stored with a non verified status. We must set the verification
-     * status of an email account with the method setUserMailVerified(), normally after sending a verification email to the user with
-     * the sendUserMailVerification() method.
+     * All new email accounts that are added to a user will be stored with a non verified status. To verify the email we must generate a verification
+     * hash with getUserMailVerificationHash() and then verify it with verifyUserMail() after sending it to the user email account via a link.
+     * We can also use setUserMailVerified() directly to skip all the hash verification process.
      *
      * @param string $userName The username on the currently active domain to which whe want to add the email account
      * @param string $mail The email account that we want to add or update
@@ -577,14 +576,17 @@ class UsersManager extends BaseStrictClass{
 
         try {
 
+            // Generate a verification hash that will be used later to mark this account as verified
+            $verificationHash = StringUtils::generateRandom(20, 20, ['0-9', 'a-z', 'A-Z']);
+
             $this->_db->tableAddOrUpdateRow($this->_tableUserMail, ['dbid' => $userDbId, 'mail' => $mail],
-                ['dbid' => $userDbId, 'mail' => $mail, 'isverified' => 0, 'comments' => $comments, 'data' => $data]);
+                ['dbid' => $userDbId, 'mail' => $mail, 'isverified' => 0, 'verificationHash' => $verificationHash, 'comments' => $comments, 'data' => $data]);
 
         } catch (Throwable $e) {
 
             if($this->_db->tableAlterToFitDefinition($this->_tableUserMail, [
                 'columns' => ['dbid '.$this->_unsignedBigIntSqlTypeDef, 'mail varchar(250) NOT NULL', 'isverified tinyint(1) NOT NULL',
-                              'comments varchar(1000) NOT NULL', 'data TEXT NOT NULL'],
+                              'verificationhash varchar(20)', 'comments varchar(1000) NOT NULL', 'data TEXT NOT NULL'],
                 'primaryKey' => ['dbid', 'mail'],
                 'foreignKey' => [[$this->_tableUserMail.'_'.$this->_tableUserObject.'_fk', ['dbid'], $this->_tableUserObject, ['dbid']]]])){
 
@@ -599,11 +601,151 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Check if the specified email account exists for the provided username
+     *
+     * @param string $userName The username for the user to which we want to check the mail account
+     * @param string $userMail The email account that we want to check
+     *
+     * @throws UnexpectedValueException If the provided parameters are not valid
+     *
+     * @return boolean True if the provided mail is owned by the provided user, false otherwise
      */
-    public function sendUserMailVerification(string $userName, string $mail, string $subject, string $message){
+    public function isUserMail(string $userName, string $userMail){
 
-        // TODO - Send an email to the provided user email account so he can click to mark that account as verified
+        StringUtils::forceNonEmptyString($userMail, '', 'Invalid mail');
+
+        $mails = $this->_db->tableGetRows($this->_tableUserMail,
+            ['dbid' => $this->_getUserDBId($userName), 'mail' => $userMail]);
+
+        return count($mails) === 1;
+    }
+
+
+    /**
+     * Obtain the hash string that is used to verify the provided email account
+     *
+     * @param string $userName The username for the user
+     * @param string $userMail The email account for which we want to obtain the verification hash
+     *
+     * @throws UnexpectedValueException If the provided parameters are not valid
+     *
+     * @return string The 20 digit hash string that must be used to verify the provided mail
+     */
+    public function getUserMailVerificationHash(string $userName, string $userMail){
+
+        StringUtils::forceNonEmptyString($userMail, '', 'Invalid mail');
+
+        // Search for the mail verification hash
+        $mailRows = $this->_db->tableGetRows($this->_tableUserMail, ['dbid' => $this->_getUserDBId($userName), 'mail' => $userMail]);
+
+        if(count($mailRows) !== 1){
+
+            throw new UnexpectedValueException('Mail '.$userMail.' does not belong to user '.$userName);
+        }
+
+        if(StringUtils::isEmpty($mailRows[0]['verificationhash'])){
+
+            throw new UnexpectedValueException('Mail '.$userMail.' is already verified');
+        }
+
+        return $mailRows[0]['verificationhash'];
+    }
+
+
+    /**
+     * Obtain an URI that can be used to fully verify a user mail account.
+     *
+     * @param string $userName The username for the user
+     * @param string $userMail The email account for which we want to obtain the verification URI
+     * @param string $extra optionally we can append also an extra string at the end of the URI, for any custom purpose.
+     *
+     * @throws UnexpectedValueException If the provided parameters are not valid
+     *
+     * @return string A URI ready to be used with any url to send the mail verification info. Format will be: username/userMail/verificationHash/extra
+     *         (each value between the / will be base64 encoded)
+     */
+    public function getUserMailVerificationURI(string $userName, string $userMail, string $extra = ''){
+
+        $uri = base64_encode($userName).'/'.base64_encode($userMail).'/'.base64_encode($this->getUserMailVerificationHash($userName, $userMail));
+
+        if(!StringUtils::isEmpty($extra)){
+
+            $uri .= '/'.base64_encode($extra);
+        }
+
+        return $uri;
+    }
+
+
+    /**
+     * Execute the verification for the mail related to the specified user.
+     * If the verification hash matches the one on the email, that email account will be marked as verified.
+     *
+     * @param string $userName The username for the user
+     * @param string $userMail The email account that we want to verify
+     * @param string $verificationHash The hash that must match the one on the mail account for it to be verified.
+     *
+     * @throws UnexpectedValueException If the provided parameters are not valid
+     *
+     * @return int Three possible values: -1 If mail could not be verified, 0 if mail was correctly verified and 1 if mail was already verified before
+     */
+    public function verifyUserMail(string $userName, string $userMail, string $verificationHash){
+
+        StringUtils::forceNonEmptyString($userName, '', 'Invalid mail');
+        StringUtils::forceNonEmptyString($userMail, '', 'Subject cannot be empty');
+        StringUtils::forceNonEmptyString($verificationHash, '', 'Body cannot be empty');
+
+        if(!$this->isUserMail($userName, $userMail)){
+
+            throw new UnexpectedValueException('Mail '.$userMail.' does not belong to user '.$userName);
+        }
+
+        // Already verified email will return true
+        if($this->isUserMailVerified($userName, $userMail)){
+
+            return 1;
+        }
+
+        // Look for the mail that matches the verification hash and set it as verified
+        try {
+
+            $this->_db->tableUpdateRow($this->_tableUserMail,
+                    ['dbid' => $this->_getUserDBId($userName),
+                     'mail' => $userMail,
+                     'verificationhash' => $verificationHash
+                    ], ['isverified' => '1', 'verificationhash' => '']);
+
+        } catch (Throwable $e) {
+
+            return -1;
+        }
+
+        return 0;
+    }
+
+
+    /**
+     * Manually set the verified status for the specified user email.
+     * This bypasses the mail verification process, so it is recommended to use the verifyUserMail method via the provided mail hash.
+     *
+     * @param string $userName The username for the user to which whe want to update the email verification status
+     * @param string $mail The email account that we want to update
+     * @param bool $isVerified True to set the email as verified, false to set it as non verified
+     *
+     * @return boolean True if the provided mail is correctly updated for the provided user
+     */
+    public function setUserMailVerified(string $userName, string $mail, bool $isVerified){
+
+        if($this->isUserMailVerified($userName, $mail) !== $isVerified){
+
+            // Generate a verification hash if the account is set as not verified
+            $verificationHash = $isVerified ? '' : StringUtils::generateRandom(20, 20, ['0-9', 'a-z', 'A-Z']);
+
+            $this->_db->tableUpdateRow($this->_tableUserMail, ['dbid' => $this->_getUserDBId($userName), 'mail' => $mail],
+                ['isverified' => $isVerified ? 1 : 0, 'verificationhash' => $verificationHash]);
+        }
+
+        return true;
     }
 
 
@@ -630,27 +772,6 @@ class UsersManager extends BaseStrictClass{
         }
 
         throw new UnexpectedValueException('Non existing mail: '.$mail.' on user: '.$userName.' on domain '.$this->_domain);
-    }
-
-
-    /**
-     * Set the verified status for the specified user email
-     *
-     * @param string $userName The username for the user to which whe want to update the email verification status
-     * @param string $mail The email account that we want to update
-     * @param bool $isVerified True to set the email as verified, false to set it as non verified
-     *
-     * @return boolean True if the provided mail is correctly updated for the provided user
-     */
-    public function setUserMailVerified(string $userName, string $mail, bool $isVerified){
-
-        if($this->isUserMailVerified($userName, $mail) !== $isVerified){
-
-            $this->_db->tableUpdateRow($this->_tableUserMail, ['dbid' => $this->_getUserDBId($userName), 'mail' => $mail],
-                ['isverified' => $isVerified ? 1 : 0]);
-        }
-
-        return true;
     }
 
 
@@ -785,11 +906,7 @@ class UsersManager extends BaseStrictClass{
 
         StringUtils::forceNonEmptyString($userName, 'userName');
 
-        // TODO - It seems that the domain is not being taken into consideration here?????
-        if($this->_databaseObjectsManager->deleteByPropertyValues(UserObject::class, ['userName' => $userName]) === 0){
-
-            throw new UnexpectedValueException('Trying to delete non existant user: '.$userName);
-        }
+        $this->_databaseObjectsManager->deleteByDbIds(UserObject::class, [$this->_getUserDBId($userName)]);
 
         return true;
     }
@@ -798,6 +915,7 @@ class UsersManager extends BaseStrictClass{
     /**
      * Delete a list of users from database on the currently active domain.
      * Method is transactional so if any of the objects can't be deleted, none will be.
+     * All data related to the users will be deleted in cascade on the database.
      *
      * @param array $userNames An array of usernames for whom the related instances will be deleted from database
      *

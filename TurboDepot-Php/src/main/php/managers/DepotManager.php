@@ -15,6 +15,7 @@ use Throwable;
 use org\turbocommons\src\main\php\model\BaseStrictClass;
 use UnexpectedValueException;
 use org\turbocommons\src\main\php\utils\StringUtils;
+use org\turboconnector\src\main\php\managers\GoogleDriveManager;
 
 
 /**
@@ -287,12 +288,12 @@ class DepotManager extends BaseStrictClass{
         if($this->_googleDriveManager === null){
 
             // Initialize the google drive manager to the folder that is defined on the depot setup
-            if(StringUtils::isEmpty($this->_loadedDepotSetup->googleDrive->apiClientRoot)){
+            if(StringUtils::isEmpty($this->_loadedDepotSetup->googleDrive->composerVendorPath)){
 
                 throw new UnexpectedValueException('googleDriveManager not available. Check it is correctly configured on turbodepot setup');
             }
 
-            $this->_googleDriveManager = new GoogleDriveManager($this->_loadedDepotSetup->googleDrive->apiClientRoot);
+            $this->_googleDriveManager = new GoogleDriveManager($this->_loadedDepotSetup->googleDrive->composerVendorPath);
 
             if(!StringUtils::isEmpty($this->_loadedDepotSetup->googleDrive->cacheRootPath)){
 
