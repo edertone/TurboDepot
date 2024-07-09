@@ -1060,6 +1060,79 @@ class UsersManagerTest extends TestCase {
     }
 
 
+    /**
+     * test
+     */
+    public function testGetUserOperations(){
+
+        // Test empty values
+        AssertUtils::throwsException(function() { $this->sut->getUserOperations(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->getUserOperations(null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->getUserOperations(''); }, '/userName must be a non empty string/');
+
+        // Test ok values
+        $this->sut->saveRole('role1', '');
+        $this->sut->saveRole('role2', '');
+        $this->sut->saveOperation('op1');
+        $this->sut->saveOperation('op2');
+        $this->sut->saveOperation('op3');
+
+        $user = new UserObject();
+        $user->userName = 'user';
+        $user->roles = ['role1'];
+        $this->sut->saveUser($user);
+
+        // No operations still
+        $this->assertSame([], $this->sut->getUserOperations($user->userName));
+
+        // Add all roles to op1
+        $this->sut->setOperationEnabledForRoles('op1', []);
+        $this->assertSame(['op1'], $this->sut->getUserOperations($user->userName));
+
+        // Add role1 to op2 and op3
+        $this->sut->setOperationEnabledForRoles('op2', ['role1']);
+        $this->sut->setOperationEnabledForRoles('op3', ['role1']);
+        $this->assertSame(['op1', 'op2', 'op3'], $this->sut->getUserOperations($user->userName));
+
+        // Add now op1 also to role1
+        $this->sut->setOperationEnabledForRoles('op1', ['role1']);
+        $this->assertSame(['op1', 'op2', 'op3'], $this->sut->getUserOperations($user->userName));
+
+        // Create a new user and test only op1 is available
+        $user2 = new UserObject();
+        $user2->userName = 'user2';
+        $user2->roles = ['role2'];
+        $this->sut->saveUser($user2);
+        $this->assertSame(['op1'], $this->sut->getUserOperations($user2->userName));
+
+        // Add op3 to user2
+        $this->sut->setOperationEnabledForRoles('op3', ['role2']);
+        $this->assertSame(['op1', 'op3'], $this->sut->getUserOperations($user2->userName));
+
+        // Change the domain and check list is empty
+        $this->sut->saveDomain('d2', '');
+        $this->sut->setDomain('d2');
+        AssertUtils::throwsException(function() use ($user) { $this->sut->getUserOperations($user->userName); }, '/User user does not exist on domain: d2/');
+
+        // Create a new user on this domain
+        $user3 = new UserObject();
+        $user3->userName = 'user3';
+        $user3->domain = 'd2';
+        $this->sut->saveUser($user3);
+        $this->assertSame([], $this->sut->getUserOperations($user3->userName));
+
+        // Create one operation and set it to all roles
+        $this->sut->saveOperation('op4');
+        $this->sut->setOperationEnabledForRoles('op4', []);
+        $this->assertSame(['op4'], $this->sut->getUserOperations($user3->userName));
+
+        // Back to default domain and test other users again
+        $this->sut->setDomain('');
+        $this->assertSame(['op1', 'op2', 'op3'], $this->sut->getUserOperations($user->userName));
+        $this->assertSame(['op1', 'op3'], $this->sut->getUserOperations($user2->userName));
+    }
+
+
     /** test */
     public function testfindUserByToken(){
 
@@ -1265,7 +1338,7 @@ class UsersManagerTest extends TestCase {
 
 
     /** test */
-    public function testSaveOperation(){
+    public function testDeleteOperation(){
 
         // Test empty values
         // TODO
@@ -1280,6 +1353,141 @@ class UsersManagerTest extends TestCase {
         // TODO
 
         $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /** test */
+    public function testSaveOperation(){
+
+        // Test empty values
+        AssertUtils::throwsException(function() { $this->sut->saveOperation(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->saveOperation(null, null); }, '/operation must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveOperation([], []); }, '/operation must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveOperation('', ''); }, '/operation must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveOperation('   ', ''); }, '/operation must be a non empty string/');
+
+        // Test ok values
+        $this->assertFalse($this->db->tableExists('usr_operation'));
+        $this->assertTrue($this->sut->saveOperation('operation1', ''));
+        $this->assertTrue($this->db->tableExists('usr_operation'));
+        $this->assertSame([''], $this->db->tableGetColumnValues('usr_operation', 'domain'));
+        $this->assertSame(['operation1'], $this->db->tableGetColumnValues('usr_operation', 'name'));
+        $this->assertSame([''], $this->db->tableGetColumnValues('usr_operation', 'description'));
+
+        $this->sut->saveDomain('new domain', '');
+        $this->sut->setDomain('new domain');
+        $this->assertTrue($this->sut->saveOperation('operation2', 'description 2'));
+        $this->assertSame(['', 'new domain'], $this->db->tableGetColumnValues('usr_operation', 'domain'));
+        $this->assertSame(['operation1', 'operation2'], $this->db->tableGetColumnValues('usr_operation', 'name'));
+        $this->assertSame(['', 'description 2'], $this->db->tableGetColumnValues('usr_operation', 'description'));
+
+        $this->assertTrue($this->sut->saveOperation('operation2', 'description 2 edited'));
+        $this->assertSame(['', 'description 2 edited'], $this->db->tableGetColumnValues('usr_operation', 'description'));
+
+        $this->assertTrue($this->sut->saveOperation('見 in 見る', '見 in 見る'));
+        $this->assertSame(['operation1', 'operation2', '見 in 見る'], $this->db->tableGetColumnValues('usr_operation', 'name'));
+
+        // Test wrong values
+        // Test exceptions
+        AssertUtils::throwsException(function() { $this->sut->saveOperation('   ', ''); }, '/operation must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveOperation(1345345, ''); }, '/operation must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveOperation([1,2,3,4,5], ''); }, '/operation must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveOperation('domain1', 12345); }, '/description must be a string/');
+        AssertUtils::throwsException(function() { $this->sut->saveOperation('domain1', [1,2,3,4,5]); }, '/description must be a string/');
+    }
+
+
+    /** test */
+    public function testIsOperation(){
+
+        // Test empty values
+        AssertUtils::throwsException(function() { $this->sut->saveOperation(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->saveOperation(null); }, '/operation must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveOperation(''); }, '/operation must be a non empty string/');
+
+        // Test ok values
+        $this->assertTrue($this->sut->saveOperation('operation1'));
+        $this->assertTrue($this->sut->isOperation('operation1'));
+
+        $this->sut->saveDomain('domain2', '');
+        $this->sut->setDomain('domain2');
+        $this->assertTrue($this->sut->saveOperation('operation2'));
+        $this->assertTrue($this->sut->isOperation('operation2'));
+        $this->assertFalse($this->sut->isOperation('operation1'));
+
+        $this->sut->setDomain('');
+        $this->assertFalse($this->sut->isOperation('operation2'));
+        $this->assertTrue($this->sut->isOperation('operation1'));
+
+        // Test wrong values
+        // Test exceptions´
+        $this->assertFalse($this->sut->isOperation('blabla'));
+
+        AssertUtils::throwsException(function() { $this->sut->saveOperation(1231231); }, '/operation must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveOperation([1,2,3]); }, '/operation must be a non empty string/');
+    }
+
+
+    /** test */
+    public function testSetOperationEnabledForRoles(){
+
+        // Test empty values
+        AssertUtils::throwsException(function() { $this->sut->setOperationEnabledForRoles(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->setOperationEnabledForRoles(null); }, '/must be of the type string/');
+        AssertUtils::throwsException(function() { $this->sut->setOperationEnabledForRoles(null, null); }, '/must be of the type string/');
+        AssertUtils::throwsException(function() { $this->sut->setOperationEnabledForRoles('', null); }, '/must be of the type array/');
+        AssertUtils::throwsException(function() { $this->sut->setOperationEnabledForRoles('', []); }, '/operation must be a non empty string/');
+
+        // Test ok values
+
+        // Test single operation allowed for single role
+        $this->assertTrue($this->sut->saveRole('role1', ''));
+        $this->assertTrue($this->sut->saveOperation('operation1'));
+        $this->assertTrue($this->sut->setOperationEnabledForRoles('operation1', ['role1']));
+        $this->assertSame([''], $this->db->tableGetColumnValues('usr_operation_roles', 'domain'));
+        $this->assertSame(['operation1'], $this->db->tableGetColumnValues('usr_operation_roles', 'operation'));
+        $this->assertSame(['role1'], $this->db->tableGetColumnValues('usr_operation_roles', 'role'));
+
+        // Test single operation allowed for all roles
+        $this->assertTrue($this->sut->saveOperation('operation2'));
+        $this->assertTrue($this->sut->setOperationEnabledForRoles('operation2', []));
+        $this->assertSame(['', ''], $this->db->tableGetColumnValues('usr_operation_roles', 'domain'));
+        $this->assertSame(['operation1', 'operation2'], $this->db->tableGetColumnValues('usr_operation_roles', 'operation'));
+        $this->assertSame(['role1', ''], $this->db->tableGetColumnValues('usr_operation_roles', 'role'));
+
+
+        // Create an operation without any permission
+        $this->assertTrue($this->sut->saveOperation('operation3'));
+
+        // Check user1 is allowed for the created operations
+        $user1 = new UserObject();
+        $user1->userName = 'user1';
+        $user1->roles = ['role1'];
+        $this->sut->saveUser($user1);
+        $this->assertTrue($this->sut->isUserAllowedTo($user1->userName, 'operation1'));
+        $this->assertTrue($this->sut->isUserAllowedTo($user1->userName, 'operation2'));
+        $this->assertFalse($this->sut->isUserAllowedTo($user1->userName, 'operation3'));
+
+        // Check user2 is NOT allowed for the created operations
+        $user2 = new UserObject();
+        $user2->userName = 'user2';
+        $this->sut->saveUser($user2);
+        $this->assertFalse($this->sut->isUserAllowedTo($user2->userName, 'operation1'));
+        $this->assertTrue($this->sut->isUserAllowedTo($user2->userName, 'operation2'));
+        $this->assertFalse($this->sut->isUserAllowedTo($user2->userName, 'operation3'));
+
+        // Assign role to user2 and check it is now allowed for all operations except the one
+        // that has no permisions assigned
+        $user2->roles = ['role1'];
+        $this->sut->saveUser($user2);
+        $this->assertTrue($this->sut->isUserAllowedTo($user2->userName, 'operation1'));
+        $this->assertTrue($this->sut->isUserAllowedTo($user2->userName, 'operation2'));
+        $this->assertFalse($this->sut->isUserAllowedTo($user2->userName, 'operation3'));
+
+        // Test wrong values
+        AssertUtils::throwsException(function() { $this->sut->setOperationEnabledForRoles('blabla', ['role1']); }, '/is not an operation for the current domain/');
+        AssertUtils::throwsException(function() { $this->sut->setOperationEnabledForRoles('operation1', ['role1']); }, '/Could not set operation operation1 as allowed for roles: .role1./');
+        AssertUtils::throwsException(function() { $this->sut->setOperationEnabledForRoles('operation2', []); }, '/Could not set operation operation2 as allowed for roles/');
     }
 
 

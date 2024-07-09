@@ -88,6 +88,27 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
+     * The name of the roles table
+     * @var string
+     */
+    private $_tableRole;
+
+
+    /**
+     * The name of the operations table
+     * @var string
+     */
+    private $_tableOperation;
+
+
+    /**
+     * The name of the table that contains which roles are allowed for operations
+     * @var string
+     */
+    private $_tableOperationRole;
+
+
+    /**
      * The name of the user object table
      * @var string
      */
@@ -99,13 +120,6 @@ class UsersManager extends BaseStrictClass{
      * @var string
      */
     private $_tableUserCustomFieldsObject;
-
-
-    /**
-     * The name of the roles table
-     * @var string
-     */
-    private $_tableRole;
 
 
     /**
@@ -155,11 +169,13 @@ class UsersManager extends BaseStrictClass{
         $this->_unsignedBigIntSqlTypeDef = $this->_db->getSQLTypeFromValue(999999999999999, false, true);
 
         $this->_tableDomain = $this->_databaseObjectsManager->tablesPrefix.'domain';
-        $this->_tableUserObject = $this->_databaseObjectsManager->tablesPrefix.'userobject';
-        $this->_tableUserCustomFieldsObject = $this->_databaseObjectsManager->tablesPrefix.'userobject_customfields';
         $this->_tableRole = $this->_databaseObjectsManager->tablesPrefix.'role';
+        $this->_tableOperation = $this->_databaseObjectsManager->tablesPrefix.'operation';
+        $this->_tableOperationRole = $this->_databaseObjectsManager->tablesPrefix.'operation_roles';
+        $this->_tableUserObject = $this->_databaseObjectsManager->tablesPrefix.'userobject';
         $this->_tableUserPsw = $this->_databaseObjectsManager->tablesPrefix.'userobject_password';
         $this->_tableUserMail = $this->_databaseObjectsManager->tablesPrefix.'userobject_mails';
+        $this->_tableUserCustomFieldsObject = $this->_databaseObjectsManager->tablesPrefix.'userobject_customfields';
         $this->_tableToken = $this->_databaseObjectsManager->tablesPrefix.'token';
 
         try {
@@ -811,6 +827,58 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
+     * Obtain a list of all the operations that are allowed for the provided user on the current domain
+     *
+     * @param string $userName The username we want to check
+     *
+     * @return array List of allowed operations alphabetically sorted
+     */
+    public function getUserOperations(string $userName){
+
+        StringUtils::forceNonEmptyString($userName, 'userName');
+
+        if(!$this->isUser($userName)){
+
+            throw new UnexpectedValueException("User $userName does not exist on domain: $this->_domain");
+        }
+
+        $list = [];
+        $tableUser = $this->_tableUserObject;
+        $tableUserRoles = $this->_tableUserObject."_roles";
+        $tableOperationRole = $this->_tableOperationRole;
+
+        if (!$this->_db->tableExists($tableOperationRole)) {
+
+            return [];
+        }
+
+        // Find all operations that are assigned for all roles
+        $queryResult = $this->_db->query("SELECT operation FROM $tableOperationRole WHERE domain='$this->_domain' AND role=''");
+
+        foreach ($queryResult as $result) {
+
+            $list[] = $result['operation'];
+        }
+
+        // Find all the operations that are specific to the provided user
+        $q  = "SELECT DISTINCT o.operation FROM $tableUser u, $tableUserRoles rs, $tableOperationRole o ";
+        $q .= "WHERE u.domain='$this->_domain' AND u.username='$userName' AND u.dbid = rs.dbid AND rs.value = o.role";
+        $queryResult = $this->_db->query($q);
+
+        foreach ($queryResult as $result) {
+
+            $list[] = $result['operation'];
+        }
+
+        $list = array_values(array_unique($list));
+
+        sort($list);
+
+        return $list;
+    }
+
+
+    /**
      * Get a user instance from the database using the provided token.
      *
      * @param string $token The previously obtained token that represents the user we want to retrieve
@@ -955,9 +1023,167 @@ class UsersManager extends BaseStrictClass{
     /**
      * TODO
      */
-    public function saveOperation($operation, $description = ''){
+    public function deleteOperation($operation, $description = ''){
 
         // TODO
+    }
+
+
+    /**
+     * Save (create) to database the specified operation for the currently active domain or update it if already exists.
+     * operations are actions that can be performed by users and are subject to access restrictions. They is used to
+     * define all the things that are allowed or disallowed for the users.
+     *
+     * This only creates an operation, we will need then to grant permissions to roles or specific users.
+     *
+     * @param string $operation The name for the operation we want to save or update
+     * @param string $description The description we want to set to the operation
+     *
+     * @throws UnexpectedValueException
+     *
+     * @return boolean True if the operation was correctly saved
+     */
+    public function saveOperation($operation, $description = ''){
+
+        StringUtils::forceNonEmptyString($operation, 'operation');
+        StringUtils::forceString($description, 'description');
+
+        try {
+
+            $this->_db->tableAddOrUpdateRow($this->_tableOperation, ['domain' => $this->_domain, 'name' => $operation],
+                ['domain' => $this->_domain, 'name' => $operation, 'description' => $description]);
+
+        } catch (Throwable $e) {
+
+            if($this->_db->tableAlterToFitDefinition($this->_tableOperation, [
+                'columns' => ['domain varchar(250) NOT NULL', 'name varchar(250) NOT NULL', 'description varchar(250) NOT NULL'],
+                'primaryKey' => ['domain', 'name'],
+                'foreignKey' => [[$this->_tableOperation.'_'.$this->_tableDomain.'_fk', ['domain'], $this->_tableDomain, ['name']]]])){
+
+                return $this->saveOperation($operation, $description);
+            }
+
+            throw new UnexpectedValueException('Could not save operation '.$operation.' to db: '.$e->getMessage());
+        }
+
+        return true;
+    }
+
+
+    /**
+     * Check if the specified operation is stored on database for the current domain
+     *
+     * @param string $operation The name for the operation that we want to check
+     *
+     * @return boolean True if the operation exists on the current domain, false otherwise
+     */
+    public function isOperation(string $operation){
+
+        StringUtils::forceNonEmptyString($operation, 'operation');
+
+        try {
+
+            return count($this->_db->tableGetRows($this->_tableOperation, ['name' => $operation, 'domain' => $this->_domain])) === 1;
+
+        } catch (Throwable $e) {
+
+            return false;
+        }
+    }
+
+
+    /**
+     * Specify which user roles are allowed to perform the specified operation.
+     *
+     * @param string $operation The name for the operation
+     * @param array $roles A list of user roles that will be allowed to perform the specified operation. An empty array will allow any role
+     *
+     * @throws UnexpectedValueException
+     *
+     * @return boolean True on success
+     */
+    public function setOperationEnabledForRoles(string $operation, array $roles){
+
+        if(!$this->isOperation($operation)){
+
+            throw new UnexpectedValueException($operation.' is not an operation for the current domain');
+        }
+
+        try {
+
+            $rows = [];
+
+            if(empty($roles)){
+
+                $rows[] = ['domain' => $this->_domain, 'operation' => $operation, 'role' => ''];
+
+            }else{
+
+                foreach ($roles as $role) {
+
+                    $rows[] = ['domain' => $this->_domain, 'operation' => $operation, 'role' => $role];
+                }
+            }
+
+            $this->_db->tableAddRows($this->_tableOperationRole, $rows);
+
+        } catch (Throwable $e) {
+
+            if($this->_db->tableAlterToFitDefinition($this->_tableOperationRole, [
+                'columns' => ['domain varchar(250) NOT NULL', 'operation varchar(250) NOT NULL', 'role varchar(250) NOT NULL'],
+                'primaryKey' => ['domain', 'operation', 'role'],
+                'foreignKey' => [
+                    [$this->_tableOperationRole.'_'.$this->_tableDomain.'_fk', ['domain'], $this->_tableDomain, ['name']],
+                    [$this->_tableOperationRole.'_'.$this->_tableOperation.'_fk', ['domain', 'operation'], $this->_tableOperation, ['domain', 'name']],
+                ]])){
+
+                return $this->setOperationEnabledForRoles($operation, $roles);
+            }
+
+            throw new UnexpectedValueException('Could not set operation '.$operation.' as allowed for roles: ['.implode(', ', $roles).']: '.$e->getMessage());
+        }
+
+        return true;
+    }
+
+
+    /**
+     * TODO
+     */
+    public function setOperationEnabledForUsers(string $operation, array $users){
+
+        // TODO
+    }
+
+
+    /**
+     * Check if the specified user is allowed to perform the specified operation
+     *
+     * @param string $userName The username for the user we want to check
+     * @param string $operation The name for the operation we want to check against the user
+     *
+     * @return boolean True if the user can do the provided operation, false otherwise
+     */
+    public function isUserAllowedTo(string $userName, string $operation){
+
+        $tableUser = $this->_tableUserObject;
+        $tableUserRoles = $this->_tableUserObject."_roles";
+        $tableOperationRole = $this->_tableOperationRole;
+
+        // Check if the operation is marked for all roles
+        $result = $this->_db->query("SELECT role FROM $tableOperationRole WHERE domain='$this->_domain' AND operation='$operation'");
+
+        if(!empty($result) && $result[0]['role'] === ''){
+
+            return true;
+        }
+
+        // Check if the operation is allowed for any of the specific roles assigned to the user
+        $q  = "SELECT o.operation FROM $tableUser u, $tableUserRoles rs, $tableOperationRole o ";
+        $q .= "WHERE u.domain='$this->_domain' AND u.username='$userName' AND u.dbid = rs.dbid AND rs.value = o.role AND o.operation = '$operation' LIMIT 1";
+        $result = $this->_db->query($q);
+
+        return !empty($result);
     }
 
 
@@ -1068,7 +1294,7 @@ class UsersManager extends BaseStrictClass{
                 $result = new stdClass();
                 $result->token = $this->createToken($user[0]);
                 $result->user = $user[0];
-                $result->operations = []; // TODO
+                $result->operations = $this->getUserOperations($userName);
 
                 return $result;
             }
