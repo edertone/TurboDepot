@@ -734,7 +734,8 @@ class UsersManager extends BaseStrictClass{
      *
      * @param string $userName The username for the user
      * @param string $userMail The email account that we want to verify
-     * @param string $verificationHash The hash that must match the one on the mail account for it to be verified.
+     * @param string $verificationHash The hash that must match the one on the mail account for it to be verified. You
+     *        can obtain this hash via the getUserMailVerificationHash() method
      *
      * @throws UnexpectedValueException If the provided parameters are not valid
      *
