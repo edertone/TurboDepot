@@ -206,7 +206,7 @@ class UsersManager extends BaseStrictClass{
      *
      * @return boolean True if the domain was correctly saved
      */
-    public function saveDomain($domainName, $description){
+    public function saveDomain(string $domainName, string $description = ''){
 
         if($domainName !== ''){
 
@@ -296,7 +296,7 @@ class UsersManager extends BaseStrictClass{
      *
      * @return boolean True if the role was correctly saved
      */
-    public function saveRole($roleName, $description){
+    public function saveRole(string $roleName, string $description = ''){
 
         StringUtils::forceNonEmptyString($roleName, 'roleName');
         StringUtils::forceString($description, 'description');
@@ -368,13 +368,48 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Remove the specified role for the current domain
+     *
+     * @param string $roleName The name for an existing role on the actual domain
+     *
+     * @throws UnexpectedValueException
+     *
+     * @return bool True on success
      */
     public function deleteRole(string $roleName){
+
+        StringUtils::forceNonEmptyString($roleName, 'roleName');
 
         // TODO - After deleting a role, we must clear it from all the users that use it, but without deleting the users
         // TODO - check any impact that deleting the role would have. Maybe if it is the only one that exists, we cannot leave
         // users without a role?
+
+        try {
+
+            $this->_db->transactionBegin();
+
+            // Delete all operations containing this role
+            if($this->_db->tableDeleteRows($this->_tableOperationRole, ['domain' => $this->_domain, 'role' => $roleName]) !== 1){
+
+                throw new UnexpectedValueException('Error removing '.$roleName.': unexpected error');
+            }
+
+            // Delete the role from the table itself
+            if($this->_db->tableDeleteRows($this->_tableRole, ['domain' => $this->_domain, 'name' => $roleName]) !== 1){
+
+                throw new UnexpectedValueException('Error removing '.$roleName.': unexpected error');
+            }
+
+            $this->_db->transactionCommit();
+
+        } catch (Throwable $e) {
+
+            $this->_db->transactionRollback();
+
+            throw $e;
+        }
+
+        return true;
     }
 
 
@@ -1021,11 +1056,26 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Remove the specified operation for the current domain
+     *
+     * @param string $operation The name for an existing operation on the actual domain
+     *
+     * @throws UnexpectedValueException
+     *
+     * @return bool True on success
      */
-    public function deleteOperation($operation, $description = ''){
+    public function deleteOperation(string $operation){
 
-        // TODO
+        StringUtils::forceNonEmptyString($operation, 'operation');
+
+        $result = $this->_db->tableDeleteRows($this->_tableOperation, ['domain' => $this->_domain, 'name' => $operation]);
+
+        if($result !== 1){
+
+            throw new UnexpectedValueException('Error removing '.$operation.': Expected to remove 1 element but was '.$result);
+        }
+
+        return true;
     }
 
 
@@ -1043,7 +1093,7 @@ class UsersManager extends BaseStrictClass{
      *
      * @return boolean True if the operation was correctly saved
      */
-    public function saveOperation($operation, $description = ''){
+    public function saveOperation(string $operation, string $description = ''){
 
         StringUtils::forceNonEmptyString($operation, 'operation');
         StringUtils::forceString($description, 'description');

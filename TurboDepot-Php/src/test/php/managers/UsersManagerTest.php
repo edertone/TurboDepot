@@ -105,8 +105,8 @@ class UsersManagerTest extends TestCase {
 
         // Test empty values
         AssertUtils::throwsException(function() { $this->sut->saveDomain(); }, '/Too few arguments to function/');
-        AssertUtils::throwsException(function() { $this->sut->saveDomain(null, null); }, '/domainName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveDomain([], []); }, '/domainName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain(null, null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain([], []); }, '/must be of the type string, array given/');
         $this->assertTrue($this->sut->saveDomain('', 'default domain'));
 
         // Test ok values
@@ -135,10 +135,8 @@ class UsersManagerTest extends TestCase {
         // Test wrong values
         // Test exceptions
         AssertUtils::throwsException(function() { $this->sut->saveDomain('   ', ''); }, '/domainName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveDomain(1345345, ''); }, '/domainName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveDomain([1,2,3,4,5], ''); }, '/domainName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveDomain('domain1', 12345); }, '/description must be a string/');
-        AssertUtils::throwsException(function() { $this->sut->saveDomain('domain1', [1,2,3,4,5]); }, '/description must be a string/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain([1,2,3,4,5], ''); }, '/must be of the type string, array given/');
+        AssertUtils::throwsException(function() { $this->sut->saveDomain('domain1', [1,2,3,4,5]); }, '/must be of the type string, array given/');
     }
 
 
@@ -209,8 +207,8 @@ class UsersManagerTest extends TestCase {
 
         // Test empty values
         AssertUtils::throwsException(function() { $this->sut->saveRole(); }, '/Too few arguments to function/');
-        AssertUtils::throwsException(function() { $this->sut->saveRole(null, null); }, '/roleName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveRole([], []); }, '/roleName must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole(null, null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole([], []); }, '/must be of the type string, array given/');
         AssertUtils::throwsException(function() { $this->sut->saveRole('', ''); }, '/roleName must be a non empty string/');
         AssertUtils::throwsException(function() { $this->sut->saveRole('   ', ''); }, '/roleName must be a non empty string/');
 
@@ -238,10 +236,8 @@ class UsersManagerTest extends TestCase {
         //         // Test wrong values
         //         // Test exceptions
         AssertUtils::throwsException(function() { $this->sut->saveRole('   ', ''); }, '/roleName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveRole(1345345, ''); }, '/roleName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveRole([1,2,3,4,5], ''); }, '/roleName must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveRole('domain1', 12345); }, '/description must be a string/');
-        AssertUtils::throwsException(function() { $this->sut->saveRole('domain1', [1,2,3,4,5]); }, '/description must be a string/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole([1,2,3,4,5], ''); }, '/must be of the type string, array given/');
+        AssertUtils::throwsException(function() { $this->sut->saveRole('domain1', [1,2,3,4,5]); }, '/must be of the type string, array given/');
     }
 
 
@@ -1341,18 +1337,79 @@ class UsersManagerTest extends TestCase {
     public function testDeleteOperation(){
 
         // Test empty values
-        // TODO
+        AssertUtils::throwsException(function() { $this->sut->deleteOperation(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->deleteOperation(null, null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->deleteOperation([], []); }, '/must be of the type string, array given/');
+        AssertUtils::throwsException(function() { $this->sut->deleteOperation('', ''); }, '/operation must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->deleteOperation('   ', ''); }, '/operation must be a non empty string/');
 
         // Test ok values
-        // TODO
+        $this->sut->saveRole('r1', '');
+
+        // Save 3 operations, check that exist, delete one and check it does not exist
+        $this->sut->saveOperation('op1');
+        $this->sut->saveOperation('op2');
+        $this->sut->saveOperation('op3');
+
+        $this->assertTrue($this->sut->isOperation('op1'));
+        $this->assertTrue($this->sut->isOperation('op2'));
+        $this->assertTrue($this->sut->isOperation('op3'));
+
+        $this->assertTrue($this->sut->deleteOperation('op3'));
+        $this->assertTrue($this->sut->isOperation('op1'));
+        $this->assertTrue($this->sut->isOperation('op2'));
+        $this->assertFalse($this->sut->isOperation('op3'));
+
+        // Add role to op2, check all exist, delete op2, check everything is deleted
+        $this->sut->setOperationEnabledForRoles('op2', ['r1']);
+        $this->assertSame(['op2'], $this->db->tableGetColumnValues('usr_operation_roles', 'operation'));
+        $this->assertSame(['r1'], $this->db->tableGetColumnValues('usr_operation_roles', 'role'));
+        $this->assertTrue($this->sut->deleteOperation('op2'));
+        $this->assertFalse($this->sut->isOperation('op2'));
+        $this->assertSame([], $this->db->tableGetColumnValues('usr_operation_roles', 'operation'));
+        $this->assertSame([], $this->db->tableGetColumnValues('usr_operation_roles', 'role'));
+
+        // Create new domain, create new role, create operation, add role to operation
+        // Delete the role and check link to operation is removed
+        $this->sut->saveDomain('d1');
+        $this->sut->setDomain('d1');
+        $this->sut->saveRole('rd1');
+        $this->sut->saveOperation('od1');
+        $this->sut->setOperationEnabledForRoles('od1', ['rd1']);
+        $this->assertSame(['d1'], $this->db->tableGetColumnValues('usr_operation_roles', 'domain'));
+        $this->assertSame(['od1'], $this->db->tableGetColumnValues('usr_operation_roles', 'operation'));
+        $this->assertSame(['rd1'], $this->db->tableGetColumnValues('usr_operation_roles', 'role'));
+        $this->sut->deleteRole('rd1');
+        $this->assertSame([], $this->db->tableGetColumnValues('usr_operation_roles', 'domain'));
+        $this->assertSame([], $this->db->tableGetColumnValues('usr_operation_roles', 'operation'));
+        $this->assertSame([], $this->db->tableGetColumnValues('usr_operation_roles', 'role'));
+        $this->assertTrue($this->sut->isOperation('od1'));
+
+        // Create same role on both domains, assign it to different operations on different domains,
+        // delete the role on one domain and check that only the operation on that domain gets unlinked
+        $this->sut->saveRole('rd1');
+        $this->sut->setOperationEnabledForRoles('od1', ['rd1']);
+        $this->sut->setDomain('');
+        $this->sut->saveRole('rd1');
+        $this->sut->setOperationEnabledForRoles('op1', ['rd1']);
+        $this->assertSame(['', 'd1'], $this->db->tableGetColumnValues('usr_operation_roles', 'domain'));
+        $this->assertSame(['op1', 'od1'], $this->db->tableGetColumnValues('usr_operation_roles', 'operation'));
+        $this->assertSame(['rd1', 'rd1'], $this->db->tableGetColumnValues('usr_operation_roles', 'role'));
+        $this->sut->setDomain('d1');
+        $this->sut->deleteRole('rd1');
+        $this->assertSame([''], $this->db->tableGetColumnValues('usr_operation_roles', 'domain'));
+        $this->assertSame(['op1'], $this->db->tableGetColumnValues('usr_operation_roles', 'operation'));
+        $this->assertSame(['rd1'], $this->db->tableGetColumnValues('usr_operation_roles', 'role'));
+
+        // Delete the empty domain and check that operation gets also unlinked
+        $this->db->tableDeleteRows('usr_domain', ['name' => '']);
+        $this->assertSame([], $this->db->tableGetColumnValues('usr_operation_roles', 'domain'));
+        $this->assertSame([], $this->db->tableGetColumnValues('usr_operation_roles', 'operation'));
+        $this->assertSame([], $this->db->tableGetColumnValues('usr_operation_roles', 'role'));
 
         // Test wrong values
-        // TODO
-
         // Test exceptions
-        // TODO
-
-        $this->markTestIncomplete('This test has not been implemented yet.');
+        AssertUtils::throwsException(function() { $this->sut->deleteOperation('nonexistant'); }, '/Error removing nonexistant/');
     }
 
 
@@ -1361,8 +1418,8 @@ class UsersManagerTest extends TestCase {
 
         // Test empty values
         AssertUtils::throwsException(function() { $this->sut->saveOperation(); }, '/Too few arguments to function/');
-        AssertUtils::throwsException(function() { $this->sut->saveOperation(null, null); }, '/operation must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveOperation([], []); }, '/operation must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveOperation(null, null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->saveOperation([], []); }, '/must be of the type string, array given/');
         AssertUtils::throwsException(function() { $this->sut->saveOperation('', ''); }, '/operation must be a non empty string/');
         AssertUtils::throwsException(function() { $this->sut->saveOperation('   ', ''); }, '/operation must be a non empty string/');
 
@@ -1390,10 +1447,8 @@ class UsersManagerTest extends TestCase {
         // Test wrong values
         // Test exceptions
         AssertUtils::throwsException(function() { $this->sut->saveOperation('   ', ''); }, '/operation must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveOperation(1345345, ''); }, '/operation must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveOperation([1,2,3,4,5], ''); }, '/operation must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveOperation('domain1', 12345); }, '/description must be a string/');
-        AssertUtils::throwsException(function() { $this->sut->saveOperation('domain1', [1,2,3,4,5]); }, '/description must be a string/');
+        AssertUtils::throwsException(function() { $this->sut->saveOperation([1,2,3,4,5], ''); }, '/must be of the type string, array given/');
+        AssertUtils::throwsException(function() { $this->sut->saveOperation('domain1', [1,2,3,4,5]); }, '/must be of the type string, array given/');
     }
 
 
@@ -1402,7 +1457,7 @@ class UsersManagerTest extends TestCase {
 
         // Test empty values
         AssertUtils::throwsException(function() { $this->sut->saveOperation(); }, '/Too few arguments to function/');
-        AssertUtils::throwsException(function() { $this->sut->saveOperation(null); }, '/operation must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveOperation(null); }, '/must be of the type string, null given/');
         AssertUtils::throwsException(function() { $this->sut->saveOperation(''); }, '/operation must be a non empty string/');
 
         // Test ok values
@@ -1423,8 +1478,7 @@ class UsersManagerTest extends TestCase {
         // Test exceptions´
         $this->assertFalse($this->sut->isOperation('blabla'));
 
-        AssertUtils::throwsException(function() { $this->sut->saveOperation(1231231); }, '/operation must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->saveOperation([1,2,3]); }, '/operation must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->saveOperation([1,2,3]); }, '/must be of the type string, array given/');
     }
 
 
