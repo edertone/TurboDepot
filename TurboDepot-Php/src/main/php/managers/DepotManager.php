@@ -259,6 +259,8 @@ class DepotManager extends BaseStrictClass{
     /**
      * Obtain the logs manager instance that is available through this depot manager.
      *
+     * It will be fully configured to use the logs path that is specified at the turbodepot configuration.
+     *
      * @return LogsManager
      */
     public function getLogsManager(){

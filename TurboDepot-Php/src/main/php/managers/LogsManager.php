@@ -40,6 +40,13 @@ class LogsManager extends BaseStrictClass{
 
 
     /**
+     * A files manager instance to use in this class
+     * @var FilesManager
+     */
+    private $_filesManager = null;
+
+
+    /**
      * Centralized logs manager.
      * It can be used standalone when a full depot is not necessary.
      * If we want to use it as part of a depot instance, we must interact with our logs via the DepotManager class.
@@ -54,6 +61,7 @@ class LogsManager extends BaseStrictClass{
         }
 
         $this->_rootPath = $rootPath;
+        $this->_filesManager = new FilesManager();
     }
 
 
@@ -84,7 +92,7 @@ class LogsManager extends BaseStrictClass{
         // Create the subfolder if necessary
         if(!is_dir(StringUtils::getPath($filePath))){
 
-            (new FilesManager())->createDirectory(StringUtils::getPath($filePath), true);
+            $this->_filesManager->createDirectory(StringUtils::getPath($filePath), true);
         }
 
         // Open a pointer to the end of the file to append the new text
@@ -127,11 +135,89 @@ class LogsManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Trim log files inside the current root path to ensure they do not exceed the provided max size.
+     * Files matching the provided pattern will be trimmed by removing as many lines as necessary from the top to not exceed the max size.
+     *
+     * @param int $maxSize The maximum allowed size for each log file in kilobytes.
+     * @param string $pattern A regular expression string. Only those log files which full OS path matches the pattern will be affected.
+     *        Some pattern examples:
+     *        '/.*\.txt$/i' - Match all items which end with '.txt' (case insensitive)
+     *        '/^some.*./' - Match all items which start with 'some'
+     *        '/text/' - Match all items which contain 'text'
+     *        '/^file\.txt$/' - Match all items which are exactly 'file.txt'
+     *        '/^.*\.(jpg|jpeg|png|gif)$/i' - Match all items which end with .jpg,.jpeg,.png or .gif (case insensitive)
+     *        '/^(?!.*\.(jpg|png|gif)$)/i' - Match all items that do NOT end with .jpg, .png or .gif (case insensitive)
+     *
+     * @return void
      */
-    public function truncate(string $logFile){
+    public function trimLogs(float $maxSize, string $pattern = '/.*/'){
 
+        if($maxSize <= 0){
+
+            throw new UnexpectedValueException('maxSize must be a positive value');
+        }
+
+        if($pattern === '' ||
+           !StringUtils::isStartingWith($pattern, ['/'])  ||
+           !StringUtils::isEndingWith($pattern, ['/'])){
+
+            throw new UnexpectedValueException('pattern must be a non empty regexp');
+        }
+
+        // Recursively find all the files inside the root path
+        $files = $this->_filesManager->findDirectoryItems($this->_rootPath, $pattern, 'relative', 'files', -1, '', 'absolute');
+
+        foreach ($files as $file) {
+
+            $this->trimLogFile($this->_rootPath.DIRECTORY_SEPARATOR.$file, $maxSize);
+        }
+    }
+
+
+    /**
+     * Helper method to trim a single log file
+     *
+     * @param string $filePath The full path to the log file
+     * @param int $maxSize The maximum allowed size for the log file in kilobytes
+     */
+    private function trimLogFile(string $filePath, float $maxSize) {
+
+        $content = "";
+        $fileSize = filesize($filePath);
+
+        $handle = fopen($filePath, 'rb+');
+
+        // Check if file open was successful
+        if (!$handle) {
+
+            throw new UnexpectedValueException("Failed to open file to trim: $filePath");
+        }
+
+        // Acquire exclusive lock
+        if (!flock($handle, LOCK_EX)) {
+
+            fclose($handle);
+            throw new UnexpectedValueException("Failed to acquire lock on file to trim: $filePath");
+        }
+
+        // Seek to the position of the data to be read
+        $start = max(0, $fileSize - ($maxSize * 1024));
+        fseek($handle, $start, SEEK_SET);
+
+        // Read the last N kilobytes
+        $content = fread($handle, $fileSize - $start);
+
+        // Truncate the file
+        ftruncate($handle, 0);
+
+        // Rewind the handle to the beginning
+        rewind($handle);
+
+        // Write the read content back to the file
+        fwrite($handle, $content);
+
+        // Release the lock and close the file
+        flock($handle, LOCK_UN);
+        fclose($handle);
     }
 }
-
-?>

@@ -15,6 +15,8 @@ use PHPUnit\Framework\TestCase;
 use Throwable;
 use org\turbodepot\src\main\php\managers\LogsManager;
 use org\turbodepot\src\main\php\managers\FilesManager;
+use org\turbotesting\src\main\php\utils\AssertUtils;
+use org\turbocommons\src\main\php\utils\StringUtils;
 
 
 /**
@@ -91,51 +93,17 @@ class LogsManagerTest extends TestCase {
     public function testConstruct(){
 
         // Test empty values
-        try {
-            $this->sut = new LogsManager(null);
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/must be of the type string, null given/', $e->getMessage());
-        }
-
-        try {
-            $this->sut = new LogsManager(0);
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/LogsManager received an invalid rootPath: 0/', $e->getMessage());
-        }
-
-        try {
-            $this->sut = new LogsManager('');
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/LogsManager received an invalid rootPath: /', $e->getMessage());
-        }
-
-        try {
-            $this->sut = new LogsManager('          ');
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/LogsManager received an invalid rootPath:           /', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut = new LogsManager(null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function(){ $this->sut = new LogsManager(0); }, '/LogsManager received an invalid rootPath: 0/');
+        AssertUtils::throwsException(function(){ $this->sut = new LogsManager(''); }, '/LogsManager received an invalid rootPath: /');
+        AssertUtils::throwsException(function(){ $this->sut = new LogsManager('          '); }, '/LogsManager received an invalid rootPath:           /');
 
         // Test ok values
         $this->assertSame('org\turbodepot\src\main\php\managers\LogsManager', get_class(new LogsManager($this->tempFolder)));
 
         // Test wrong values
-        try {
-            $this->sut = new LogsManager('invalid/path/here');
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/LogsManager received an invalid rootPath: invalid\/path\/here/', $e->getMessage());
-        }
-
-        try {
-            $this->sut = new LogsManager([1, 2, 3]);
-            $this->exceptionMessage = '[1, 2, 3] did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/must be of the type string, array given/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut = new LogsManager('invalid/path/here'); }, '/LogsManager received an invalid rootPath: invalid\/path\/here/');
+        AssertUtils::throwsException(function(){ $this->sut = new LogsManager([1, 2, 3]); }, '/must be of the type string, array given/');
 
         // Test exceptions
         // Already tested;
@@ -152,19 +120,8 @@ class LogsManagerTest extends TestCase {
         $sep = $this->filesManager->dirSep();
 
         // Test empty values
-        try {
-            $this->sut->write(null, null);
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/must be of the type string, null given/', $e->getMessage());
-        }
-
-        try {
-            $this->sut->write('', '');
-            $this->exceptionMessage = '"" did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/logFile must not be empty/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->write(null, null); }, '/must be of the type string, null given/');
+        AssertUtils::throwsException(function(){ $this->sut->write('', ''); }, '/logFile must not be empt/');
 
         // Test ok values
         $this->sut->write('some text', 'testFile');
@@ -189,12 +146,7 @@ class LogsManagerTest extends TestCase {
         $this->sut->write('f', 'fileWithoutDate', false);
         $this->assertRegExp('/some text\na\nb\nc\nd\ne\nf/', $this->filesManager->readFile($this->tempFolder.$sep.'fileWithoutDate'));
 
-        try {
-            $this->sut->write('must not be written', 'mustnotbewritten', false, false);
-            $this->exceptionMessage = 'mustnotbewritten did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Log file does not exist and createFile is false: mustnotbewritten/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function(){ $this->sut->write('must not be written', 'mustnotbewritten', false, false); }, '/Log file does not exist and createFile is false: mustnotbewritten/');
 
         $this->assertFalse($this->filesManager->isFile($this->tempFolder.$sep.'mustnotbewritten'));
 
@@ -211,26 +163,84 @@ class LogsManagerTest extends TestCase {
 
 
     /**
-     * testTruncate
+     * trimLogs
      *
      * @return void
      */
-    public function testTruncate(){
+    public function testTrimLogs(){
+
+        $sep = $this->filesManager->dirSep();
+
+        // Create some test log files
+        $this->filesManager->saveFile($this->tempFolder.$sep.'test1.log', str_repeat('a', 1024));
+        $this->filesManager->saveFile($this->tempFolder.$sep.'test2.log', str_repeat('b', 2048));
+        $this->filesManager->saveFile($this->tempFolder.$sep.'test3.txt', str_repeat('c', 4096));
 
         // Test empty values
-        // TODO
+        AssertUtils::throwsException(function(){ $this->sut->trimLogs(null, null); }, '/must be of the type float, null given/');
+        AssertUtils::throwsException(function(){ $this->sut->trimLogs('', ''); }, '/must be of the type float, string given/');
+        AssertUtils::throwsException(function(){ $this->sut->trimLogs(0, ''); }, '/maxSize must be a positive value/');
 
-        // Test ok values
-        // TODO
+        // Test trimming all values
+        $this->sut->trimLogs(4);
+        $this->assertEquals(1024, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test1.log')));
+        $this->assertEquals(2048, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test2.log')));
+        $this->assertEquals(4096, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test3.txt')));
+
+        $this->sut->trimLogs(2);
+        $this->assertEquals(1024, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test1.log')));
+        $this->assertEquals(2048, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test2.log')));
+        $this->assertEquals(2048, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test3.txt')));
+
+        $this->sut->trimLogs(1);
+        $this->assertEquals(1024, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test1.log')));
+        $this->assertEquals(1024, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test2.log')));
+        $this->assertEquals(1024, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test3.txt')));
+
+        $this->sut->trimLogs(0.5);
+        $this->assertEquals(512, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test1.log')));
+        $this->assertEquals(512, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test2.log')));
+        $this->assertEquals(512, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test3.txt')));
+
+        // Recreate the original log files
+        $this->filesManager->saveFile($this->tempFolder.$sep.'test1.log', str_repeat('a', 1024));
+        $this->filesManager->saveFile($this->tempFolder.$sep.'test2.log', str_repeat('b', 2048));
+        $this->filesManager->saveFile($this->tempFolder.$sep.'test3.txt', str_repeat('c', 4096));
+
+        // Test triming only specific files
+        $this->sut->trimLogs(0.5, '/test3.txt/');
+        $this->assertEquals(1024, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test1.log')));
+        $this->assertEquals(2048, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test2.log')));
+        $this->assertEquals(512, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test3.txt')));
+
+        $this->sut->trimLogs(0.5, '/test2.log/');
+        $this->assertEquals(1024, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test1.log')));
+        $this->assertEquals(512, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test2.log')));
+        $this->assertEquals(512, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test3.txt')));
+
+        $this->sut->trimLogs(0.5, '/test1.log/');
+        $this->assertEquals(512, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test1.log')));
+        $this->assertEquals(512, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test2.log')));
+        $this->assertEquals(512, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test3.txt')));
+
+        // Test making sure that the file gets only the upper part trimmed and the last data is kept
+        $this->filesManager->saveFile($this->tempFolder.$sep.'test1.log', str_repeat('a', 1024).str_repeat('b', 1024).str_repeat('c', 1024));
+        $this->assertTrue(StringUtils::isStartingWith($this->filesManager->readFile($this->tempFolder.$sep.'test1.log'), ['a']));
+        $this->assertTrue(StringUtils::isEndingWith($this->filesManager->readFile($this->tempFolder.$sep.'test1.log'), ['c']));
+
+        $this->sut->trimLogs(2, '/test1.log/');
+        $this->assertEquals(2048, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test1.log')));
+        $this->assertTrue(StringUtils::isStartingWith($this->filesManager->readFile($this->tempFolder.$sep.'test1.log'), ['b']));
+        $this->assertTrue(StringUtils::isEndingWith($this->filesManager->readFile($this->tempFolder.$sep.'test1.log'), ['c']));
+
+        $this->sut->trimLogs(1, '/test1.log/');
+        $this->assertEquals(1024, strlen($this->filesManager->readFile($this->tempFolder.$sep.'test1.log')));
+        $this->assertTrue(StringUtils::isStartingWith($this->filesManager->readFile($this->tempFolder.$sep.'test1.log'), ['c']));
+        $this->assertTrue(StringUtils::isEndingWith($this->filesManager->readFile($this->tempFolder.$sep.'test1.log'), ['c']));
 
         // Test wrong values
-        // TODO
-
         // Test exceptions
-        // TODO
-
-        $this->markTestIncomplete('This test has not been implemented yet.');
+        AssertUtils::throwsException(function(){ $this->sut->trimLogs(-1, '/test1.log/'); }, '/maxSize must be a positive value/');
+        AssertUtils::throwsException(function(){ $this->sut->trimLogs(1, 'test1.log'); }, '/pattern must be a non empty regexp/');
     }
 }
-
-?>
