@@ -1092,8 +1092,8 @@ class FilesManagerTest extends TestCase {
         $this->assertSame(0, count($this->sut->findDirectoryItems($this->tempFolder, '/.*\.txt$/', 'noformat', 'both', 0)));
 
         // Test exceptions
-        AssertUtils::throwsException(function(){ $this->sut->findDirectoryItems($this->tempFolder, '/^.*-4.txt$/', 'noformat'); }, '/invalid returnFormat: noformat/');
-        AssertUtils::throwsException(function(){ $this->sut->findDirectoryItems($this->tempFolder, '/folder-0-1/', 'x', 'both', -1, '', 'absolute'); }, '/invalid returnFormat: x/');
+        AssertUtils::throwsException(function(){ $this->sut->findDirectoryItems($this->tempFolder, '/^.*-4.txt$/', 'noformat'); }, '/Invalid returnFormat: noformat/');
+        AssertUtils::throwsException(function(){ $this->sut->findDirectoryItems($this->tempFolder, '/folder-0-1/', 'x', 'both', -1, '', 'absolute'); }, '/Invalid returnFormat: x/');
         // Not necessary
     }
 

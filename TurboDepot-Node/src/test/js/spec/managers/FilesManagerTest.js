@@ -25,6 +25,52 @@ describe('FilesManager', function() {
         expect(this.tempFolder).toContain('TurboDepot-FilesManagerTest');
         expect(this.sut.isDirectoryEmpty(this.tempFolder)).toBe(true);
         expect(this.sut.isFile(this.tempFolder)).toBe(false);
+        
+        /**
+         * Helper method to create a dummy structure of folders with some parameters
+         *
+         * @param root Base directory where the structure will be created
+         * @param folders Number of folders to create per depth level
+         * @param depth Number of subfolders to create
+         * @param fileBaseName Base name for each file to be created
+         * @param filesPerFolder Number of files to create per each folder
+         * @param filesContent Content to place inside each created file
+         *
+         * @returns void
+         */
+        this.createDummyDirectoryStucture = function (root,
+                                                      folders,
+                                                      depth,
+                                                      fileBaseName,
+                                                      filesPerFolder,
+                                                      filesContent){
+
+            const s = '/';
+
+            // Create the structure of folders
+            for (let i = 0; i < folders; i++) {
+
+                let pathToCreate = root;
+
+                for (let j = 0; j < depth; j++) {
+
+                    pathToCreate = pathToCreate + s + 'folder-' + i + '-' + j;
+
+                    this.sut.createDirectory(pathToCreate, true);
+
+                    for (let k = 0; k < filesPerFolder; k++) {
+
+                        let fileToCreate = pathToCreate + s + fileBaseName + '-' + i + '-' + j + '-' + k + '.txt';
+
+                        this.sut.saveFile(fileToCreate, filesContent);
+
+                        expect(this.sut.isFile(fileToCreate)).toBe(true);
+                    }
+                }
+
+                expect(this.sut.isDirectory(pathToCreate)).toBe(true);
+            }
+        }
     });
 
     
@@ -234,6 +280,8 @@ describe('FilesManager', function() {
     
     
     it('should have a correctly implemented findDirectoryItems method', function() {
+        
+        const sep = this.sut.dirSep();
 
         // Test empty values
         expect(() => { this.sut.findDirectoryItems(null); }).toThrowError(Error, /Path must be a string/);
@@ -245,14 +293,314 @@ describe('FilesManager', function() {
         expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/file/'), [])).toBe(true);
         expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/.*/'), [])).toBe(true);
         expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/^name$/'), [])).toBe(true);
+        
         expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/file/', 'relative', 'files'), [])).toBe(true);
         expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/.*/', 'relative', 'files'), [])).toBe(true);
         expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/^name$/', 'relative', 'files'), [])).toBe(true);
+        
         expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/file/', 'relative', 'folders'), [])).toBe(true);
         expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/.*/', 'relative', 'folders'), [])).toBe(true);
         expect(ArrayUtils.isEqualTo(this.sut.findDirectoryItems(this.tempFolder, '/^name$/', 'relative', 'folders'), [])).toBe(true);
 
-        // TODO - translate all missing tests from php      
+        // Create a structure of folders and files
+        this.createDummyDirectoryStucture(this.tempFolder, 4, 4, 'somefile', 5, 'file content');
+
+        // Test resultFormat = 'name'
+
+        // Test finding all *.txt files on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name').length).toBe(4 * 4 * 5);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name', 'files').length).toBe(4 * 4 * 5);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name', 'folders').length).toBe(0);
+        
+        // Test finding all files or folders on the 1st folder depth
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*$/, 'name', 'both', 0).length).toBe(4);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*$/, 'name', 'files', 0).length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*$/, 'name', 'folders', 0).length).toBe(4);
+        
+        // Test finding all *.txt files on the 1st 2d and 3d folder depth
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name', 'both', 0).length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name', 'files', 0).length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name', 'folders', 0).length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name', 'both', 1).length).toBe(20);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name', 'files', 1).length).toBe(20);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name', 'folders', 1).length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name', 'both', 2).length).toBe(40);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name', 'files', 2).length).toBe(40);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name', 'folders', 2).length).toBe(0);
+        
+        // Test finding all files starting with somefile on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile.*/, 'name').length).toBe(4 * 4 * 5);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile.*/, 'name', 'files').length).toBe(4 * 4 * 5);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile.*/, 'name', 'folders').length).toBe(0);
+
+        // Test finding all files starting with samefile on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^samefile.*/, 'name').length).toBe(0);
+        
+        // Test finding all files with an exact name on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile-0-0-2.txt$/, 'name')).toEqual(['somefile-0-0-2.txt']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile-0-1-2.txt$/, 'name')).toEqual(['somefile-0-1-2.txt']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile-2-2-2.txt$/, 'name')).toEqual(['somefile-2-2-2.txt']);
+
+        // Test finding all files named *-4.txt on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*-4.txt$/, 'name').length).toBe(16);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*-4.txt$/, 'name', 'files').length).toBe(16);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*-4.txt$/, 'name', 'folders').length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*-4.txt$/, 'name', 'both', 0).length).toBe(0);
+
+        // Test finding all folders with an exact name on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-3-3$/, 'name')).toEqual(['folder-3-3']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-3-3$/, 'name', 'files')).toEqual([]);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-3-3$/, 'name', 'folders')).toEqual(['folder-3-3']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-1-2$/, 'name')).toEqual(['folder-1-2']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-1-2$/, 'name', 'files')).toEqual([]);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-1-2$/, 'name', 'folders')).toEqual(['folder-1-2']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-1-2$/, 'name', 'both', 0)).toEqual([]);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-1-2$/, 'name', 'files', 0)).toEqual([]);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-1-2$/, 'name', 'folders', 0)).toEqual([]);
+
+        // Test finding all folders ending with 0-3 or 0-2
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*(0-3|0-2)$/i, 'name')).toEqual(['folder-0-2', 'folder-0-3']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*(0-3|0-2)$/i, 'name', 'files')).toEqual([]);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*(0-3|0-2)$/i, 'name', 'folders')).toEqual(['folder-0-2', 'folder-0-3']);
+
+        // Create a folder with some dummy image files
+        let temp2Folder = this.sut.createTempDirectory('TurboDepot-FilesManagerTest-2');
+
+        for (let k = 0; k < 2; k++) {
+
+            this.sut.saveFile(temp2Folder + '/' + k + '.jpg', 'fake image data');
+            this.sut.saveFile(temp2Folder + '/' + k + '.png', 'fake image data');
+            this.sut.saveFile(temp2Folder + '/' + k + '.gif', 'fake image data');
+        }
+
+        // Test finding all files ending with .jpg or .png
+        expect(this.sut.findDirectoryItems(temp2Folder, /^.*\.(jpg|png)$/i, 'name')).toEqual(['0.jpg', '0.png', '1.jpg', '1.png']);
+        expect(this.sut.findDirectoryItems(temp2Folder, /^.*\.(jpg|png)$/i, 'name', 'files')).toEqual(['0.jpg', '0.png', '1.jpg', '1.png']);
+        expect(this.sut.findDirectoryItems(temp2Folder, /^.*\.(jpg|png)$/i, 'name', 'folders')).toEqual([]);
+
+        // Test finding all files that NOT end with .jpg
+        expect(this.sut.findDirectoryItems(temp2Folder, /^(?!.*\.(jpg)$)/i, 'name')).toEqual(['0.gif', '0.png', '1.gif', '1.png']);
+        expect(this.sut.findDirectoryItems(temp2Folder, /^(?!.*\.(jpg)$)/i, 'name', 'files')).toEqual(['0.gif', '0.png', '1.gif', '1.png']);
+        expect(this.sut.findDirectoryItems(temp2Folder, /^(?!.*\.(jpg)$)/i, 'name', 'folders')).toEqual([]);
+
+        // Test finding all files that NOT end with .jpg and NOT end with .png
+        expect(this.sut.findDirectoryItems(temp2Folder, /^(?!.*\.(jpg|png)$)/i, 'name')).toEqual(['0.gif', '1.gif']);
+        expect(this.sut.findDirectoryItems(temp2Folder, /^(?!.*\.(jpg|png)$)/i, 'name', 'files')).toEqual(['0.gif', '1.gif']);
+        expect(this.sut.findDirectoryItems(temp2Folder, /^(?!.*\.(jpg|png)$)/i, 'name', 'folders')).toEqual([]);
+
+        // Test finding all files that NOT end with .jpg and NOT end with .png and NOT end with gif
+        expect(this.sut.findDirectoryItems(temp2Folder, /^(?!.*\.(jpg|png|gif)$)/i, 'name')).toEqual([]);
+        
+        // Test some exclusion patterns
+        expect(this.sut.findDirectoryItems(temp2Folder, /^.*\.(jpg|png)$/i, 'name', 'both', -1, /.jpg$/i)).toEqual(['0.png', '1.png']);
+        expect(this.sut.findDirectoryItems(temp2Folder, /^.*\.(jpg|png)$/i, 'name', 'both', -1, /g$/i)).toEqual([]);
+        expect(this.sut.findDirectoryItems(temp2Folder, /^.*\.(jpg|png)$/i, 'name', 'both', -1, /0/i)).toEqual(['1.jpg', '1.png']);
+
+        // Test resultFormat = 'name-noext'
+
+        // Test finding all *.txt files on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name-noext').length).toBe(4 * 4 * 5);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name-noext', 'files').length).toBe(4 * 4 * 5);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name-noext', 'folders').length).toBe(0);
+
+        // Test finding all files or folders on the 1st folder depth
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*$/, 'name-noext', 'both', 0).length).toBe(4);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*$/, 'name-noext', 'files', 0).length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*$/, 'name-noext', 'folders', 0).length).toBe(4);
+        
+        // Test finding all *.txt files on the 1st 2d and 3d folder depth
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name-noext', 'both', 0).length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name-noext', 'files', 0).length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name-noext', 'folders', 0).length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name-noext', 'both', 1).length).toBe(20);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name-noext', 'files', 1).length).toBe(20);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name-noext', 'folders', 1).length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name-noext', 'both', 2).length).toBe(40);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name-noext', 'files', 2).length).toBe(40);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'name-noext', 'folders', 2).length).toBe(0);
+
+        // Test finding all files starting with somefile on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile.*/, 'name-noext').length).toBe(4 * 4 * 5);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile.*/, 'name-noext', 'files').length).toBe(4 * 4 * 5);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile.*/, 'name-noext', 'folders').length).toBe(0);
+        
+        // Test finding all files starting with samefile on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^samefile.*/, 'name-noext').length).toBe(0);
+        
+        // Test finding all files with an exact name on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile-0-0-2.txt$/, 'name-noext')).toEqual(['somefile-0-0-2']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile-0-1-2.txt$/, 'name-noext')).toEqual(['somefile-0-1-2']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile-2-2-2.txt$/, 'name-noext')).toEqual(['somefile-2-2-2']);
+
+        // Test finding all files named *-4.txt on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*-4.txt$/, 'name-noext').length).toBe(16);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*-4.txt$/, 'name-noext', 'files').length).toBe(16);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*-4.txt$/, 'name-noext', 'folders').length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*-4.txt$/, 'name-noext', 'both', 0).length).toBe(0);
+        
+        // Test finding all folders with an exact name on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-3-3$/, 'name-noext')).toEqual(['folder-3-3']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-3-3$/, 'name-noext', 'files')).toEqual([]);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-3-3$/, 'name-noext', 'folders')).toEqual(['folder-3-3']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-1-2$/, 'name-noext')).toEqual(['folder-1-2']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-1-2$/, 'name-noext', 'files')).toEqual([]);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-1-2$/, 'name-noext', 'folders')).toEqual(['folder-1-2']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-1-2$/, 'name-noext', 'both', 0)).toEqual([]);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-1-2$/, 'name-noext', 'files', 0)).toEqual([]);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-1-2$/, 'name-noext', 'folders', 0)).toEqual([]);
+
+        // Test finding all folders ending with 0-3 or 0-2
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*(0-3|0-2)$/i, 'name-noext')).toEqual(['folder-0-2', 'folder-0-3']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*(0-3|0-2)$/i, 'name-noext', 'files')).toEqual([]);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*(0-3|0-2)$/i, 'name-noext', 'folders')).toEqual(['folder-0-2', 'folder-0-3']);
+        
+        // Create a folder with some dummy image files
+        temp2Folder = this.sut.createTempDirectory('TurboDepot-FilesManagerTest-2');
+
+        for (let k = 0; k < 2; k++) {
+
+            this.sut.saveFile(temp2Folder + '/' + k + '.jpg', 'fake image data');
+            this.sut.saveFile(temp2Folder + '/' + k + '.png', 'fake image data');
+            this.sut.saveFile(temp2Folder + '/' + k + '.gif', 'fake image data');
+        }
+
+        // Test finding all files ending with .jpg or .png
+        expect(this.sut.findDirectoryItems(temp2Folder, /^.*\.(jpg|png)$/i, 'name-noext')).toEqual(['0', '0', '1', '1']);
+        expect(this.sut.findDirectoryItems(temp2Folder, /^.*\.(jpg|png)$/i, 'name-noext', 'files')).toEqual(['0', '0', '1', '1']);
+        expect(this.sut.findDirectoryItems(temp2Folder, /^.*\.(jpg|png)$/i, 'name-noext', 'folders')).toEqual([]);
+
+        // Test finding all files that NOT end with .jpg
+        expect(this.sut.findDirectoryItems(temp2Folder, /^(?!.*\.(jpg)$)/i, 'name-noext')).toEqual(['0', '0', '1', '1']);
+        expect(this.sut.findDirectoryItems(temp2Folder, /^(?!.*\.(jpg)$)/i, 'name-noext', 'files')).toEqual(['0', '0', '1', '1']);
+        expect(this.sut.findDirectoryItems(temp2Folder, /^(?!.*\.(jpg)$)/i, 'name-noext', 'folders')).toEqual([]);
+        
+        // Test finding all files that NOT end with .jpg and NOT end with .png
+        expect(this.sut.findDirectoryItems(temp2Folder, /^(?!.*\.(jpg|png)$)/i, 'name-noext')).toEqual(['0', '1']);
+        expect(this.sut.findDirectoryItems(temp2Folder, /^(?!.*\.(jpg|png)$)/i, 'name-noext', 'files')).toEqual(['0', '1']);
+        expect(this.sut.findDirectoryItems(temp2Folder, /^(?!.*\.(jpg|png)$)/i, 'name-noext', 'folders')).toEqual([]);
+
+        // Test finding all files that NOT end with .jpg and NOT end with .png and NOT end with gif
+        expect(this.sut.findDirectoryItems(temp2Folder, /^(?!.*\.(jpg|png|gif)$)/i, 'name-noext')).toEqual([]);
+        
+        // Test some exclusion patterns
+        expect(this.sut.findDirectoryItems(temp2Folder, /^.*\.(jpg|png)$/i, 'name-noext', 'both', -1, /.jpg$/i)).toEqual(['0', '1']);
+        expect(this.sut.findDirectoryItems(temp2Folder, /^.*\.(jpg|png)$/i, 'name-noext', 'both', -1, /g$/i)).toEqual([]);
+        expect(this.sut.findDirectoryItems(temp2Folder, /^.*\.(jpg|png)$/i, 'name-noext', 'both', -1, /0/i)).toEqual(['1', '1']);
+
+        // Test resultFormat = 'relative'
+
+        // Test finding all *.txt files on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'relative').length).toBe(4 * 4 * 5,);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'relative', 'files').length).toBe(4 * 4 * 5);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'relative', 'folders').length).toBe(0);
+
+        // Test finding all files or folders on the 1st folder depth
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*$/, 'relative', 'both', 0).length).toBe(4);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*$/, 'relative', 'files', 0).length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*$/, 'relative', 'folders', 0).length).toBe(4);
+        
+        // Test finding all *.txt files on the 1st 2d and 3d folder depth
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'relative', 'both', 0).length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'relative', 'both', 1).length).toBe(20);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'relative', 'both', 2).length).toBe(40);
+
+        // Test finding all files starting with somefile on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile.*/, 'relative').length).toBe(4 * 4 * 5);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile.*/, 'relative', 'files').length).toBe(4 * 4 * 5);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile.*/, 'relative', 'folders').length).toBe(0);
+        
+        // Test finding all files starting with samefile on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^samefile.*/, 'relative').length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^samefile.*/, 'relative', 'files').length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^samefile.*/, 'relative', 'folders').length).toBe(0);
+
+        // Test finding all files named somefile-2.txt on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile-0-0-2.txt$/, 'relative')).toEqual(['folder-0-0'+sep+'somefile-0-0-2.txt']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile-0-1-2.txt$/, 'relative')).toEqual(['folder-0-0'+sep+'folder-0-1'+sep+'somefile-0-1-2.txt']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile-2-2-2.txt$/, 'relative')).toEqual(['folder-2-0'+sep+'folder-2-1'+sep+'folder-2-2'+sep+'somefile-2-2-2.txt']);
+        
+        // Test finding all files named *-4.txt on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*-4.txt$/, 'relative').length).toBe(16);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*-4.txt$/, 'relative', 'both', 0).length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*-4.txt$/, 'relative', 'files', 0).length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*-4.txt$/, 'relative', 'folders', 0).length).toBe(0);
+        
+        // Test finding all folders named folder-3-3 on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-3-3$/, 'relative')).toEqual(['folder-3-0'+sep+'folder-3-1'+sep+'folder-3-2'+sep+'folder-3-3']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-1-2$/, 'relative')).toEqual(['folder-1-0'+sep+'folder-1-1'+sep+'folder-1-2']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-1-2$/, 'relative', 'both', 0)).toEqual([]);
+        
+        // Test some exclusion patterns
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-3-3$/, 'relative', 'both', -1, /-3-0/)).toEqual([]);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-3-3$/, 'relative', 'both', -1, /folder-3-1/)).toEqual([]);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-3-3$/, 'relative', 'both', -1, /folder-3-2/)).toEqual([]);
+
+        // Test resultFormat = 'absolute'
+
+        // Test finding all *.txt files on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'absolute').length).toBe(4 * 4 * 5);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'absolute', 'files').length).toBe(4 * 4 * 5);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'absolute', 'folders').length).toBe(0);
+        
+        // Test finding all files or folders on the 1st folder depth
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*$/, 'absolute', 'both', 0).length).toBe(4);
+        
+        // Test finding all *.txt files on the 1st 2d and 3d folder depth
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'absolute', 'both', 0).length).toBe(0);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'absolute', 'both', 1).length).toBe(20);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'absolute', 'both', 2).length).toBe(40);
+
+        // Test finding all files starting with somefile on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile.*/, 'absolute').length).toBe(4 * 4 * 5);
+        
+        // Test finding all files starting with samefile on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^samefile.*/, 'absolute').length).toBe(0);
+        
+        // Test finding all files named somefile-2.txt on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile-0-0-2.txt$/, 'absolute')).toEqual([this.tempFolder+sep+'folder-0-0'+sep+'somefile-0-0-2.txt']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile-0-1-2.txt$/, 'absolute')).toEqual([this.tempFolder+sep+'folder-0-0'+sep+'folder-0-1'+sep+'somefile-0-1-2.txt']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile-2-2-2.txt$/, 'absolute')).toEqual([this.tempFolder+sep+'folder-2-0'+sep+'folder-2-1'+sep+'folder-2-2'+sep+'somefile-2-2-2.txt']);
+        
+        // Test finding all files named *-4.txt on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*-4.txt$/, 'absolute').length).toBe(16);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^.*-4.txt$/, 'absolute', 'both', 0).length).toBe(0);
+
+        // Test finding all folders named folder-3-3 on the folder
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-3-3$/, 'absolute')).toEqual([this.tempFolder+sep+'folder-3-0'+sep+'folder-3-1'+sep+'folder-3-2'+sep+'folder-3-3']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-1-2$/, 'absolute')).toEqual([this.tempFolder+sep+'folder-1-0'+sep+'folder-1-1'+sep+'folder-1-2']);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^folder-1-2$/, 'absolute', 'both', 0)).toEqual([]);
+        
+        let sut2 = new FilesManager(this.tempFolder);
+        expect(sut2.findDirectoryItems('', /^folder-3-3$/, 'absolute')).toEqual([this.tempFolder+sep+'folder-3-0'+sep+'folder-3-1'+sep+'folder-3-2'+sep+'folder-3-3']);
+        
+        // Test some exclusion patterns
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile-0-0-2.txt$/, 'absolute', 'both' , -1, /folder-0-0/)).toEqual([]);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile-0-0-2.txt$/, 'absolute', 'both' , -1, /-FilesManagerTest/, 'name')).toEqual([]);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /^somefile-0-0-2.txt$/, 'absolute', 'both' , -1, /-FilesManagerTest/, 'absolute')).toEqual([]);
+
+        // test searchMode values
+        expect(this.sut.findDirectoryItems(this.tempFolder, /folder-0-1/, 'name', 'both', -1, '', 'name').length).toBe(1);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /folder-0-1/, 'name', 'both', -1, '', 'absolute').length).toBe(18);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /folder-0-2/, 'name', 'both', -1, '', 'name').length).toBe(1);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /folder-0-2/, 'name', 'both', -1, '', 'absolute').length).toBe(12);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /folder-0-1.folder-0-2/, 'name', 'both', -1, '', 'absolute').length).toBe(12);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /somefile-0-3-1\.txt/, 'name', 'both', -1, '', 'name').length).toBe(1);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /somefile-0-3-1\.txt/, 'name', 'both', -1, '', 'absolute').length).toBe(1);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /folder-2-0/, 'name', 'both', -1, '', 'name').length).toBe(1);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /folder-2-0/, 'name', 'both', -1, '', 'absolute').length).toBe(24);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /folder-2-0/, 'name', 'files', -1, '', 'absolute').length).toBe(20);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /folder-2-0/, 'name', 'folders', -1, '', 'absolute').length).toBe(4);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /folder-0-1(\/|\\)folder-0-2(\/|\\)folder-0-3/, 'name', 'folders', -1, '', 'absolute').length).toBe(1);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /folder-0-1(\/|\\)folder-0-2(\/|\\)folder-0-3/, 'name', 'files', -1, '', 'absolute').length).toBe(5);
+        expect(this.sut.findDirectoryItems(this.tempFolder, /folder-0-1(\/|\\)folder-0-2(\/|\\)folder-0-3/, 'name', 'both', -1, '', 'absolute').length).toBe(6);
+        
+        // Test wrong values
+        expect(this.sut.findDirectoryItems(this.tempFolder, /.*\.txt$/, 'noformat', 'both', 0).length).toBe(0);
+        
+        // Test exceptions
+        expect(() => { this.sut.findDirectoryItems(this.tempFolder, /^.*-4.txt$/, 'noformat'); }).toThrowError(Error, /Invalid returnFormat: noformat/);
+        expect(() => { this.sut.findDirectoryItems(this.tempFolder, /folder-0-1/, 'x', 'both', -1, '', 'absolute'); }).toThrowError(Error, /Invalid returnFormat: x/);
+        // Not necessary
     });
     
     
@@ -424,7 +772,7 @@ describe('FilesManager', function() {
         }).toThrowError(Error, /cannot mirror a directory into itself/);
         
         expect(() => {
-            this.sut.mirrorDirectory(this.tempFolder + '/test-1', this.tempFolder.DIRECTORY_SEPARATOR + 'nonexistant');
+            this.sut.mirrorDirectory(this.tempFolder + '/test-1', this.tempFolder + '/' + 'nonexistant');
         }).toThrowError(Error, /Path does not exist.*nonexistant/);
         
         // Test exceptions

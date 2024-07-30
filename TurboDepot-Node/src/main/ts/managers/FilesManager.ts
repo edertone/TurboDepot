@@ -232,7 +232,7 @@ export class FilesManager{
                 return false;
             }
 
-            if (!isItem1ADir && !this.isFileEqualTo(item1Path, item2Path)){
+            if(!isItem1ADir && !this.isFileEqualTo(item1Path, item2Path)){
 
                 return false;
             }
@@ -333,59 +333,92 @@ export class FilesManager{
                        excludeRegexp: string|RegExp = '',
                        searchMode = 'name'): string[]{
 
-        let result: string[] = [];
-        path = this._composePath(path);
+        path = this._composePath(path, true);
+        
+        const result: string[] = [];        
+        const stack: [string, number][] = [[path, 0]];
+        const searchRegex = new RegExp(searchRegexp);
+        const excludeRegex = excludeRegexp ? new RegExp(excludeRegexp) : null;
 
-        for (let item of this.getDirectoryList(path)) {
+        // Depth-first search using a stack
+        while(stack.length > 0){
+            
+            const [currentPath, currentDepth] = stack.pop()!;
 
-            let itemPath = path + this.dirSep() + item;
-            let searchOn = searchMode === 'absolute' ? itemPath : item;
-
-            if((excludeRegexp !== '' && (new RegExp(excludeRegexp)).test(itemPath)) ||
-               (searchItemsType === 'folders' && this.isFile(itemPath))){
-    
+            // Check if we've reached the maximum depth
+            if(depth !== -1 && currentDepth > depth){
+                
                 continue;
             }
-            
-            let isItemADir = this.isDirectory(itemPath);
-            
-            if((new RegExp(searchRegexp)).test(searchOn) && !(searchItemsType === 'files' && isItemADir)){
+                
+            // Read the contents of the current directory
+            const items = this.fs.readdirSync(currentPath, { withFileTypes: true });
 
-                result.push(itemPath);
-            }
+            for(const item of items){
+                
+                const itemPath = this.path.join(currentPath, item.name);
+                
+                // Determine whether to search on the full path or just the name
+                const searchOn = searchMode === 'absolute' ? itemPath : item.name;
 
-            if(depth !== 0 && isItemADir){
+                // Check if the item should be excluded
+                if(excludeRegex?.test(itemPath)){
+                    
+                    continue;
+                }
 
-                result = result.concat(
-                    this.findDirectoryItems(itemPath, searchRegexp, 'absolute', searchItemsType, depth - 1, excludeRegexp, searchMode));
-            }
-        }
-
-        // Process the results with the specified format
-        if(returnFormat !== 'absolute'){
-
-            for (let i = 0; i < result.length; i++){
-
-                if(returnFormat === 'relative'){
-
-                    result[i] = StringUtils.replace(result[i], path + this.dirSep(), '');
-
-                }else if(returnFormat === 'name'){
-
-                    result[i] = StringUtils.getPathElement(result[i]);
-
-                }else if(returnFormat === 'name-noext'){
-
-                    result[i] = StringUtils.getPathElementWithoutExt(result[i]);
-
-                }else{
-
-                    throw new Error('invalid returnFormat: ' + returnFormat);
+                if(item.isDirectory()){
+                    
+                    // If searching for folders or both, and the item matches the search regex, add it to the result
+                    if(searchItemsType !== 'files' && searchRegex.test(searchOn)){
+                        
+                        result.push(itemPath);
+                    }
+                    
+                    // If we haven't reached the maximum depth, add this directory to the stack
+                    if(depth === -1 || currentDepth < depth){
+                        
+                        stack.push([itemPath, currentDepth + 1]);
+                    }
+                    
+                }else if(item.isFile() && searchItemsType !== 'folders' && searchRegex.test(searchOn)){
+                    
+                    // If searching for files or both, and the item matches the search regex, add it to the result
+                    result.push(itemPath);
                 }
             }
         }
+        
+        // Format results based on returnFormat
+        let formattedResult: string[] = [];
+                    
+        if(result.length !== 0){
+            
+            switch(returnFormat){
+                
+                case 'relative':
+                    formattedResult = result.map(item => this.path.relative(path, item));
+                    break;
+                    
+                case 'name':
+                    formattedResult = result.map(item => this.path.basename(item));
+                    break;
+                    
+                case 'name-noext':
+                    formattedResult = result.map(item => this.path.basename(item, this.path.extname(item)));
+                    break;
+                    
+                case 'absolute':
+                    formattedResult = result;
+                    break;
+                    
+                default:
+                    throw new Error('Invalid returnFormat: ' + returnFormat);
+            }
+        }
 
-        return result.sort((a, b) => a.localeCompare(b));
+        // Sort the results alphabetically
+        return formattedResult.sort((a, b) => a.localeCompare(b));
     }
 
 
@@ -462,7 +495,7 @@ export class FilesManager{
      * guarantee us that we have a unique file name that does not collide with any other folder or file that currently
      * exists on the path.
      *
-     * NOTE: This method does not create any file or alter the given path in any way.
+     * NOTICE: This method does not create any file or alter the given path in any way.
      *
      * @param path Absolute or relative path to the directoy we want to check for a unique file name
      * @param desiredName We can specify a suggested name for the unique file. This method will verify that it
@@ -667,7 +700,7 @@ export class FilesManager{
         path = this._composePath(path, true);
 
         // Get all the folder contents
-        let result = [];
+        let result:any[] = [];
         // TODO let sortRes = [];
 
         for (let fileInfo of this.fs.readdirSync(path)) {

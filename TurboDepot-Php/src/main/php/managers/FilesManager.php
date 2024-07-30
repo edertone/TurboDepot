@@ -12,6 +12,8 @@
 namespace org\turbodepot\src\main\php\managers;
 
 use Exception;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Throwable;
 use DirectoryIterator;
 use UnexpectedValueException;
@@ -330,61 +332,82 @@ class FilesManager extends BaseStrictClass{
                                        string $excludeRegexp = '',
                                        string $searchMode = 'name'){
 
-        $result = [];
-        $path = $this->_composePath($path);
+       $path = $this->_composePath($path);
+       $result = [];
 
-        foreach ($this->getDirectoryList($path) as $item){
+       // Create a recursive directory iterator
+       $iterator = new RecursiveIteratorIterator(
 
-            $itemPath = $path.DIRECTORY_SEPARATOR.$item;
-            $searchOn = $searchMode === 'absolute' ? $itemPath : $item;
+           new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS),
+           RecursiveIteratorIterator::SELF_FIRST
+           );
 
-            if(($excludeRegexp !== '' && preg_match($excludeRegexp, $itemPath)) ||
-               ($searchItemsType === 'folders' && $this->isFile($itemPath))){
+       // Set maximum depth if specified
+       if ($depth >= 0) {
 
-                continue;
-            }
+           $iterator->setMaxDepth($depth);
+       }
 
-            $isItemADir = $this->isDirectory($itemPath);
+       // Calculate the length of the base path for relative path calculations
+       $pathLen = strlen($path) + 1;
 
-            if(preg_match($searchRegexp, $searchOn) && !($searchItemsType === 'files' && $isItemADir)){
+       // Iterate through all items in the directory
+       foreach ($iterator as $item) {
 
-                $result[] = $itemPath;
-            }
+           $itemPath = $item->getPathname();
+           $relativePath = substr($itemPath, $pathLen);
 
-            if($depth !== 0 && $isItemADir){
+           // Determine which path to use for searching based on the search mode
+           $searchOn = $searchMode === 'absolute' ? $itemPath : $item->getFilename();
 
-                $result = array_merge($result,
-                    $this->findDirectoryItems($itemPath, $searchRegexp, 'absolute', $searchItemsType, $depth - 1, $excludeRegexp, $searchMode));
-            }
-        }
+           // Skip items that match the exclude pattern
+           if ($excludeRegexp !== '' && preg_match($excludeRegexp, $itemPath)) {
 
-        // Process the results with the specified format
-        if($returnFormat !== 'absolute'){
+               continue;
+           }
 
-            for ($i = 0, $l = count($result); $i < $l; $i++){
+           $isDir = $item->isDir();
 
-                if($returnFormat === 'relative'){
+           // Skip items that don't match the search type (files or folders)
+           if (($searchItemsType === 'folders' && !$isDir) || ($searchItemsType === 'files' && $isDir)) {
 
-                    $result[$i] = StringUtils::replace($result[$i], $path.DIRECTORY_SEPARATOR, '');
+               continue;
+           }
 
-                }elseif($returnFormat === 'name'){
+           // Skip items that don't match the search pattern
+           if (!preg_match($searchRegexp, $searchOn)) {
 
-                    $result[$i] = StringUtils::getPathElement($result[$i]);
+               continue;
+           }
 
-                }elseif($returnFormat === 'name-noext'){
+           // Add matching items to the result array in the specified format
+           switch ($returnFormat) {
 
-                    $result[$i] = StringUtils::getPathElementWithoutExt($result[$i]);
+               case 'relative':
+                   $result[] = $relativePath;
+                   break;
 
-                }else{
+               case 'absolute':
+                   $result[] = $itemPath;
+                   break;
 
-                    throw new UnexpectedValueException('invalid returnFormat: '.$returnFormat);
-                }
-            }
-        }
+               case 'name':
+                   $result[] = $item->getFilename();
+                   break;
 
-        sort($result);
+               case 'name-noext':
+                   $result[] = pathinfo($item->getFilename(), PATHINFO_FILENAME);
+                   break;
 
-        return $result;
+               default:
+                   throw new UnexpectedValueException("Invalid returnFormat: $returnFormat");
+           }
+       }
+
+       // Sort the results alphabetically
+       sort($result);
+
+       return $result;
     }
 
 
@@ -461,7 +484,7 @@ class FilesManager extends BaseStrictClass{
      * guarantee us that we have a unique file name that does not collide with any other folder or file that currently
      * exists on the path.
      *
-     * NOTE: This method does not create any file or alter the given path in any way.
+     * NOTICE: This method does not create any file or alter the given path in any way.
      *
      * @param string $path Absolute or relative path to the directoy we want to check for a unique file name
      * @param string $desiredName We can specify a suggested name for the unique file. This method will verify that it
