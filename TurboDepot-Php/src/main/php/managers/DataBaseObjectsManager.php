@@ -14,6 +14,7 @@ namespace org\turbodepot\src\main\php\managers;
 
 use DateTime;
 use DateTimeZone;
+use Exception;
 use ReflectionClass;
 use ReflectionObject;
 use Throwable;
@@ -170,6 +171,8 @@ class DataBaseObjectsManager extends BaseStrictClass{
      *
      * @param DataBaseObject|array $objects A single DataBaseObject instance to save or update, or an array with a list of DataBaseObject instances Token
      *        save or upate.
+     *
+     * @throws Exception If there was any problem trying to save the object or objects.
      *
      * @return int|array If a single DataBaseObject is passed, an int containing the dbId value for the object that's been saved. If an array of
      *         DataBaseObjects are passed, this method will return an array with the dbId for each one of the passed objects, in the same order.

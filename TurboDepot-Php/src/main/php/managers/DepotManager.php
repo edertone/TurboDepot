@@ -359,7 +359,7 @@ class DepotManager extends BaseStrictClass{
      */
     public function getDataBaseObjectsManager(string $sourceName, $prefix = null){
 
-        if(!isset($this->_dataBaseObjectsManagers[$sourceName])){
+        if(!isset($this->_dataBaseObjectsManagers[$sourceName.$prefix])){
 
             if(($source = $this->_getSourceSetup($sourceName)) === null){
 
@@ -376,10 +376,10 @@ class DepotManager extends BaseStrictClass{
             // Currently only mariadb is accepted. When more databases are allowed, we must check here to which db we are connecting
             $databaseObjectsManager->connectMariaDb($source->host, $source->user, $source->password, $source->database);
 
-            $this->_dataBaseObjectsManagers[$sourceName] = $databaseObjectsManager;
+            $this->_dataBaseObjectsManagers[$sourceName.$prefix] = $databaseObjectsManager;
         }
 
-        return $this->_dataBaseObjectsManagers[$sourceName];
+        return $this->_dataBaseObjectsManagers[$sourceName.$prefix];
     }
 
 
