@@ -1179,6 +1179,20 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
+     * Search all the instances that are stored for a given database object class
+     *
+     * @param mixed $class The class (which extends DataBaseObject) for the object types that we want to obtain. Fo example: User::class
+     *
+     * @return DataBaseObject[] An array of object instances with all the objects that match the specified class, or empty array if no objects found.
+     */
+    public function findAll($class) {
+
+        return $this->_generateObjectsFromDbTableData($class,
+            $this->_db->tableGetRows($this->tablesPrefix.strtolower(StringUtils::getPathElement($class)), []));
+    }
+
+
+    /**
      * Search a database object that has the specified dbId value
      *
      * @param mixed $class The class (which extends DataBaseObject) for the object type that we want to obtain. Fo example: User::class

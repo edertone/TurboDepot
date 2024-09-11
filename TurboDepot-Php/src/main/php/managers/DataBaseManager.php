@@ -1259,8 +1259,8 @@ class DataBaseManager extends BaseStrictClass {
      * Obtain all the data for the table rows that match the specified column values criteria
      *
      * @param string $tableName The name of the table for which we want to obtain the rows data
-     * @param string $columnValues Associative array where keys are column names and values are column values that must be found on all the rows
-     *        be returned
+     * @param string $columnValues Associative array where keys are column names and values are column values that must be
+     *        found on the rows to be returned. Passing an empty array will return all existing rows on the table.
      *
      * @throws UnexpectedValueException
      *
@@ -1277,6 +1277,11 @@ class DataBaseManager extends BaseStrictClass {
         }
 
         try {
+
+            if(empty($sqlWherePart)){
+
+                return $this->query('SELECT * FROM '.$tableName);
+            }
 
             return $this->query('SELECT * FROM '.$tableName.' WHERE '.implode(' AND ', $sqlWherePart));
 
