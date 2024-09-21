@@ -28,7 +28,9 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
-     * Signed integer type with a max value of 2147483647 that can be used to constrain object properties
+     * Signed integer type with a max value of 2147483647 that can be used to constrain object properties.
+     *
+     * Notice that the max size that can be defined on a database object for the INT type is 12, which corresponds to bigint or the biggest int database type
      */
     const INT = 'INT';
 
