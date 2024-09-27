@@ -382,15 +382,23 @@ class DepotManagerTest extends TestCase {
         $dbObjectsManager = DataBaseManager_MariaDb_Test::createAndConnectToTestingMariaDb();
         $this->addMariaDbSourceToDepotSetup();
 
+        $this->setup->depots[0]->objects->source = 'tmp_db_source';
+        $this->setup->depots[0]->objects->prefix = null;
+
         // Test empty values
-        AssertUtils::throwsException(function(){ $this->sut->getDataBaseObjectsManager(); }, '/Too few arguments to function/');
+        $this->assertSame('org\turbodepot\src\main\php\managers\DataBaseObjectsManager', get_class($this->sut->getDataBaseObjectsManager()));
         AssertUtils::throwsException(function(){ $this->sut->getDataBaseObjectsManager(null); }, '/must be of the type string, null given/');
-        AssertUtils::throwsException(function(){ $this->sut->getDataBaseObjectsManager(''); }, '/Invalid database source name <> review your turbodepot setup file/');
+        $this->assertSame('org\turbodepot\src\main\php\managers\DataBaseObjectsManager', get_class($this->sut->getDataBaseObjectsManager('')));
         AssertUtils::throwsException(function(){ $this->sut->getDataBaseObjectsManager([]); }, '/must be of the type string, array given/');
 
         // Test ok values
+        $this->assertSame('td_', $this->sut->getDataBaseObjectsManager()->tablesPrefix);
+
         $this->assertSame('org\turbodepot\src\main\php\managers\DataBaseObjectsManager',
             get_class($this->sut->getDataBaseObjectsManager('tmp_db_source')));
+
+        $this->assertSame('app_', $this->sut->getDataBaseObjectsManager('tmp_db_source', 'app_')->tablesPrefix);
+        $this->assertSame('td_', $this->sut->getDataBaseObjectsManager('tmp_db_source')->tablesPrefix);
 
         // Test wrong values
         // Test exceptions

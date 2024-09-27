@@ -163,8 +163,64 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
+     * TODO
+     *
+     * @param DataBaseObject $objectInstance
+     */
+    public function serializeObjectToJSON(DataBaseObject $objectInstance){
+
+        // TODO
+    }
+
+
+    /**
+     * Converts a JSON string (which must be valid) into a DataBaseObject instance.
+     *
+     * @param string $jsonString The JSON string to deserialize.
+     * @param DataBaseObject $objectInstance The object instance to populate with deserialized data.
+     *
+     * @throws UnexpectedValueException If the JSON string is empty, doesn't contain required properties or is invalid
+     *
+     * @return DataBaseObject The object instance populated with all the values on the json string
+     */
+    public function serializeObjectFromJSON(string $jsonString, DataBaseObject $objectInstance){
+
+        if(StringUtils::isEmpty($jsonString)){
+
+            throw new UnexpectedValueException('Provided json does not contain a valid DataBaseObject');
+        }
+
+        $jsonObject = json_decode($jsonString, false);
+
+        // Fill the private base properties if exist
+        if(isset($jsonObject->dbId)){
+
+            $this->_setPrivatePropertyValue($objectInstance, 'dbId', $jsonObject->dbId);
+            $this->_setPrivatePropertyValue($objectInstance, 'dbCreationDate', $jsonObject->dbCreationDate);
+            $this->_setPrivatePropertyValue($objectInstance, 'dbModificationDate', $jsonObject->dbModificationDate);
+        }
+
+        foreach ($this->getBasicProperties($objectInstance, false) as $property) {
+
+            if(!isset($jsonObject->{$property})){
+
+                throw new UnexpectedValueException("Json does not contain required object property: $property");
+            }
+
+            $objectInstance->{$property} = $jsonObject->{$property};
+        }
+
+        // TODO - serialize complex properties like array typed, multi language, etc..
+
+        $this->validateObject($objectInstance);
+
+        return $objectInstance;
+    }
+
+
+    /**
      * Saves one or more objects to database by updating them if already exist (that means dbId of an object is not null) or by creating new
-     * objects on db (when object dbId is null)-
+     * objects on db (when object dbId is null)
      *
      * IMPORTANT: This method is fully transactional. That means if the object or any of the objects being passed to this method fail when being saved,
      * none of them will be saved or updated. In other words, all passed objects on a single save() call must be successfully saved or updated, on none will.
@@ -415,33 +471,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
         }
 
         return $tableData;
-    }
-
-
-    /**
-     * Generate an object instance from the provided table data array
-     *
-     * @param array $tableData An associative array with the object table data
-     * @param mixed $class The class (which extends DataBaseObject) for the object type that we want to obtain. Fo example: User::class
-     *
-     * @return DataBaseObject The generated database object
-     */
-    private function _convertTableDataToObject(array $tableData, $class){
-
-        $object = new $class();
-
-        $objectbasicProperties = $this->getBasicProperties($object, false);
-
-        $this->_setPrivatePropertyValue($object, 'dbId', (int)$tableData['dbid']);
-        $this->_setPrivatePropertyValue($object, 'dbCreationDate', $tableData['dbcreationdate']);
-        $this->_setPrivatePropertyValue($object, 'dbModificationDate', $tableData['dbmodificationdate']);
-
-        foreach ($objectbasicProperties as $property) {
-
-            $object->{$property} = $tableData[strtolower($property)];
-        }
-
-        return $object;
     }
 
 
@@ -1193,6 +1222,20 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
+     * Search all the instances that are stored for a given database object class
+     *
+     * @param mixed $class The class (which extends DataBaseObject) for the object types that we want to obtain. Fo example: User::class
+     *
+     * @return array An array were each element is a database object but serialized as an associative array instead of a DataBaseObject instance, or empty array if no objects found.
+     */
+    public function findAllToArray($class) {
+
+        return $this->_generateAssociativeFromDbTableData($class,
+            $this->_db->tableGetRows($this->tablesPrefix.strtolower(StringUtils::getPathElement($class)), []));
+    }
+
+
+    /**
      * Search a database object that has the specified dbId value
      *
      * @param mixed $class The class (which extends DataBaseObject) for the object type that we want to obtain. Fo example: User::class
@@ -1210,6 +1253,15 @@ class DataBaseObjectsManager extends BaseStrictClass{
         $result = $this->findByDbIds($class, [$dbid]);
 
         return $result === [] ? null : $result[0];
+    }
+
+
+    /**
+     * TODO
+     */
+    public function findByDbIdToArray($class, int $dbid) {
+
+        // TODO
     }
 
 
@@ -1251,45 +1303,16 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Aux method to generate a list of fully initialized database object instances from the loaded rows of a database table.
-     *
-     * @param mixed $class The class (which extends DataBaseObject) for the object types that we want to obtain. Fo example: User::class
-     * @param array $data The table rows loaded from db
-     *
-     * @return array A list of initialized database object instances
+     * TODO
      */
-    private function _generateObjectsFromDbTableData($class, array $data){
+    public function findByDbIdsToArray($class, array $dbids) {
 
-        $objects = array_map(function ($r) use ($class) {return $this->_convertTableDataToObject($r, $class);}, $data);
-
-        foreach ($objects as $object) {
-
-            $tableName = $this->getTableNameFromObject($object);
-
-            foreach ($this->getArrayTypedProperties($object) as $property) {
-
-                $object->{$property} = [];
-                $arrayPropTableName = $tableName.'_'.strtolower($property);
-
-                try {
-
-                    $arrayPropValues = $this->_db->query('SELECT value FROM '.$arrayPropTableName.' WHERE dbid='.$object->getDbId().' ORDER BY arrayindex ASC');
-
-                    $object->{$property} = array_map(function ($r) {return $r['value']; }, $arrayPropValues);
-
-                } catch (Throwable $e) {
-
-                    // Nothing to do
-                }
-            }
-        }
-
-        return $objects;
+        // TODO
     }
 
 
     /**
-     * Search database objects of the specified type which have values that match the specified properties
+     * Search database objects of the specified type which have values that match on the specified properties
      *
      * @param mixed $class The class (which extends DataBaseObject) for the object types that we want to obtain. Fo example: User::class
      * @param array $propertyValues Associative array where keys are the property names and values the property values that must be found on all
@@ -1298,6 +1321,36 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * @return array An array of object instances with all the objects that match the specified properties, or empty array if no objects found.
      */
     public function findByPropertyValues($class, array $propertyValues) {
+
+        return $this->_findByPropertyValuesAux($class, $propertyValues, 'DataBaseObject');
+    }
+
+
+    /**
+     * Search database objects of the specified type which have values that match on the specified properties
+     *
+     * @param mixed $class The class (which extends DataBaseObject) for the object types that we want to obtain. Fo example: User::class
+     * @param array $propertyValues Associative array where keys are the property names and values the property values that must be found on all
+     *        the objects that will be returned by this Method
+     *
+     * @return array An array were each element is a database object but serialized as an associative array instead of a DataBaseObject instance, or empty array if no objects found.
+     */
+    public function findByPropertyValuesToArray($class, array $propertyValues) {
+
+        return $this->_findByPropertyValuesAux($class, $propertyValues, 'associative');
+    }
+
+
+    /**
+     * Auxiliary method to find values by property and return the data in different possible formats
+     *
+     * @param mixed $class See findByPropertyValues() method
+     * @param array $propertyValues See findByPropertyValues() method
+     * @param string $format Specifies which format will be returned by this method: 'DataBaseObject' or 'associative'
+     *
+     * @return array See findByPropertyValues() method
+     */
+    public function _findByPropertyValuesAux($class, array $propertyValues, string $format) {
 
         $columns = [];
 
@@ -1315,7 +1368,9 @@ class DataBaseObjectsManager extends BaseStrictClass{
             return [];
         }
 
-        return $this->_generateObjectsFromDbTableData($class, $data);
+        return $format === 'DataBaseObject' ?
+        $this->_generateObjectsFromDbTableData($class, $data) :
+        $this->_generateAssociativeFromDbTableData($class, $data);
     }
 
 
@@ -1325,6 +1380,140 @@ class DataBaseObjectsManager extends BaseStrictClass{
     public function findByFilter() {
 
         // TODO - Obtain one or more Database objects given a complex filter
+    }
+
+
+    /**
+     * TODO
+     */
+    public function findByFilterToArray() {
+
+        // TODO
+    }
+
+
+    /**
+     * Aux method to generate a list of fully initialized database object instances from the loaded rows of a database table.
+     *
+     * @param mixed $class The class (which extends DataBaseObject) for the object types that we want to obtain. Fo example: User::class
+     * @param array $data The table rows loaded from db
+     *
+     * @return array A list of initialized database object instances
+     */
+    private function _generateObjectsFromDbTableData($class, array $data){
+
+        if(empty($data)){
+
+            return [];
+        }
+
+        // Generate the object instance for each of the table rows
+        $basicProperties = $this->getBasicProperties(new $class(), false);
+
+        $result = array_map(function ($r) use ($class, $basicProperties) {
+
+            $object = new $class();
+            $this->_setPrivatePropertyValue($object, 'dbId', (int)$r['dbid']);
+            $this->_setPrivatePropertyValue($object, 'dbCreationDate', $r['dbcreationdate'].'+00:00');
+            $this->_setPrivatePropertyValue($object, 'dbModificationDate', $r['dbmodificationdate'].'+00:00');
+
+            foreach ($basicProperties as $property) {
+
+                $object->{$property} = $r[strtolower($property)];
+            }
+
+            return $object;
+
+        }, $data);
+
+        // Add the array typed property values if necessary
+        $tableName = $this->getTableNameFromObject($result[0]).'_';
+
+        foreach ($this->getArrayTypedProperties($result[0]) as $property) {
+
+            $arrayPropTableName = $tableName.strtolower($property);
+
+            foreach ($result as $object) {
+
+                $object->{$property} = [];
+
+                try {
+
+                    $arrayPropValues = $this->_db->query("SELECT value FROM $arrayPropTableName WHERE dbid=".$object->getDbId()." ORDER BY arrayindex ASC");
+
+                    $object->{$property} = array_map(function ($r) {return $r['value']; }, $arrayPropValues);
+
+                } catch (Throwable $e) {
+
+                    // Nothing to do
+                }
+            }
+        }
+
+        return $result;
+    }
+
+
+    /**
+     * Aux method to generate a list of associative arrays representing the data of object instances from the loaded rows of a database table.
+     *
+     * @param mixed $class The class (which extends DataBaseObject) for the object types that we want to obtain. Fo example: User::class
+     * @param array $data The table rows loaded from db
+     *
+     * @return array A list of associative arrays were each one contains the same data as the respective Database Object
+     */
+    private function _generateAssociativeFromDbTableData($class, array $data){
+
+        if(empty($data)){
+
+            return [];
+        }
+
+        // Generate the associative array for each of the table rows
+        $objectDummyInstance = new $class();
+        $basicProperties = $this->getBasicProperties($objectDummyInstance);
+
+        $result = array_map(function ($row) use ($basicProperties) {
+
+            $object = [];
+            $object['dbId'] = (int)$row['dbid'];
+            $object['dbCreationDate'] = $row['dbcreationdate'].'+00:00';
+            $object['dbModificationDate'] = $row['dbmodificationdate'].'+00:00';
+
+            foreach ($basicProperties as $property) {
+
+                $object[$property] = $row[strtolower($property)];
+            }
+
+            return $object;
+
+        }, $data);
+
+        // Add the array typed property values if necessary
+        $tableName = $this->getTableNameFromObject($objectDummyInstance).'_';
+
+        foreach ($this->getArrayTypedProperties($objectDummyInstance) as $property) {
+
+            $arrayPropTableName = $tableName.strtolower($property);
+
+            foreach ($result as $object) {
+
+                $object[$property] = [];
+
+                try {
+
+                    $arrayPropValues = $this->_db->query("SELECT value FROM $arrayPropTableName WHERE dbid=".$object->getDbId()." ORDER BY arrayindex ASC");
+
+                    $object[$property] = array_map(function ($r) {return $r['value']; }, $arrayPropValues);
+
+                } catch (Throwable $e) {
+
+                    // Nothing to do
+                }
+            }
+        }
+
+        return $result;
     }
 
 

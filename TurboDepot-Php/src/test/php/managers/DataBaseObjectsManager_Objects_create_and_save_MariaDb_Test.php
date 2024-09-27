@@ -253,6 +253,66 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
     /**
      * test
      */
+    public function testSerializeObjectToJSON(){
+
+        // Test empty values
+        // TODO
+
+        // Test ok values
+        // TODO
+
+        // Test wrong values
+        // TODO
+
+        // Test exceptions
+        // TODO
+
+        $this->markTestIncomplete('This test has not been implemented yet.');
+    }
+
+
+    /**
+     * test
+     */
+    public function testSerializeObjectFromJSON(){
+
+        // Test empty values
+        AssertUtils::throwsException(function(){ $this->sut->serializeObjectFromJSON(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function(){ $this->sut->serializeObjectFromJSON(null); }, '/must be of the type string/');
+        AssertUtils::throwsException(function(){ $this->sut->serializeObjectFromJSON('', ''); }, '/must be an instance of .*DataBaseObject/');
+        AssertUtils::throwsException(function(){ $this->sut->serializeObjectFromJSON('', new stdClass()); }, '/must be an instance of .*DataBaseObject/');
+        AssertUtils::throwsException(function(){ $this->sut->serializeObjectFromJSON('', new Customer()); }, '/Provided json does not contain a valid DataBaseObject/');
+
+        // Test ok values - with objects still not saved to database
+        $object = $this->sut->serializeObjectFromJSON('{"name":"pepe","commercialName":"momo","age":20,"debt":0.1}', new Customer());
+        $this->assertSame(null, $object->getDbId());
+        $this->assertSame(null, $object->getDbCreationDate());
+        $this->assertSame(null, $object->getDbModificationDate());
+        $this->assertSame('pepe', $object->name);
+        $this->assertSame('momo', $object->commercialName);
+        $this->assertSame(20, $object->age);
+
+        // Test ok values - with objects that are already stored on database
+        $object = $this->sut->serializeObjectFromJSON('{"dbId":1,"dbCreationDate":"2024-09-16 05:16:14.446393+00:00","dbModificationDate":"2024-09-16 05:16:14.446393+00:00","name":"pepe","commercialName":"momo","age":20,"debt":0.1}', new Customer());
+        $this->assertSame(1, $object->getDbId());
+        $this->assertSame('2024-09-16 05:16:14.446393+00:00', $object->getDbCreationDate());
+        $this->assertSame('2024-09-16 05:16:14.446393+00:00', $object->getDbModificationDate());
+        $this->assertSame('pepe', $object->name);
+        $this->assertSame('momo', $object->commercialName);
+        $this->assertSame(20, $object->age);
+
+        // Test wrong values
+        // Test exceptions
+        AssertUtils::throwsException(function(){ $this->sut->serializeObjectFromJSON('{"name":"pepe"}', new Customer()); }, '/Json does not contain required object property: commercialName/');
+        AssertUtils::throwsException(function(){ $this->sut->serializeObjectFromJSON('{"name":"pepe","commercialName":"momo","age":"a"}', new Customer()); }, '/Json does not contain required object property: debt/');
+        AssertUtils::throwsException(function(){ $this->sut->serializeObjectFromJSON('{"dbId":"a","dbCreationDate":"2024-09-16 05:16:14.446393+00:00","dbModificationDate":"2024-09-16 05:16:14.446393+00:00","name":"pepe","commercialName":"momo","age":20,"debt":0.1}', new Customer()); }, '/Invalid Customer dbId/');
+        AssertUtils::throwsException(function(){ $this->sut->serializeObjectFromJSON('{"dbId":1,"dbCreationDate":"202409-16 05:16:14.446393+00:00","dbModificationDate":"2024-09-16 05:16:14.446393+00:00","name":"pepe","commercialName":"momo","age":20,"debt":0.1}', new Customer()); }, '/dbCreationDate .* is not a DATETIME/');
+    }
+
+
+    /**
+     * test
+     */
     public function testSave(){
 
         // Test empty values

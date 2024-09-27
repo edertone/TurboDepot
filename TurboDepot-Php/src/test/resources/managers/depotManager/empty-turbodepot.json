@@ -22,7 +22,8 @@
                 "source": ""
             },
             "objects": {
-                "source": ""
+                "source": "",
+                "prefix": ""
             },
             "googleDrive": {
                 "accountCredentialsPath": "",

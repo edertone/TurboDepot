@@ -347,7 +347,7 @@ class DepotManager extends BaseStrictClass{
     /**
      * Obtain a DataBaseObjectsManager instance fully initialized to operate with the specified turbodepot source.
      *
-     * @param string $sourceName The name for a valid database source which is defined on the turbodepot setup file
+     * @param string $sourceName The name for a valid database source, or empty string if we want to use the default source specified at "objects" on the turbodepot setup file.
      * @param string $prefix the database tables prefix that we want to use with the obtained instance. If set to null, the default one for
      *        the DataBaseObjectsManager class will be used
      *
@@ -357,7 +357,14 @@ class DepotManager extends BaseStrictClass{
      *
      * @return DataBaseObjectsManager An instance that is ready to use
      */
-    public function getDataBaseObjectsManager(string $sourceName, $prefix = null){
+    public function getDataBaseObjectsManager(string $sourceName = '', $prefix = null){
+
+        // Load the source and prefix from depot setup if no values specifically set
+        if($sourceName === ''){
+
+            $sourceName = $this->_loadedDepotSetup->objects->source;
+            $prefix = $this->_loadedDepotSetup->objects->prefix;
+        }
 
         if(!isset($this->_dataBaseObjectsManagers[$sourceName.$prefix])){
 

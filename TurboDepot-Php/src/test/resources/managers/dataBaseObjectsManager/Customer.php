@@ -22,5 +22,3 @@ class Customer extends DataBaseObject{
 
     public $debt = 0.0;
 }
-
-?>
