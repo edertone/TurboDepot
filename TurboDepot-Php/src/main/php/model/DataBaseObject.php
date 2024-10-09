@@ -88,6 +88,69 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
+     * This constant may be overriden if necessary on each class that extends DatabaseObject
+     *
+     * If set to true and the types array is used to specify data types for the object properties, all the properties must have their respective type
+     * definition or an exception will be thrown.
+     *
+     * If set to false, it will be allowed to leave one or more object properties without type definition.
+     *
+     * This flag won't have any effect if the class::TYPES array is not used
+     *
+     * @see DataBaseObject::TYPES
+     *
+     * @var string
+     */
+    const IS_TYPING_MANDATORY = true;
+
+
+    /**
+     * This constant must be overriden on each class that extends DatabaseObject
+     *
+     * Associative array that defines the data types to use with the object properties. Each array key must be the object property to set
+     * and each value an array with the following elements in any order:<br>
+     *
+     * 1. The property data type: DataBaseObject::BOOL, ::INT, ::DOUBLE, ::STRING, ::DATETIME or ::ARRAY<br>
+     * 2. The property data size (for int and string values the maximum number of digits that can be stored). It is mandatory<br>
+     * 3. DataBaseObject::NOT_NULL if the property cannot have null values, skip this otherwise (it is optional)
+     * 4. DataBaseObject::NO_DUPLICATES if the property cannot have duplicate values on database, skip this otherwise (it is optional)
+     *
+     * @var array
+     */
+    const TYPES = [];
+
+
+    /**
+     * This constant may be overriden if necessary on each class that extends DatabaseObject
+     *
+     * Array of arrays where each element contains the names for the properties that will be included on a unique index, so values cannot be repeated.
+     * We can define simple indices by providing only one property name (which can also be done via DataBaseObject::NO_DUPLICATES on the DataBaseObject::TYPES setup) and
+     * we can also define complex indices by providing two or more property names at each array element to generate complex indices.
+     *
+     * @var array
+     */
+    const UNIQUEINDICES = [];
+
+
+    /**
+     * This constant may be overriden if necessary on each class that extends DatabaseObject
+     *
+     * Contains the definitions of links to other object classes that will be deleted in cascade
+     * Once instances of this class are deleted.
+     *
+     * It is an associative array where each key must contain the full class path of the foreign object
+     * and the value will be another associative array with the mappings of properties and foreign properties.
+     * As an example: 'org\turbodepot\ForeignClass' => ['dbId' => 'foreignClassProperty']
+     *
+     * This will mean that each time an instance of the main class is deleted, any ForeignClass where the foreignClassProperty
+     * matches the dbId of the deleted main class, will be deleted too.
+     *
+     * @var array
+     */
+    const FOREIGN_DELETE_OBJECTS = [];
+
+
+    /**
      * @see self::getDbId()
      */
     protected $dbId = null;
@@ -118,45 +181,6 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
-     * If set to true and the types array is used to specify data types for the object properties, all the properties must have their respective type
-     * definition or an exception will be thrown.
-     *
-     * If set to false, it will be allowed to leave one or more object properties without type definition.
-     *
-     * This flag won't have any effect if the _types array is not used
-     *
-     * @see self::$_types
-     *
-     * @var string
-     */
-    protected $_isTypingMandatory = true;
-
-
-    /**
-     * Associative array that defines the data types to use with the object properties. Each array key must be the object property to set
-     * and each value an array with the following elements in any order:<br>
-     *
-     * 1. The property data type: DataBaseObject::BOOL, ::INT, ::DOUBLE, ::STRING, ::DATETIME or ::ARRAY<br>
-     * 2. The property data size (for int and string values the maximum number of digits that can be stored). It is mandatory<br>
-     * 3. DataBaseObject::NOT_NULL if the property cannot have null values, skip this otherwise (it is optional)
-     * 4. DataBaseObject::NO_DUPLICATES if the property cannot have duplicate values on database, skip this otherwise (it is optional)
-     *
-     * @var array
-     */
-    protected $_types = [];
-
-
-    /**
-     * Array of arrays where each element contains the names for the properties that will be included on a unique index, so values cannot be repeated.
-     * We can define simple indices by providing only one property name (which can also be done via DataBaseObject::NO_DUPLICATES on the _types setup) and
-     * we can also define complex indices by providing two or more property names at each array element to generate complex indices.
-     *
-     * @var array
-     */
-    protected $_uniqueIndices = [];
-
-
-    /**
      * @see self::setLocales()
      *
      * @var array
@@ -173,16 +197,6 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
-     * This method is always called before any other thing at the database object constructor.
-
-     * It must be declared to define the database object configuration and type values. If nothing is specified here, all setup parameters will be the default ones.
-     *
-     * @return void
-     */
-    abstract protected function setup();
-
-
-    /**
      * Base class for all the objects that are manipulated by the DataBaseObjectsManager class.
      *
      * @see self::setLocales()
@@ -191,12 +205,10 @@ abstract class DataBaseObject extends BaseStrictClass{
      */
     final public function __construct(array $locales = []){
 
-        $this->setup();
-
         $localesCount = count($locales);
         $classProperties = array_keys(get_object_vars($this));
 
-        foreach ($this->_types as $property => $typedef) {
+        foreach (static::TYPES as $property => $typedef) {
 
             // Check that all the defined types belong to object properties.
             if(!in_array($property, $classProperties, true)){
@@ -293,7 +305,7 @@ abstract class DataBaseObject extends BaseStrictClass{
 
             $this->_isMultiLanguage = false;
 
-            foreach ($this->_types as $type) {
+            foreach (static::TYPES as $type) {
 
                 if(in_array(self::MULTI_LANGUAGE, $type, true)){
 

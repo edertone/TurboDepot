@@ -9,12 +9,5 @@ use org\turbodepot\src\main\php\model\DataBaseObject;
 class ObjectWithWrongExtendedDbIdProperty extends DataBaseObject{
 
 
-    protected function setup(){
-
-    }
-
-
     public $dbId = null;
 }
-
-?>

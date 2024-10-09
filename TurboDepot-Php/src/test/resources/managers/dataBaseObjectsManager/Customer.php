@@ -8,12 +8,6 @@ use org\turbodepot\src\main\php\model\DataBaseObject;
 
 class Customer extends DataBaseObject{
 
-
-    protected function setup(){
-
-    }
-
-
     public $name = '';
 
     public $commercialName = '';

@@ -13,15 +13,16 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 class ObjectToAlter extends DataBaseObject{
 
 
-    protected function setup(){
+    const IS_TYPING_MANDATORY = false;
 
-        $this->_isTypingMandatory = false;
-        $this->_types['nameRenamed'] = [20, self::NOT_NULL, self::STRING];
-    }
+
+    const TYPES = [
+
+        'nameRenamed' => [20, self::NOT_NULL, self::STRING]
+    ];
+
 
     public $nameRenamed = '';
 
     public $city = '';
 }
-
-?>

@@ -116,7 +116,9 @@ class DataBaseManager extends BaseStrictClass {
      * @param string $password The database user password
      * @param string $dataBaseName The name for the database to which we want to connect. leave it empty if we are connecting only to the mysql host.
      *
-     * @return boolean True on success or false if connection was not possible
+     * @throws UnexpectedValueException If connection could not be established
+     *
+     * @return boolean True on success. If connection was not possible, an exception will be thrown with the detailed message
      */
     public function connectMysql($host, $userName, $password, $dataBaseName = null){
 
@@ -131,8 +133,21 @@ class DataBaseManager extends BaseStrictClass {
             throw new UnexpectedValueException('There\'s an active database connection. Disconnect before connecting');
         }
 
-        $id = mysqli_connect($host, $userName, $password, $dataBaseName);
+        // Perform a maximum of 10 connection attempts with a 2 seconds pause between each one
+        for ($i = 0; $i < 10; $i++) {
 
+            try {
+
+                $id = mysqli_connect($host, $userName, $password, $dataBaseName);
+                break;
+
+            } catch (Throwable $e) {
+
+                sleep(2);
+            }
+        }
+
+        // Capture any possible error that may have happened with the connection
         if(mysqli_connect_errno()){
 
             throw new UnexpectedValueException('Could not connect to MYSQL : '.mysqli_connect_error());
@@ -166,7 +181,9 @@ class DataBaseManager extends BaseStrictClass {
      * @param string $password The database user password
      * @param string $dataBaseName The name for the database to which we want to connect. leave it empty if we are connecting only to the mariadb host.
      *
-     * @return boolean True on success or false if connection was not possible
+     * @throws UnexpectedValueException If connection could not be established
+     *
+     * @return boolean True on success. If connection was not possible, an exception will be thrown with the detailed message
      */
     public function connectMariaDb($host, $userName, $password, $dataBaseName = null){
 

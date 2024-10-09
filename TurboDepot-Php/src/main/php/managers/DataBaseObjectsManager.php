@@ -122,8 +122,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     public function __construct(){
 
-        // TODO - Implement constructor docs
-
         $this->_db = new DataBaseManager();
     }
 
@@ -543,7 +541,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         // Try to find a strongly defined type for the requested column on the provided object instance.
         // This will have preference over the type that is automatically detected from the table value.
-        $typesSetup = $this->_getPropertyValue($object, '_types');
+        $typesSetup = get_class($object)::TYPES;
 
         if(isset($typesSetup[$property])){
 
@@ -551,9 +549,9 @@ class DataBaseObjectsManager extends BaseStrictClass{
         }
 
         // If types definition are mandatory, we will check here that all the object properties have a defined data type
-        if(!empty($typesSetup) && $this->_getPropertyValue($object, '_isTypingMandatory')){
+        if(!empty($typesSetup) && get_class($object)::IS_TYPING_MANDATORY){
 
-            throw new UnexpectedValueException($property.' has no defined type but typing is mandatory. Define a type or disable this restriction by setting _isTypingMandatory = false');
+            throw new UnexpectedValueException($property.' has no defined type but typing is mandatory. Define a type or disable this restriction by setting IS_TYPING_MANDATORY = false');
         }
 
         try {
@@ -563,6 +561,40 @@ class DataBaseObjectsManager extends BaseStrictClass{
         } catch (Throwable $e) {
 
             throw new UnexpectedValueException('Could not detect property '.$property.' type: '.$e->getMessage());
+        }
+    }
+
+
+    /**
+     * Given a property value obtained from database which is always retrieved as a string, this method will
+     * cast it again to the correct language type ready to be stored on the specified object property.
+     *
+     * @param mixed $value The property value we want to convert to the correct data type
+     * @param DataBaseObject $object The object that contains the property which type we want to cast
+     * @param string $property The object property we wan to obtain its type from
+     *
+     * @return boolean|number|string The received value casted to the correct data type
+     */
+    private function _castDbValueToPropertyType($value, DataBaseObject $object, string $property){
+
+        $objectType = $this->_getTypeFromObjectProperty($object, $property);
+
+        switch ($objectType[0]) {
+
+            case DataBaseObject::BOOL:
+                return (boolean)$value;
+
+            case DataBaseObject::INT:
+                return (int)$value;
+
+            case DataBaseObject::DOUBLE:
+                return (float)$value;
+
+            case DataBaseObject::DATETIME:
+                return $value === null ? null : $value.'+00:00';
+
+            default:
+                return $value;
         }
     }
 
@@ -606,10 +638,10 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         foreach(array_count_values($array) as $item => $itemRepeatCount){
 
-            // Duplicate values are not allowed on the properties _types setup
+            // Duplicate values are not allowed on the properties TYPES setup
             if($itemRepeatCount > 1){
 
-                throw new UnexpectedValueException('Duplicate value <'.$item.'> found on _types for '.$property.' property');
+                throw new UnexpectedValueException('Duplicate value <'.$item.'> found on ::TYPES for '.$property.' property');
             }
 
             switch ((string)$item) {
@@ -792,7 +824,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
     public function getArrayTypedProperties(DataBaseObject $object){
 
         $result = [];
-        $types = $this->_getPropertyValue($object, '_types');
+        $types = get_class($object)::TYPES;
 
         foreach(array_diff(array_keys(get_object_vars($object)), $this->_baseObjectProperties) as $property){
 
@@ -849,7 +881,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $result = [];
 
-        foreach($this->_getPropertyValue($object, '_types') as $property => $type){
+        foreach(get_class($object)::TYPES as $property => $type){
 
             // Note that we ignore all arrays cause they are not allowed for multi language properties
             if(in_array(DataBaseObject::MULTI_LANGUAGE, $type, true) && !is_array($object->{$property})){
@@ -951,7 +983,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             }
         }
 
-        foreach ($this->_getPropertyValue($object, '_uniqueIndices') as $uniqueIndex) {
+        foreach (get_class($object)::UNIQUEINDICES as $uniqueIndex) {
 
             if(!empty($uniqueIndex)){
 
@@ -1222,7 +1254,8 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Search all the instances that are stored for a given database object class
+     * Search all the instances that are stored for a given database object class and return an associative array.
+     * This is normally useful if we want to directly serialize the result as a json string
      *
      * @param mixed $class The class (which extends DataBaseObject) for the object types that we want to obtain. Fo example: User::class
      *
@@ -1327,7 +1360,8 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * Search database objects of the specified type which have values that match on the specified properties
+     * Search database objects of the specified type which have values that match on the specified properties and return an associative array.
+     * This is normally useful if we want to directly serialize the result as a json string
      *
      * @param mixed $class The class (which extends DataBaseObject) for the object types that we want to obtain. Fo example: User::class
      * @param array $propertyValues Associative array where keys are the property names and values the property values that must be found on all
@@ -1369,8 +1403,8 @@ class DataBaseObjectsManager extends BaseStrictClass{
         }
 
         return $format === 'DataBaseObject' ?
-        $this->_generateObjectsFromDbTableData($class, $data) :
-        $this->_generateAssociativeFromDbTableData($class, $data);
+            $this->_generateObjectsFromDbTableData($class, $data) :
+            $this->_generateAssociativeFromDbTableData($class, $data);
     }
 
 
@@ -1419,7 +1453,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             foreach ($basicProperties as $property) {
 
-                $object->{$property} = $r[strtolower($property)];
+                $object->{$property} = $this->_castDbValueToPropertyType($r[strtolower($property)], $object, $property);
             }
 
             return $object;
@@ -1473,19 +1507,19 @@ class DataBaseObjectsManager extends BaseStrictClass{
         $objectDummyInstance = new $class();
         $basicProperties = $this->getBasicProperties($objectDummyInstance);
 
-        $result = array_map(function ($row) use ($basicProperties) {
+        $result = array_map(function ($row) use ($basicProperties, $objectDummyInstance) {
 
-            $object = [];
-            $object['dbId'] = (int)$row['dbid'];
-            $object['dbCreationDate'] = $row['dbcreationdate'].'+00:00';
-            $object['dbModificationDate'] = $row['dbmodificationdate'].'+00:00';
+            $array = [];
+            $array['dbId'] = (int)$row['dbid'];
+            $array['dbCreationDate'] = $row['dbcreationdate'].'+00:00';
+            $array['dbModificationDate'] = $row['dbmodificationdate'].'+00:00';
 
             foreach ($basicProperties as $property) {
 
-                $object[$property] = $row[strtolower($property)];
+                $array[$property] = $this->_castDbValueToPropertyType($row[strtolower($property)], $objectDummyInstance, $property);
             }
 
-            return $object;
+            return $array;
 
         }, $data);
 
@@ -1496,15 +1530,15 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
             $arrayPropTableName = $tableName.strtolower($property);
 
-            foreach ($result as $object) {
+            for ($i = 0, $l = count($result); $i < $l; $i++){
 
-                $object[$property] = [];
+                $result[$i][$property] = [];
 
                 try {
 
-                    $arrayPropValues = $this->_db->query("SELECT value FROM $arrayPropTableName WHERE dbid=".$object->getDbId()." ORDER BY arrayindex ASC");
+                    $arrayPropValues = $this->_db->query("SELECT value FROM $arrayPropTableName WHERE dbid=".$result[$i]['dbId']." ORDER BY arrayindex ASC");
 
-                    $object[$property] = array_map(function ($r) {return $r['value']; }, $arrayPropValues);
+                    $result[$i][$property] = array_map(function ($r) {return $r['value']; }, $arrayPropValues);
 
                 } catch (Throwable $e) {
 
@@ -1535,54 +1569,15 @@ class DataBaseObjectsManager extends BaseStrictClass{
             $objects = [$objects];
         }
 
-        return $this->deleteByDbIds(array_map(function ($o) {return $o->getDbId();}, $objects));
-    }
+        $result = $this->deleteByDbIds(get_class($objects[0]), array_map(function ($o) {return $o->getDbId();}, $objects));
 
+        // Clear all db ids from the received objects
+        foreach ($objects as $object) {
 
-    /**
-     * Erase one or more DatabaseObject instances from database given their dbids. Method is transactional so if any of the objects
-     * can't be deleted, none will be.
-     *
-     * If $this->isTrashEnabled is true, the object instances will be moved to trash. Otherwise they will be permanently deleted
-     *
-     * @param mixed $class The class (which extends DataBaseObject) for the object types that we want to delete. Fo example: User::class
-     * @param array $dbIds A list of dbids for the objects to delete
-     *
-     * @throws UnexpectedValueException If any problem arises
-     *
-     * @return int The number of deleted objects from db (if delete was successful)
-     */
-    public function deleteByDbIds($class, array $dbIds){
-
-        $deletedObjects = 0;
-        $tableName = $this->tablesPrefix.strtolower(StringUtils::getPathElement($class));
-
-        $this->_db->transactionBegin();
-
-        foreach ($dbIds as $dbId) {
-
-            // TODO - Implement isTrashEnabled feature
-
-            try {
-
-                if(($deleteCount = $this->_db->tableDeleteRows($tableName, ['dbid' => $dbId])) !== 1){
-
-                    throw new UnexpectedValueException('object dbid not found: '.$dbId);
-                }
-
-            } catch (Throwable $e) {
-
-                $this->_db->transactionRollback();
-
-                throw new UnexpectedValueException('Error deleting objects: '.$e->getMessage());
-            }
-
-            $deletedObjects += $deleteCount;
+            $this->_setPrivatePropertyValue($object, 'dbId', null);
         }
 
-        $this->_db->transactionCommit();
-
-        return $deletedObjects;
+        return $result;
     }
 
 
@@ -1613,6 +1608,92 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         return $this->deleteByDbIds($class,
             array_map(function ($p) { return $p['dbid']; }, $this->_db->tableGetRows($tableName, $columns)));
+    }
+
+
+    /**
+     * Erase one or more DatabaseObject instances from database given their dbids. Method is transactional so if any of the objects
+     * can't be deleted, none will be.
+     *
+     * If $this->isTrashEnabled is true, the object instances will be moved to trash. Otherwise they will be permanently deleted
+     *
+     * @param mixed $class The class (which extends DataBaseObject) for the object types that we want to delete. Fo example: User::class
+     * @param array $dbIds A list of dbids for the objects to delete
+     *
+     * @throws UnexpectedValueException If any problem arises
+     *
+     * @return int The number of deleted objects from db (if delete was successful)
+     */
+    public function deleteByDbIds($class, array $dbIds){
+
+        $deletedObjectsCount = 0;
+        $tableName = $this->tablesPrefix.strtolower(StringUtils::getPathElement($class));
+
+        $this->_db->transactionBegin();
+
+        foreach ($dbIds as $dbId) {
+
+            // TODO - Implement isTrashEnabled feature
+
+            try {
+
+                // If the FOREIGN_DELETE_OBJECTS contains any data, we will first delete any objects related to the parent one
+                if(!empty($class::FOREIGN_DELETE_OBJECTS) && ($object = $this->findByDbId($class, $dbId)) !== null){
+
+                    // Loop all the foreign object classes to be deleted
+                    foreach ($class::FOREIGN_DELETE_OBJECTS as $foreignObjectClass => $properties) {
+
+                        // Obtain the values for the object that must exist on foreign objects to be deleted
+                        $propertiesToDelete = [];
+
+                        foreach ($properties as $objectProperty => $foreignObjectProperty) {
+
+                            $propertiesToDelete[$foreignObjectProperty] = $this->_getPropertyValue($object, $objectProperty);
+                        }
+
+                        // Execute the deletion of the related foreign objects of the current class that match the object property values
+                        try {
+
+                            $this->deleteByPropertyValues($foreignObjectClass, $propertiesToDelete);
+
+                        } catch (Throwable $e) {
+
+                            if(!class_exists($foreignObjectClass)){
+
+                                throw new UnexpectedValueException('Invalid foreign class specified: '.$foreignObjectClass);
+                            }
+
+                            // If the foreign object db table does not exist, we will ignore the deletion error. Otherwise, the error
+                            // will be thrown. This is because maybe no any foreign object is saved yet.
+                            $foreignObjectTable = $this->tablesPrefix.strtolower(StringUtils::getPathElement($foreignObjectClass));
+
+                            if($this->getDataBaseManager()->tableExists($foreignObjectTable)){
+
+                                throw $e;
+                            }
+                        }
+                    }
+                }
+
+                // Delete the requested object itself
+                if(($deleteCount = $this->_db->tableDeleteRows($tableName, ['dbid' => $dbId])) !== 1){
+
+                    throw new UnexpectedValueException('object dbid not found: '.$dbId);
+                }
+
+            } catch (Throwable $e) {
+
+                $this->_db->transactionRollback();
+
+                throw new UnexpectedValueException('Error deleting objects: '.$e->getMessage());
+            }
+
+            $deletedObjectsCount += $deleteCount;
+        }
+
+        $this->_db->transactionCommit();
+
+        return $deletedObjectsCount;
     }
 
 

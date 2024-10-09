@@ -13,11 +13,14 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 class ObjectToAlter extends DataBaseObject{
 
 
-    protected function setup(){
+    const IS_TYPING_MANDATORY = false;
 
-        $this->_isTypingMandatory = false;
-        $this->_types['name'] = [20, self::NOT_NULL, self::STRING];
-    }
+
+    const TYPES = [
+
+        'name' => [20, self::NOT_NULL, self::STRING]
+    ];
+
 
     public $name = '';
 
@@ -25,5 +28,3 @@ class ObjectToAlter extends DataBaseObject{
 
     public $extraNonTyped = '';
 }
-
-?>

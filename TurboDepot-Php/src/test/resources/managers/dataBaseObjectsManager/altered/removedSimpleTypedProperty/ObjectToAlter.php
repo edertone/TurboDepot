@@ -12,10 +12,5 @@ use org\turbodepot\src\main\php\model\DataBaseObject;
 class ObjectToAlter extends DataBaseObject{
 
 
-    protected function setup(){
-    }
-
     public $city = '';
 }
-
-?>

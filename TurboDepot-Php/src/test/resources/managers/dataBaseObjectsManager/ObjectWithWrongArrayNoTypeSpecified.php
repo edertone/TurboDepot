@@ -10,12 +10,11 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 class ObjectWithWrongArrayNoTypeSpecified extends DataBaseObject{
 
 
-    protected function setup(){
+    const TYPES = [
 
-        $this->_types['arrayVal'] = [self::ARRAY, 20];
-    }
+        'arrayVal' => [self::ARRAY, 20]
+    ];
+
 
     public $arrayVal = '';
 }
-
-?>

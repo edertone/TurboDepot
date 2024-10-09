@@ -13,12 +13,14 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 class ObjectToAlter extends DataBaseObject{
 
 
-    protected function setup(){
+    const IS_TYPING_MANDATORY = false;
 
-        $this->_isTypingMandatory = false;
-        $this->_types['name'] = [20, self::NOT_NULL, self::STRING];
-        $this->_types['arrayProp'] = [self::ARRAY, self::INT, 4];
-    }
+
+    const TYPES = [
+
+        'name' => [20, self::NOT_NULL, self::STRING],
+        'arrayProp' => [self::ARRAY, self::INT, 4]
+    ];
 
 
     public $name = '';
@@ -27,5 +29,3 @@ class ObjectToAlter extends DataBaseObject{
 
     public $arrayProp = '';
 }
-
-?>

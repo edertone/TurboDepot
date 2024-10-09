@@ -13,16 +13,14 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 class CustomerTypedWithoutSize extends DataBaseObject{
 
 
-    protected function setup(){
+    const TYPES = [
 
-        $this->_types['name'] = [20, self::NOT_NULL, self::STRING];
-        $this->_types['commercialName'] = [self::STRING];
-    }
+        'name' => [20, self::NOT_NULL, self::STRING],
+        'commercialName' => [self::STRING]
+    ];
 
 
     public $name = '';
 
     public $commercialName = '';
 }
-
-?>

@@ -10,14 +10,13 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 class ObjectWithWrongNotAllTypesDefined extends DataBaseObject{
 
 
-    protected function setup(){
+    const TYPES = [
 
-        $this->_types['array'] = [self::ARRAY, self::STRING];
-    }
+        'array' => [self::ARRAY, self::STRING]
+    ];
+
 
     public $array = [];
 
     public $notDefined = '';
 }
-
-?>

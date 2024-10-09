@@ -538,7 +538,7 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongMethods()); }, '/Method is not allowed for DataBaseObject class org.*ObjectWithWrongMethods: methodThatCantBeHere/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongPropThatStartsWithUnderscore()); }, '/Properties starting with _ are forbidden, but found: _name/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNullNonTypedProperty()); }, '/Could not detect property age type: Could not detect type from NULL/');
-        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongTypeHasDuplicateValues()); }, '/Duplicate value <STRING> found on _types for name property/');
+        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongTypeHasDuplicateValues()); }, '/Duplicate value <STRING> found on ::TYPES for name property/');
         AssertUtils::throwsException(function() { new ObjectWithWrongNonExistantTypedProperty(); }, '/Cannot define type for nonexistant cause it does not exist on class/');
 
         // Add an unexpected column to the customer table and make sure saving fails
@@ -1231,7 +1231,7 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongDateTypeSize()); }, '/date DATETIME size must be 0, 3 or 6/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongArrayTypeSize()); }, '/array is defined as an array of STRING but size is invalid/');
         AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongArrayNoTypeSpecified()); }, '/arrayVal defined as ARRAY but no type for the array elements is specified/');
-        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNotAllTypesDefined()); }, '/notDefined has no defined type but typing is mandatory. Define a type or disable this restriction by setting _isTypingMandatory = false/');
+        AssertUtils::throwsException(function() { $this->sut->save(new ObjectWithWrongNotAllTypesDefined()); }, '/notDefined has no defined type but typing is mandatory. Define a type or disable this restriction by setting IS_TYPING_MANDATORY = false/');
     }
 
     /**
@@ -2343,5 +2343,3 @@ class DataBaseObjectsManager_Objects_create_and_save_MariaDb_Test extends TestCa
         AssertUtils::throwsException(function() { $this->sut->getSQLTypeFromObjectProperty(new stdClass(), ''); }, '/Argument 1 passed to .*getSQLTypeFromObjectProperty.*must be an instance of.*DataBaseObject.*stdClass given/');
     }
 }
-
-?>

@@ -11,20 +11,19 @@ use org\turbodepot\src\main\php\model\DataBaseObject;
 class Test1CustomFieldsObject extends DataBaseObject{
 
 
-    protected function setup(){
+    const TYPES = [
 
-        $this->_types['name'] = [100, self::NOT_NULL, self::STRING];
-        $this->_types['surnames'] = [200, self::NOT_NULL, self::STRING];
-        $this->_types['phone'] = [25, self::NOT_NULL, self::STRING];
-        $this->_types['company'] = [200, self::NOT_NULL, self::STRING];
-        $this->_types['occupation'] = [200, self::NOT_NULL, self::STRING];
-        $this->_types['address'] = [300, self::NOT_NULL, self::STRING];
-        $this->_types['city'] = [100, self::NOT_NULL, self::STRING];
-        $this->_types['district'] = [100, self::NOT_NULL, self::STRING];
-        $this->_types['postalCode'] = [20, self::NOT_NULL, self::STRING];
+        'name' => [100, self::NOT_NULL, self::STRING],
+        'surnames' => [200, self::NOT_NULL, self::STRING],
+        'phone' => [25, self::NOT_NULL, self::STRING],
+        'company' => [200, self::NOT_NULL, self::STRING],
+        'occupation' => [200, self::NOT_NULL, self::STRING],
+        'address' => [300, self::NOT_NULL, self::STRING],
+        'city' => [100, self::NOT_NULL, self::STRING],
+        'district' => [100, self::NOT_NULL, self::STRING],
+        'postalCode' => [20, self::NOT_NULL, self::STRING]
+    ];
 
-        $this->_uniqueIndices[] = [];
-    }
 
     public $name = 'some name';
     public $surnames = '';

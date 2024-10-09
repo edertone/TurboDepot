@@ -9,10 +9,10 @@ use org\turbodepot\src\main\php\model\DataBaseObject;
 class ObjectWithWrongTypeHasDuplicateValues extends DataBaseObject{
 
 
-    protected function setup(){
+    const TYPES = [
 
-        $this->_types['name'] = [50, self::STRING, self::STRING];
-    }
+        'name' => [50, self::STRING, self::STRING]
+    ];
 
     public $name = '';
 }

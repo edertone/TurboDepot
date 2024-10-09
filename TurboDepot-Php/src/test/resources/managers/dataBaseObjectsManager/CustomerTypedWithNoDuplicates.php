@@ -8,20 +8,24 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 
 
 /**
- * This customer class uses the NO_DUPLICATES flag and _uniqueIndices to prevent duplicate values on the properties
+ * This customer class uses the NO_DUPLICATES flag and UNIQUEINDICES to prevent duplicate values on the properties
  */
 class CustomerTypedWithNoDuplicates extends DataBaseObject{
 
 
-    protected function setup(){
+    const TYPES = [
 
-        $this->_types['name'] = [50, self::NOT_NULL, self::STRING, self::NO_DUPLICATES];
-        $this->_types['age'] = [self::INT, self::NO_DUPLICATES, 4];
-        $this->_types['address'] = [self::STRING, 94];
-        $this->_types['city'] = [self::STRING, 50];
+        'name' => [50, self::NOT_NULL, self::STRING, self::NO_DUPLICATES],
+        'age' => [self::INT, self::NO_DUPLICATES, 4],
+        'address' => [self::STRING, 94],
+        'city' => [self::STRING, 50]
+    ];
 
-        $this->_uniqueIndices[] = ['city', 'address'];
-    }
+
+    const UNIQUEINDICES = [
+
+        ['city', 'address']
+    ];
 
 
     public $name = '';
@@ -32,5 +36,3 @@ class CustomerTypedWithNoDuplicates extends DataBaseObject{
 
     public $city = null;
 }
-
-?>

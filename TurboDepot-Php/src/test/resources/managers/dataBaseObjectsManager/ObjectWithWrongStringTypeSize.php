@@ -10,12 +10,11 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 class ObjectWithWrongStringTypeSize extends DataBaseObject{
 
 
-    protected function setup(){
+    const TYPES = [
 
-        $this->_types['name'] = [self::STRING, 'invalidsize'];
-    }
+        'name' => [self::STRING, 'invalidsize']
+    ];
+
 
     public $name = '';
 }
-
-?>

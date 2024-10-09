@@ -18,16 +18,20 @@ namespace org\turbodepot\src\main\php\model;
 final class UserObject extends DataBaseObject{
 
 
-    protected function setup(){
+    const TYPES = [
 
-        $this->_types['domain'] = [250, self::NOT_NULL, self::STRING];
-        $this->_types['roles'] = [250, self::NOT_NULL, self::ARRAY, self::STRING];
-        $this->_types['userName'] = [100, self::NOT_NULL, self::STRING];
-        $this->_types['description'] = [2000, self::NOT_NULL, self::STRING];
-        $this->_types['data'] = [5000, self::NOT_NULL, self::STRING];
+        'domain' => [250, self::NOT_NULL, self::STRING],
+        'roles' => [250, self::NOT_NULL, self::ARRAY, self::STRING],
+        'userName' => [100, self::NOT_NULL, self::STRING],
+        'description' => [2000, self::NOT_NULL, self::STRING],
+        'data' => [5000, self::NOT_NULL, self::STRING]
+    ];
 
-        $this->_uniqueIndices[] = ['domain', 'userName'];
-    }
+
+    const UNIQUEINDICES = [
+
+        ['domain', 'userName']
+    ];
 
 
     /**

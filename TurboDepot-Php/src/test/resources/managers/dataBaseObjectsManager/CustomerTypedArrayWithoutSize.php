@@ -13,16 +13,14 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 class CustomerTypedArrayWithoutSize extends DataBaseObject{
 
 
-    protected function setup(){
+    const TYPES = [
 
-        $this->_types['name'] = [20, self::NOT_NULL, self::STRING];
-        $this->_types['arrayProp'] = [self::ARRAY, self::DOUBLE];
-    }
+        'name' => [20, self::NOT_NULL, self::STRING],
+        'arrayProp' => [self::ARRAY, self::DOUBLE]
+    ];
 
 
     public $name = '';
 
     public $arrayProp = [];
 }
-
-?>

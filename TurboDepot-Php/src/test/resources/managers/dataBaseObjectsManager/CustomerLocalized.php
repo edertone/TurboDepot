@@ -13,18 +13,18 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 class CustomerLocalized extends DataBaseObject{
 
 
-    protected function setup(){
+    const TYPES = [
 
-        $this->_types['name'] = [self::STRING, 250];
-        $this->_types['nameLocalized'] = [self::MULTI_LANGUAGE, self::STRING, 20];
-        $this->_types['nameLocalizedNotNull'] = [self::MULTI_LANGUAGE, self::STRING, 20, self::NOT_NULL];
-        $this->_types['birthDate'] = [self::DATETIME, 0];
-        $this->_types['birthDateLocalized'] = [self::MULTI_LANGUAGE, self::DATETIME, 0];
-        $this->_types['age'] = [self::INT, 2];
-        $this->_types['ageLocalized'] = [self::INT, 2, self::MULTI_LANGUAGE];
-        $this->_types['setup'] = [self::BOOL];
-        $this->_types['setupLocalized'] = [self::BOOL, self::MULTI_LANGUAGE];
-    }
+        'name' => [self::STRING, 250],
+        'nameLocalized' => [self::MULTI_LANGUAGE, self::STRING, 20],
+        'nameLocalizedNotNull' => [self::MULTI_LANGUAGE, self::STRING, 20, self::NOT_NULL],
+        'birthDate' => [self::DATETIME, 0],
+        'birthDateLocalized' => [self::MULTI_LANGUAGE, self::DATETIME, 0],
+        'age' => [self::INT, 2],
+        'ageLocalized' => [self::INT, 2, self::MULTI_LANGUAGE],
+        'setup' => [self::BOOL],
+        'setupLocalized' => [self::BOOL, self::MULTI_LANGUAGE]
+    ];
 
 
     public $name = null;
@@ -45,5 +45,3 @@ class CustomerLocalized extends DataBaseObject{
 
     public $setupLocalized = false;
 }
-
-?>

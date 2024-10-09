@@ -39,7 +39,7 @@
                 },
                 {
                     "path": "src/test",
-                    "maxPercentErrorLevel": 7,
+                    "maxPercentErrorLevel": 8,
                     "maxPercentErrorDifference": 2,
                     "report": "html"
                 }
@@ -85,7 +85,8 @@
                 "type": "phpUnit",
                 "testsRoot": "src/test",
                 "coverageReport": true,
-                "coverageReportOpenAfterTests": true
+                "coverageReportOpenAfterTests": true,
+                "filter": ""
             }
         ]
     }

@@ -10,16 +10,16 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 class ObjectWithTypingDisabled extends DataBaseObject{
 
 
-    protected function setup(){
+    const IS_TYPING_MANDATORY = false;
 
-        $this->_isTypingMandatory = false;
 
-        $this->_types['array'] = [self::ARRAY, 20, self::STRING];
-    }
+    const TYPES = [
+
+        'array' => [self::ARRAY, 20, self::STRING]
+    ];
+
 
     public $array = [];
 
     public $notDefined = '';
 }
-
-?>

@@ -13,17 +13,15 @@ use org\turbodepot\src\main\php\managers\DataBaseObjectsManager;
 class ObjectWithWrongNonExistantTypedProperty extends DataBaseObject{
 
 
-    protected function setup(){
+    const TYPES = [
 
-        $this->_types['name'] = [self::STRING, 20];
-        $this->_types['commercialName'] = [self::STRING, 25];
-        $this->_types['nonexistant'] = [self::INT, 2];
-    }
+        'name' => [self::STRING, 20],
+        'commercialName' => [self::STRING, 25],
+        'nonexistant' => [self::INT, 2]
+    ];
 
 
     public $name = '';
 
     public $commercialName = '';
 }
-
-?>

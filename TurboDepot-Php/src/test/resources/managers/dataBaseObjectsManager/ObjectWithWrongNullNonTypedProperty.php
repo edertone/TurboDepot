@@ -9,11 +9,6 @@ use org\turbodepot\src\main\php\model\DataBaseObject;
 class ObjectWithWrongNullNonTypedProperty extends DataBaseObject{
 
 
-    protected function setup(){
-
-    }
-
-
     public $name = '';
 
     public $commercialName = '';
@@ -25,5 +20,3 @@ class ObjectWithWrongNullNonTypedProperty extends DataBaseObject{
      */
     public $age = null;
 }
-
-?>

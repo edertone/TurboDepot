@@ -13,24 +13,30 @@ use org\turbodepot\src\main\php\model\DataBaseObject;
 class CustomerTyped extends DataBaseObject{
 
 
-    protected function setup(){
+    const TYPES = [
 
-        $this->_types['name'] = [20, self::NOT_NULL, self::STRING];
-        $this->_types['commercialName'] = [self::STRING, 25];
-        $this->_types['birthDate'] = [self::DATETIME, 0];
-        $this->_types['miliSecondsDate'] = [3, self::DATETIME];
-        $this->_types['microSecondsDate'] = [6, self::DATETIME];
-        $this->_types['age'] = [self::INT, 2];
-        $this->_types['oneDigitInt'] = [self::INT, 1];
-        $this->_types['sixDigitInt'] = [6, self::INT];
-        $this->_types['twelveDigitInt'] = [self::INT, 12];
-        $this->_types['doubleValue'] = [self::DOUBLE, 5];
-        $this->_types['setup'] = [self::BOOL];
-        $this->_types['emails'] = [75, self::ARRAY, self::STRING];
-        $this->_types['boolArray'] = [self::BOOL, self::ARRAY, self::NOT_NULL];
-        $this->_types['intArray'] = [self::INT, self::ARRAY, 3];
-        $this->_types['doubleArray'] = [self::DOUBLE, 5, self::ARRAY];
-    }
+        'name' => [20, self::NOT_NULL, self::STRING],
+        'commercialName' => [self::STRING, 25],
+        'birthDate' => [self::DATETIME, 0],
+        'miliSecondsDate' => [3, self::DATETIME],
+        'microSecondsDate' => [6, self::DATETIME],
+        'age' => [self::INT, 2],
+        'oneDigitInt' => [self::INT, 1],
+        'sixDigitInt' => [6, self::INT],
+        'twelveDigitInt' => [self::INT, 12],
+        'doubleValue' => [self::DOUBLE, 5],
+        'setup' => [self::BOOL],
+        'emails' => [75, self::ARRAY, self::STRING],
+        'boolArray' => [self::BOOL, self::ARRAY, self::NOT_NULL],
+        'intArray' => [self::INT, self::ARRAY, 3],
+        'doubleArray' => [self::DOUBLE, 5, self::ARRAY]
+    ];
+
+
+    const FOREIGN_DELETE_OBJECTS = [
+
+        'org\turbodepot\src\test\resources\managers\dataBaseObjectsManager\CustomerTypedForeignObject' => ['dbId' => 'customerId']
+    ];
 
 
     public $name = '';
@@ -63,5 +69,3 @@ class CustomerTyped extends DataBaseObject{
 
     public $doubleArray = [];
 }
-
-?>
