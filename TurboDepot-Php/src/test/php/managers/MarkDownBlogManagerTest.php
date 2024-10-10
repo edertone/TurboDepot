@@ -134,7 +134,7 @@ class MarkDownBlogManagerTest extends TestCase {
 
         $post = $this->sut->getPost('2018-10-25', 'en', 'convert-string-to-camelcase-javascript-typescript-php');
         $this->assertSame('Convert string to CamelCase, UpperCamelCase or LowerCamelCase in Javascript, typescript and Php', $post->title);
-        $this->assertSame('convert string to camelcase javascript typescript php', $post->metaTitle);
+        $this->assertSame('Convert string to camelcase javascript typescript php', $post->metaTitle);
         $this->assertSame('What is Camel Case Camel case conversion in TurboCommons library Convert a string to Camel Case in Php Convert a string to Camel Case in Javascrip ...',
             $post->metaDescription);
 

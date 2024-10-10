@@ -319,6 +319,8 @@ class MarkDownBlogManager extends BaseStrictClass{
 
                 $post->metaTitle = implode(' ', $post->keywordsAsArray);
             }
+
+            $post->metaTitle = StringUtils::formatCase($post->metaTitle, StringUtils::FORMAT_SENTENCE_CASE);
         }
 
         return $post;
