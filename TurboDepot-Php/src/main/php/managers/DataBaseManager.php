@@ -375,7 +375,7 @@ class DataBaseManager extends BaseStrictClass {
 
                 $this->_lastError = StringUtils::isEmpty($errorMessage) ? 'unknown sql error' : $errorMessage;
 
-            }else if($mysqlResult === true){
+            }elseif($mysqlResult === true){
 
                 $result = mysqli_affected_rows($this->_mysqlConnectionId);
 
@@ -1535,15 +1535,6 @@ class DataBaseManager extends BaseStrictClass {
         // Calculate the accumulated time for all the queries since start to now
         $this->_accumulatedQueryTime += $querySeconds;
 
-        // generate the query history structure
-        $queryHistory = [];
-        $queryHistory['query'] = $query;
-        $queryHistory['queryError'] = ($queryResult === false ? $this->_lastError : '');
-        $queryHistory['queryDate'] = date('Y/m/d H:i:s', $queryStart);
-        $queryHistory['querySeconds'] = $querySeconds;
-        $queryHistory['querySecondsAccumulated'] = $this->_accumulatedQueryTime;
-        $queryHistory['queryCount'] = 1;
-
         // Check if we must generate a warning due to slow query times
         if($this->warnForSlowQueries > 0 && $querySeconds > $this->warnForSlowQueries){
 
@@ -1556,8 +1547,15 @@ class DataBaseManager extends BaseStrictClass {
             trigger_error('Warning: The SQL queries total execution time has exceeded '.$this->warnForSlowQueriesTotal.' seconds', E_USER_WARNING);
         }
 
-        // Reaching here means this is the first time the query is executed, so we will store it
-        $this->_queryHistory[] = $queryHistory;
+        // Create the query history entry and store it
+        $this->_queryHistory[] = [
+            'query' => $query,
+            'queryError' => $queryResult === false ? $this->_lastError : '',
+            'queryDate' => date('Y/m/d H:i:s', $queryStart),
+            'querySeconds' => $querySeconds,
+            'querySecondsAccumulated' => $this->_accumulatedQueryTime,
+            'queryCount' => 1
+        ];
     }
 
 
@@ -1571,6 +1569,11 @@ class DataBaseManager extends BaseStrictClass {
      */
     private function _prepareRawValeForSqlQuery($value){
 
+        if(is_string($value)){
+
+            return "'".str_replace("'", "''", $value)."'";
+        }
+
         if($value === null){
 
             return 'NULL';
@@ -1581,6 +1584,6 @@ class DataBaseManager extends BaseStrictClass {
             return $value === true ? "TRUE" : "FALSE";
         }
 
-        return is_string($value) ? "'".$value."'" : $value;
+        return $value;
     }
 }
