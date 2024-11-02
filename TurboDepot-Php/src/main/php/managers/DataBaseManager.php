@@ -358,7 +358,7 @@ class DataBaseManager extends BaseStrictClass {
      * @return int|array <br>
      * - An array of associative arrays with the query result data for queries that generate values (like SELECT, SHOW, DESCRIBE or EXPLAIN). Note that in PHP
      *   all query result values are returned as strings which must be casted to the appropiate types by the user<br>
-     * - An integer containing the affected rows for successful queries that do not generate vaules (like CREATE, DROP, UPDATE, INSERT...).<br>
+     * - An integer containing the affected rows for successful queries that do not generate vaules (like CREATE, DROP, DELETE, UPDATE, INSERT...).<br>
      */
     public function query($query){
 

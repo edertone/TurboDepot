@@ -164,7 +164,7 @@ class StorageFolderManager extends BaseStrictClass{
 
     /**
      * Gives the filesystem location to the storage/data folder.
-     * This folder purpose is to store all the data and files which may be used by our application to persist information
+     * This folder purpose is to store all the data and files which may be used by our application to persist or read information
      *
      * @return string
      */

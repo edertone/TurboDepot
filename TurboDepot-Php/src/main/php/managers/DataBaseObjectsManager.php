@@ -118,6 +118,24 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
+     * To improve overall performance, this array stores a global cache for the calculated database table names for all received object class names
+     *
+     * @var array
+     */
+    private static $_objectTableNamesCache = [];
+
+
+
+    /**
+     * To improve overall performance, this array stores a global cache for the list of properties that object instances have for each class
+     *
+     * @var array
+     */
+    private static $_objectPropertiesCache = [];
+
+
+
+    /**
      * Class that lets us store objects directly to database without having to care about sql queries
      */
     public function __construct(){
@@ -234,6 +252,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
     public function save($objects){
 
         // TODO - PENDING:
+        // TODO - Create a constant PARENT_FOREIGN_OBJECTS to check that an object with the value on the linked property exists stored on database or throw an error
         // TODO - save multilanguage properties
         // TODO - save a property with a complex type
         // TODO - save an array of complex types
@@ -241,11 +260,13 @@ class DataBaseObjectsManager extends BaseStrictClass{
         // TODO - implement performance tests for massive amounts of data save and list
         // TODO - verify that all unit test methods are sorted in the same order as this class methods
 
+        // Compute as much values as possible outside of the for loop
         $resultsDbId = [];
         $resultsCreationDate = [];
         $resultsModificationDate = [];
         $objectsToSave = is_array($objects) ? $objects : [$objects];
         $objectsToSaveCount = count($objectsToSave);
+        $nowDateTime = (new DateTime("now", new DateTimeZone('UTC')))->format($this->_sqlDateFormat);
 
         try {
 
@@ -257,7 +278,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
                 $tableName = $this->getTableNameFromObject($object);
                 $tableData = $this->_updateTablesToFitObject($object, $tableName);
-                $resultsModificationDate[$i] = $tableData['dbmodificationdate'] = (new DateTime("now", new DateTimeZone('UTC')))->format($this->_sqlDateFormat);
+                $resultsModificationDate[$i] = $tableData['dbmodificationdate'] = $nowDateTime;
 
                 // Create or update the object into the database
                 if($tableData['dbid'] === null){
@@ -428,7 +449,26 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     public function getTableNameFromObject(DataBaseObject $object) {
 
-        return $this->tablesPrefix.strtolower(StringUtils::getPathElement(get_class($object)));
+        return $this->_getTableNameFromClass(get_class($object));
+    }
+
+
+    /**
+     * Aux method to obtain the table name from a given class
+     *
+     * @param string $class The full path to the class we want to conver to table name
+     *
+     * @return string
+     */
+    private function _getTableNameFromClass(string $class){
+
+        // Implement a static cache to globally reuse table names for object classes to improve performance
+        if(!isset(self::$_objectTableNamesCache[$class])){
+
+            self::$_objectTableNamesCache[$class] = strtolower(StringUtils::getPathElement($class));
+        }
+
+        return $this->tablesPrefix.self::$_objectTableNamesCache[$class];
     }
 
 
@@ -447,6 +487,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
     private function _convertObjectToTableData(DataBaseObject $object){
 
         $tableData = [];
+        $dateTimeZone = new DateTimeZone('UTC');
 
         foreach ($this->getBasicProperties($object, true) as $property) {
 
@@ -458,8 +499,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             // otherwise an exception will happen
             if(isset($object->{$property}) && $this->_isDateTypeProperty($object, $property)){
 
-                $tableData[$columnName] = (new DateTime($tableData[$columnName], new DateTimeZone('UTC')))
-                    ->format($this->_sqlDateFormat);
+                $tableData[$columnName] = (new DateTime($tableData[$columnName], $dateTimeZone))->format($this->_sqlDateFormat);
             }
 
             if(is_array($tableData[$columnName])){
@@ -799,9 +839,15 @@ class DataBaseObjectsManager extends BaseStrictClass{
     public function getBasicProperties(DataBaseObject $object, bool $includeBaseProperties = false){
 
         $basicProperties = [];
+        $class = get_class($object);
         $excludedProps = array_merge($this->getArrayTypedProperties($object), $this->getMultiLanguageTypedProperties($object));
 
-        foreach (array_keys(get_object_vars($object)) as $property) {
+        if(!isset(self::$_objectPropertiesCache[$class])){
+
+            self::$_objectPropertiesCache[$class] = array_keys(get_object_vars($object));
+        }
+
+        foreach (self::$_objectPropertiesCache[$class] as $property) {
 
             if(!in_array($property, $excludedProps, true)){
 
@@ -824,9 +870,16 @@ class DataBaseObjectsManager extends BaseStrictClass{
     public function getArrayTypedProperties(DataBaseObject $object){
 
         $result = [];
-        $types = get_class($object)::TYPES;
+        $class = get_class($object);
+        $types = $class::TYPES;
 
-        foreach(array_diff(array_keys(get_object_vars($object)), $this->_baseObjectProperties) as $property){
+        // Find the object properties on global cache
+        if(!isset(self::$_objectPropertiesCache[$class])){
+
+            self::$_objectPropertiesCache[$class] = array_keys(get_object_vars($object));
+        }
+
+        foreach(array_diff(self::$_objectPropertiesCache[$class], $this->_baseObjectProperties) as $property){
 
             if(isset($types[$property])){
 
@@ -1065,27 +1118,32 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     public function validateObject(DataBaseObject $object){
 
+        // Cache the most used object values to improve performance
         $class = get_class($object);
         $className = StringUtils::getPathElement($class);
+        $dbId = $object->getDbId();
+        $dbUUID = $object->getDbUUID();
+        $creationDate = $object->getDbCreationDate();
+        $modificationDate = $object->getDbModificationDate();
 
-        if($object->getDbId() !== null && (!is_integer($object->getDbId()) || $object->getDbId() < 1)){
+        if($dbId !== null && (!is_integer($dbId) || $dbId < 1)){
 
-            throw new UnexpectedValueException('Invalid '.$className.' dbId: '.$object->getDbId());
+            throw new UnexpectedValueException('Invalid '.$className.' dbId: '.$dbId);
         }
 
-        if($object->getDbUUID() !== null && (!is_string($object->getDbUUID()) || strlen($object->getDbUUID()) !== 36)){
+        if($dbUUID !== null && (!is_string($dbUUID) || strlen($dbUUID) !== 36)){
 
-            throw new UnexpectedValueException('Invalid '.$className.' dbUUID: '.$object->getDbUUID());
+            throw new UnexpectedValueException('Invalid '.$className.' dbUUID: '.$dbUUID);
         }
 
-        if($object->getDbCreationDate() !== null){
+        if($creationDate !== null){
 
-            $this->_validateDateTimeValue($object->getDbCreationDate(), 6, 'dbCreationDate');
+            $this->_validateDateTimeValue($creationDate, 6, 'dbCreationDate');
         }
 
-        if($object->getDbModificationDate() !== null){
+        if($modificationDate !== null){
 
-            $this->_validateDateTimeValue($object->getDbModificationDate(), 6, 'dbModificationDate');
+            $this->_validateDateTimeValue($modificationDate, 6, 'dbModificationDate');
         }
 
         if($object->getDbDeleted() !== null){
@@ -1093,19 +1151,31 @@ class DataBaseObjectsManager extends BaseStrictClass{
             $this->_validateDateTimeValue($object->getDbDeleted(), 6, 'dbDeleted');
         }
 
-        if($object->getDbId() === null && ($object->getDbCreationDate() !== null || $object->getDbModificationDate() !== null)){
+        if($dbId === null && ($creationDate !== null || $modificationDate !== null)){
 
             throw new UnexpectedValueException('Creation and modification date must be null if dbid is null');
         }
 
+        // Reflection is costly in compute power, so we will statically cache it for reuse between validation calls
+        static $classMethodsCache = [];
+
+        if (!isset($classMethodsCache[$class])) {
+
+            $classMethodsCache[$class] = (new ReflectionClass($class))->getMethods();
+        }
+
+        $classMethods = $classMethodsCache[$class];
+
         // Database objects must not have any unexpected method defined, cause they are only data containers
-        if(($classMethods = (new ReflectionClass($class))->getMethods()) > 0){
+        if($classMethods > 0){
+
+            static $acceptedMethods = ['__set', '__get', 'setup', '__construct', 'getDbId', 'getDbUUID', 'getDbCreationDate',
+                                       'getDbModificationDate', 'getDbDeleted', 'isMultiLanguage', 'getLocales', 'setLocales'];
 
             foreach($classMethods as $classMethod){
 
                 // Custom methods are not allowed on database objects. Only properties can be created
-                if(!in_array($classMethod->name, ['__set', '__get', 'setup', '__construct', 'getDbId', 'getDbUUID', 'getDbCreationDate',
-                    'getDbModificationDate', 'getDbDeleted', 'isMultiLanguage', 'getLocales', 'setLocales'], true)){
+                if(!in_array($classMethod->name, $acceptedMethods, true)){
 
                     throw new UnexpectedValueException('Method is not allowed for DataBaseObject class '.$class.': '.$classMethod->name);
                 }
@@ -1117,10 +1187,18 @@ class DataBaseObjectsManager extends BaseStrictClass{
         $objectLocales = $isMultiLanguageObject ? $object->getLocales() : [];
         $objectMultiLanProperties = $this->getMultiLanguageTypedProperties($object);
 
-        foreach(array_keys(get_class_vars($class)) as $classProperty){
+        // Cache class variables
+        static $classPropertiesCache = [];
+
+        if (!isset($classPropertiesCache[$class])) {
+
+            $classPropertiesCache[$class] = array_keys(get_class_vars($class));
+        }
+
+        foreach($classPropertiesCache[$class] as $classProperty){
 
             // Properties that start with _ are forbidden, cause they are reserved for setup private properties
-            if(substr($classProperty, 0, 1) === '_'){
+            if ($classProperty[0] === '_') {
 
                 throw new UnexpectedValueException('Properties starting with _ are forbidden, but found: '.$classProperty);
             }
@@ -1131,19 +1209,21 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 throw new UnexpectedValueException('Overriding private db property is not allowed: '.$classProperty);
             }
 
-            if($object->{$classProperty} === []){
+            $objectClassPropertyValue = $object->{$classProperty};
+
+            if($objectClassPropertyValue === []) {
 
                 continue;
             }
 
-            if(is_array($object->{$classProperty}) && in_array(null, $object->{$classProperty}, true)){
+            if(is_array($objectClassPropertyValue) && in_array(null, $objectClassPropertyValue, true)){
 
                 throw new UnexpectedValueException('NULL value is not accepted inside array: '.$classProperty);
             }
 
             $propertyExpectedType = $this->_getTypeFromObjectProperty($object, $classProperty);
             $propertyExpectedTypeIsArray = in_array(DataBaseObject::ARRAY, $propertyExpectedType, true);
-            $propertyValuesToCheck = [$object->{$classProperty}];
+            $propertyValuesToCheck = [$objectClassPropertyValue];
             $isMultilanProperty = in_array($classProperty, $objectMultiLanProperties, true);
 
             if($isMultilanProperty){
@@ -1249,7 +1329,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
     public function findAll($class) {
 
         return $this->_generateObjectsFromDbTableData($class,
-            $this->_db->tableGetRows($this->tablesPrefix.strtolower(StringUtils::getPathElement($class)), []));
+            $this->_db->tableGetRows($this->_getTableNameFromClass($class), []));
     }
 
 
@@ -1264,7 +1344,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
     public function findAllToArray($class) {
 
         return $this->_generateAssociativeFromDbTableData($class,
-            $this->_db->tableGetRows($this->tablesPrefix.strtolower(StringUtils::getPathElement($class)), []));
+            $this->_db->tableGetRows($this->_getTableNameFromClass($class), []));
     }
 
 
@@ -1308,8 +1388,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     public function findByDbIds($class, array $dbids) {
 
-        $tableName = $this->tablesPrefix.strtolower(StringUtils::getPathElement($class));
-
         $dbidsArray = [];
 
         for ($i = 0, $l = count($dbids); $i < $l; $i++) {
@@ -1324,7 +1402,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
             $dbidsArray['dbid'] = $dbid;
         }
 
-        $data = $this->_db->tableGetRows($tableName, $dbidsArray);
+        $data = $this->_db->tableGetRows($this->_getTableNameFromClass($class), $dbidsArray);
 
         if($data === false){
 
@@ -1395,7 +1473,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         try {
 
-            $data = $this->_db->tableGetRows($this->tablesPrefix.strtolower(StringUtils::getPathElement($class)), $columns);
+            $data = $this->_db->tableGetRows($this->_getTableNameFromClass($class), $columns);
 
         } catch (Throwable $e) {
 
@@ -1597,8 +1675,6 @@ class DataBaseObjectsManager extends BaseStrictClass{
      */
     public function deleteByPropertyValues($class, array $propertyValues){
 
-        $tableName = $this->tablesPrefix.strtolower(StringUtils::getPathElement($class));
-
         $columns = [];
 
         foreach ($propertyValues as $key => $value) {
@@ -1607,7 +1683,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
         }
 
         return $this->deleteByDbIds($class,
-            array_map(function ($p) { return $p['dbid']; }, $this->_db->tableGetRows($tableName, $columns)));
+            array_map(function ($p) { return $p['dbid']; }, $this->_db->tableGetRows($this->_getTableNameFromClass($class), $columns)));
     }
 
 
@@ -1627,7 +1703,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
     public function deleteByDbIds($class, array $dbIds){
 
         $deletedObjectsCount = 0;
-        $tableName = $this->tablesPrefix.strtolower(StringUtils::getPathElement($class));
+        $tableName = $this->_getTableNameFromClass($class);
 
         $this->_db->transactionBegin();
 
@@ -1641,7 +1717,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
                 if(!empty($class::FOREIGN_DELETE_OBJECTS) && ($object = $this->findByDbId($class, $dbId)) !== null){
 
                     // Loop all the foreign object classes to be deleted
-                    foreach ($class::FOREIGN_DELETE_OBJECTS as $foreignObjectClass => $properties) {
+                    foreach ($class::FOREIGN_DELETE_OBJECTS as $foreignClass => $properties) {
 
                         // Obtain the values for the object that must exist on foreign objects to be deleted
                         $propertiesToDelete = [];
@@ -1654,20 +1730,18 @@ class DataBaseObjectsManager extends BaseStrictClass{
                         // Execute the deletion of the related foreign objects of the current class that match the object property values
                         try {
 
-                            $this->deleteByPropertyValues($foreignObjectClass, $propertiesToDelete);
+                            $this->deleteByPropertyValues($foreignClass, $propertiesToDelete);
 
                         } catch (Throwable $e) {
 
-                            if(!class_exists($foreignObjectClass)){
+                            if(!class_exists($foreignClass)){
 
-                                throw new UnexpectedValueException('Invalid foreign class specified: '.$foreignObjectClass);
+                                throw new UnexpectedValueException('Invalid foreign class specified: '.$foreignClass);
                             }
 
                             // If the foreign object db table does not exist, we will ignore the deletion error. Otherwise, the error
                             // will be thrown. This is because maybe no any foreign object is saved yet.
-                            $foreignObjectTable = $this->tablesPrefix.strtolower(StringUtils::getPathElement($foreignObjectClass));
-
-                            if($this->getDataBaseManager()->tableExists($foreignObjectTable)){
+                            if($this->getDataBaseManager()->tableExists($this->_getTableNameFromClass($foreignClass))){
 
                                 throw $e;
                             }

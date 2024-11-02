@@ -112,27 +112,6 @@ class DataBaseObjectsManager_Objects_read_and_list_MariaDb_Test extends TestCase
      *
      * @return void
      */
-    public function testFindAll_thousand_objects(){
-
-        // Create 1000 customer typed objects and verify the list is correct
-//         for ($i = 0; $i < 1000; $i++) {
-
-//             $this->sut->save(new CustomerTyped());
-//         }
-
-//         $this->assertSame(1001, count($this->sut->findAll(CustomerTyped::class)));
-
-        // TODO - we must fix the save performance on thousand elements, cause _updateTablesToFitObject method is always called
-        // and should be called in a lazy form, only if save fails ?
-        $this->markTestIncomplete('This test has not been implemented yet.');
-    }
-
-
-    /**
-     * test
-     *
-     * @return void
-     */
     public function testFindAllToArray(){
 
         // Create 1 customer typed and make sure its data is correctly obtained

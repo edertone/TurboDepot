@@ -12,7 +12,6 @@
 
 namespace org\turbodepot\src\main\php\managers;
 
-use ReflectionObject;
 use Throwable;
 use stdClass;
 use DateTime;
@@ -33,18 +32,55 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
+     * 3600 by default
+     *
      * Defines the number of seconds that user tokens will be active since they are created. After the number of seconds has passed,
-     * tokens will expire and a login will be necessary to obtain a new token. (Note that isTokenLifeTimeRecycled will affect this value)
+     * tokens will expire and it will be necessary to obtain a new token. (Note that isTokenLifeTimeRecycled will affect this value)
+     *
+     * @var int
      */
     public $tokenLifeTime = 3600;
 
 
     /**
+     * null by default
+     *
+     * Defines the number of times that user tokens will be allowed to be used since they are created. After a token is validated or used
+     * this number of times, the token will be considered as expired and it will be necessary to obtain a new token.
+     *
+     * Setting this value to null means there's no limit on number of token uses
+     *
+     * @var int
+     */
+    public $tokenUseCount = null;
+
+
+    /**
+     * True by default
+     *
      * If set to true, every time a token is validated the lifetime will be restarted to the configured token lifetime. So the token lifetime
      * will start counting again after the last token validation has been performed. So with a 10 minutes token lifetime if we perform 2 token
      * validations in 5 minutes, the time will still be 10 minutes after the last validation's been performed.
+     *
+     * @var boolean
      */
     public $isTokenLifeTimeRecycled = true;
+
+
+    /**
+     * Flag that configures how does the class behave when multiple user logins and logouts are performed in parallel.
+     *
+     * If set to true, performing several consecutive logins and logouts will not delete previously created tokens, so in fact
+     * the same user may be able to start different parallel user sessions.
+     *
+     * If set to false, any new login or logout operation will cause all the previous user tokens to be destroyed, effectively
+     * invalidating all previous sessions.
+     *
+     * Default value is true
+     *
+     * @var boolean
+     */
+    public $isMultipleUserSessionsAllowed = true;
 
 
     /**
@@ -934,12 +970,12 @@ class UsersManager extends BaseStrictClass{
             throw new UnexpectedValueException('Invalid token: '.$token);
         }
 
-        return $this->_databaseObjectsManager->findByDbId(UserObject::class, $tokenData[0]['dbid']);
+        return $this->_databaseObjectsManager->findByDbId(UserObject::class, $tokenData[0]['userdbid']);
     }
 
 
     /**
-     * Get a user instance from the database using the provided username string.
+     * Get from database a user instance on the current users domain given a valid username string.
      *
      * @param string $userName A valid user name
      *
@@ -1275,7 +1311,7 @@ class UsersManager extends BaseStrictClass{
 
         if (substr_count($base64Decoded, ',') !== 1) {
 
-            return '';
+            throw new UnexpectedValueException('Incorrectly encoded credentials');
         }
 
         return base64_decode(explode(',', $base64Decoded)[0]);
@@ -1298,7 +1334,7 @@ class UsersManager extends BaseStrictClass{
 
         if (substr_count($base64Decoded, ',') !== 1) {
 
-            return '';
+            throw new UnexpectedValueException('Incorrectly encoded credentials');
         }
 
         return base64_decode(explode(',', $base64Decoded)[1]);
@@ -1306,7 +1342,11 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Perform the login for the specified username and password, and generate a new token to be used for subsequent logins
+     * Perform the login for the specified username and password, and generate a new token to be used for subsequent logins.
+     * The created token will be defined using the currently specified class values for tokenLifeTime, useCount, isTokenLifeTimeRecycled, etc
+     *
+     * IMPORTANT: Performing a new login will destroy any existing previous tokens that exist for that user and give us a new fresh one,
+     * which will be then the only one valid.
      *
      * @param string $userName The username for the user we want to login
      * @param string $password The password for the user we want to login
@@ -1335,15 +1375,21 @@ class UsersManager extends BaseStrictClass{
                 throw new UnexpectedValueException('Specified user does not have a stored password: '.$userName);
             }
 
-            if(count($dbPassword) === 0){
+            if(empty($dbPassword)){
 
                 throw new UnexpectedValueException('Specified user does not have a stored password: '.$userName);
             }
 
             if(count($dbPassword) === 1 && password_verify($password, $dbPassword[0]['password'])){
 
+                // Clear any previously existing tokens if necessary
+                if(!$this->isMultipleUserSessionsAllowed){
+
+                    $this->_deleteAllUserTokens($user[0]->userName);
+                }
+
                 $result = new stdClass();
-                $result->token = $this->createToken($user[0]);
+                $result->token = $this->createToken($user[0]->userName);
                 $result->user = $user[0];
                 $result->operations = $this->getUserOperations($userName);
 
@@ -1352,56 +1398,6 @@ class UsersManager extends BaseStrictClass{
         }
 
         throw new UnexpectedValueException('Authentication failed');
-    }
-
-
-    /**
-     * Generate a token string for the provided user and stores it on database so it can be later verified
-     *
-     * @param UserObject $user An instance of the user fo which we want to create a token.
-     *
-     * @return string
-     */
-    private function createToken(UserObject $user){
-
-        $expiryDate = (new DateTime('+'.$this->tokenLifeTime.' seconds', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
-
-        $token = base64_encode(StringUtils::generateRandom(75, 75).
-            StringUtils::limitLen(md5($user->userName).md5($expiryDate), 25));
-
-        // If a token for the given user already exists, we will simply recycle it and return it
-        try {
-
-            $existingTokens = $this->_db->tableGetRows($this->_tableToken, ['dbid' => $user->getDbId()]);
-
-            if(count($existingTokens) === 1 && $this->isTokenValid($existingTokens[0]['token'])){
-
-                return $existingTokens[0]['token'];
-            }
-
-        } catch (Throwable $e) {
-
-            // Nothing to do
-        }
-
-        try {
-
-            $this->_db->tableAddRows($this->_tableToken, [['token' => $token, 'dbid' => $user->getDbId(), 'expires' => $expiryDate]]);
-
-        } catch (Throwable $e) {
-
-            if($this->_db->tableAlterToFitDefinition($this->_tableToken, [
-                'columns' => ['token varchar(150) NOT NULL', 'dbid '.$this->_unsignedBigIntSqlTypeDef, 'expires '.$this->_db->getSQLDateTimeType(false)],
-                'primaryKey' => ['dbid'],
-                'foreignKey' => [[$this->_tableToken.'_'.$this->_tableUserObject.'_fk', ['dbid'], $this->_tableUserObject, ['dbid']]]])){
-
-                return $this->createToken($user);
-            }
-
-            throw new UnexpectedValueException('Could not create '.$this->_tableToken.' table: '.$e->getMessage());
-        }
-
-        return $token;
     }
 
 
@@ -1422,14 +1418,119 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Test that the current token is active and valid, and that it is allowed to perform the specified list of user operations
+     * Generates a token string for the provided user and stores it on database so it can be later verified to identify that user.
+     *
+     * A token is basically a temporary user credential. The most common user token is the one that is created once we call to the login method to
+     * start a user session. But we may want to create other tokens for other specific purposes: We can generate multiple tokens for the same user
+     * and they will be all valid but with different expiration caracteristics. This can be useful if we need to provide different expiration
+     * times or reusability for each token on different application contexts. Any created token will have exactly the same access permisions
+     * as the user it relates to.
+     *
+     * @param string $userName A valid user name for the current domain
+     * @param array $options An associative array with the token setup. Each key must contain one of the following:<br>
+     *              lifeTime, useCount, isLifeTimeRecycled (Check "See Also" section for docs
+     *              on each option meaning and usage)<br>
+     *              All options values which are not specified on this array will be obtained from the class defaults.
+     *
+     * @see UsersManager::$tokenLifeTime
+     * @see UsersManager::$tokenUseCount
+     * @see UsersManager::$isTokenLifeTimeRecycled
+     *
+     * @return string The generated token string
+     */
+    public function createToken(string $userName, array $options = []){
+
+        $user = $this->findUserByUserName($userName);
+
+        // Check if we need to use the custom values or the class defaults
+        $lifeTime = $this->tokenLifeTime;
+        $useCount = $this->tokenUseCount;
+        $isLifeTimeRecycled = $this->isTokenLifeTimeRecycled;
+
+        foreach (array_keys($options) as $option) {
+
+            switch ($option) {
+
+                case 'lifeTime':
+                    $lifeTime = $options[$option];
+                    break;
+
+                case 'useCount':
+                    $useCount = $options[$option];
+                    break;
+
+                case 'isLifeTimeRecycled':
+                    $isLifeTimeRecycled = $options[$option];
+                    break;
+
+                default:
+                    throw new UnexpectedValueException("Invalid option: $option");
+            }
+        }
+
+        // Verify options are all valid
+        if(!is_int($lifeTime)){
+
+            throw new UnexpectedValueException("Invalid lifeTime value: $lifeTime");
+        }
+
+        if(!is_int($useCount) && $useCount !== null){
+
+            throw new UnexpectedValueException("Invalid useCount value: $useCount");
+        }
+
+        if(!is_bool($isLifeTimeRecycled)){
+
+            throw new UnexpectedValueException("Invalid isLifeTimeRecycled value: $isLifeTimeRecycled");
+        }
+
+        $expiryDate = (new DateTime('+'.$lifeTime.' seconds', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
+
+        $token = base64_encode(StringUtils::generateRandom(75, 75).
+            StringUtils::limitLen(md5($userName).md5($expiryDate), 25));
+
+        try {
+
+            $this->_db->tableAddRows($this->_tableToken,
+                [['token' => $token, 'userdbid' => $user->getDbId(), 'expires' => $expiryDate,
+                  'lifetime' => $lifeTime, 'islifetimerecycled' => $isLifeTimeRecycled ? 1 : 0, 'useCount' => $useCount]]);
+
+        } catch (Throwable $e) {
+
+            if($this->_db->tableAlterToFitDefinition($this->_tableToken, [
+                'columns' => ['token VARCHAR(150) NOT NULL',
+                    'userdbid '.$this->_unsignedBigIntSqlTypeDef,
+                    'expires '.$this->_db->getSQLDateTimeType(false),
+                    'lifetime INT UNSIGNED NOT NULL',
+                    'islifetimerecycled tinyint(1) NOT NULL',
+                    'usecount INT'
+                ],
+                'primaryKey' => ['token'],
+                'foreignKey' => [[$this->_tableToken.'_'.$this->_tableUserObject.'_fk', ['userdbid'], $this->_tableUserObject, ['dbid']]]])){
+
+                return $this->createToken($userName);
+            }
+
+            throw new UnexpectedValueException('Could not create '.$this->_tableToken.' table: '.$e->getMessage());
+        }
+
+        return $token;
+    }
+
+
+    /**
+     * Test that the current token is active and valid.
+     * This won't give us any other info like which user or which access level this token has. It is only used
+     * to verify that a token exists and is active.
      *
      * @param string $token An active and valid user token
-     * @param array $operations TODO
      *
-     * @return True if the token is valid for the provided list of operations or false otherwise.
+     * @see UsersManager::isTokenAllowedTo
+     * @see UsersManager::findUserByToken
+     *
+     * @return True if the token is valid and currently active. False if not found or expired
      */
-    public function isTokenValid(string $token, array $operations = []){
+    public function isTokenValid(string $token){
 
         StringUtils::forceNonEmptyString($token, '', 'token must have a value');
 
@@ -1442,27 +1543,58 @@ class UsersManager extends BaseStrictClass{
             return false;
         }
 
+        // The token was found on db, so we will check if it is still valid
         if(count($tokenData) === 1){
 
-            if(new DateTime($tokenData[0]['expires'], new DateTimeZone('UTC')) > new DateTime(null, new DateTimeZone('UTC'))){
+            $tokenValue = $tokenData[0]['token'];
+            $tokenUseCount = $tokenData[0]['usecount'];
+            $dateTimeZone = new DateTimeZone('UTC');
 
-                if($this->isTokenLifeTimeRecycled === true){
+            // If the token expiration date is after the current system date, and use count is null or avobe zero, token will be valid
+            if(new DateTime($tokenData[0]['expires'], $dateTimeZone) > new DateTime(null, $dateTimeZone) &&
+               ($tokenUseCount === null || $tokenUseCount > 0)){
 
-                    $newExpiryDate = (new DateTime('+'.$this->tokenLifeTime.' seconds', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
+                $tableValuesToUpdate = [];
 
-                    $this->_db->tableUpdateRow($this->_tableToken, ['token' => $tokenData[0]['token']], ['expires' => $newExpiryDate]);
+                // Check if we must recycle the token expiration date
+                if((int)$tokenData[0]['islifetimerecycled'] === 1){
+
+                    $tableValuesToUpdate['expires'] = (new DateTime('+'.$tokenData[0]['lifetime'].' seconds', $dateTimeZone))->format('Y-m-d H:i:s');
+                }
+
+                // Check if we must reduce the usecount value
+                if($tokenUseCount !== null){
+
+                    $tableValuesToUpdate['usecount'] = $tokenUseCount - 1;
+                }
+
+                // Update the token table if expiry date was recycled or use count reduced
+                if(!empty($tableValuesToUpdate)){
+
+                    $this->_db->tableUpdateRow($this->_tableToken, ['token' => $tokenValue], $tableValuesToUpdate);
                 }
 
                 return true;
             }
 
-            if($this->_db->tableDeleteRows($this->_tableToken, ['token' => $tokenData[0]['token']]) === 0){
+            // Reaching here means the token is not valid. We will remove it from database
+            if($this->_db->tableDeleteRows($this->_tableToken, ['token' => $tokenValue]) === 0){
 
                 throw new UnexpectedValueException('Could not delete expired token from db');
             }
         }
 
         return false;
+    }
+
+
+    /**
+     * TODO
+     * @param string $token
+     * @param array $operations
+     */
+    public function isTokenAllowedTo(string $token, array $operations){
+
     }
 
 
@@ -1494,6 +1626,41 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
+     * Delete any existing tokens that are expired
+     *
+     * This method should be periodically called via a cron task to clean all unused and expired tokens from database.
+     *
+     * @return int The number of deleted tokens
+     */
+    public function deleteAllExpiredTokens(){
+
+        return $this->_db->query('DELETE FROM '.$this->_tableToken.' WHERE (expires < NOW()) OR (usecount IS NOT NULL AND usecount <= 0)');
+    }
+
+
+    /**
+     * Aux method to clean all the tokens that are linked to the specified user on the current domain.
+     *
+     * @param string $userName The user name on the current domain for which we want to purge all tokens
+     */
+    private function _deleteAllUserTokens(string $userName){
+
+        $user = $this->findUserByUserName($userName);
+
+        try {
+
+            return $this->_db->query('DELETE FROM '.$this->_tableToken.' WHERE userdbid = '.$user->getDbId());
+
+        } catch (Throwable $e) {
+
+            // We will ignore errors trying to delete the tokens cause it will be probably due to table still not existing
+        }
+
+        return 0;
+    }
+
+
+    /**
      * Perform the logout to destroy the specified user token
      *
      * @param string $token The token that represents the user we want to logout
@@ -1508,15 +1675,17 @@ class UsersManager extends BaseStrictClass{
             return false;
         }
 
-        // Purge the provided token
-        if($this->_db->tableDeleteRows($this->_tableToken, ['token' => $token]) === 0){
+        if($this->isMultipleUserSessionsAllowed){
 
-            return false;
+            // Purge the provided token
+            $result = $this->_db->tableDeleteRows($this->_tableToken, ['token' => $token]) === 1;
+
+        }else{
+
+            // Clear previously existing user tokens
+            $result = $this->_deleteAllUserTokens($this->findUserByToken($token)->userName) > 0;
         }
 
-        // Purge all the other possibly expired tokens
-        $this->_db->query('DELETE FROM '.$this->_databaseObjectsManager->tablesPrefix.'token WHERE expires < NOW()');
-
-        return true;
+        return $result;
     }
 }

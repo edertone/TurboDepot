@@ -20,6 +20,8 @@ We want to increase this list. So! if you want to translate the library to your 
 - Save, read, list, and manage users, their permissions, tokens login, and security checks
 - Save and read application temporary files
 - Save and read from an easy to use file system cache
+- Operate with text translations and resource bundles
+- Contains a library of pre translated texts, organized into common areas and ready to be used in your application
 - Operate with the OS terminal with classes that emulate its features
 - Operate with the application main console with classes that emulate its features
 - Easy but still powerful: Tested with massive amounts of stored objects. Heavily optimized under the hood for best performance

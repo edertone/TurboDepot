@@ -376,6 +376,19 @@ class UsersManagerTest extends TestCase {
     }
 
 
+    /**
+     * test
+     */
+    public function testSaveUser_inject_problematic_sql_characters(){
+
+       // Test ok values
+        $user = new UserObject();
+        $user->userName = "user'on";
+        $this->sut->saveUser($user);
+        $this->assertSame(["user'on"], $this->db->tableGetColumnValues('usr_userobject', 'username'));
+    }
+
+
     /** test */
     public function testSaveUser_table_does_not_exist_and_is_created(){
 
@@ -502,6 +515,29 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->saveUserCustomFields([1,2,3], new Test1CustomFieldsObject()); }, '/must be of the type string, array given/');
     }
 
+    /** test */
+    public function testSaveUserCustomFields_inject_problematic_sql_characters(){
+
+        // Create a custom fields object with problematic characters
+        $custom = new Test1CustomFieldsObject();
+        $custom->address = "som'e address";
+        $custom->city = 'hell"o';
+        $custom->company = '"1\' OR \'1\'=\'1"';
+        $custom->district = "'; DROP TABLE users; --";
+        $custom->occupation = "試してみる";
+
+        $user1 = new UserObject();
+        $user1->userName = 'user';
+        $this->sut->saveUser($user1);
+
+        $this->sut->saveUserCustomFields($user1->userName, $custom);
+        $this->assertSame(["som'e address"], $this->db->tableGetColumnValues('usr_userobject_customfields', 'address'));
+        $this->assertSame(['hell"o'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'city'));
+        $this->assertSame(['"1\' OR \'1\'=\'1"'], $this->db->tableGetColumnValues('usr_userobject_customfields', 'company'));
+        $this->assertSame(["'; DROP TABLE users; --"], $this->db->tableGetColumnValues('usr_userobject_customfields', 'district'));
+        $this->assertSame(["試してみる"], $this->db->tableGetColumnValues('usr_userobject_customfields', 'occupation'));
+    }
+
 
     /** test */
     public function testSaveUserCustomFields_verify_concurrentAccess(){
@@ -561,7 +597,7 @@ class UsersManagerTest extends TestCase {
     /** test */
     public function testSaveUserCustomFields_verify_table_gets_correctly_modified_after_trying_to_save_different_set_of_custom_fields(){
 
-        // TODO - start a transaction, create a user, try to add invalid custom fields and verify nothing has been saved
+        // TODO
         $this->markTestIncomplete('This test has not been implemented yet.');
     }
 
@@ -1244,14 +1280,14 @@ class UsersManagerTest extends TestCase {
         $this->assertSame(['user'], $this->db->tableGetColumnValues($tableName, 'username'));
         $this->assertSame(['1'], $this->db->tableGetColumnValues($tableName.'_password', 'dbid'));
         $this->assertSame(['1'], $this->db->tableGetColumnValues($tableName.'_roles', 'dbid'));
-        $this->assertSame(['1'], $this->db->tableGetColumnValues($this->dbObjectsManager->tablesPrefix.'token', 'dbid'));
+        $this->assertSame(['1'], $this->db->tableGetColumnValues($this->dbObjectsManager->tablesPrefix.'token', 'userdbid'));
         $this->assertSame(['1'], $this->db->tableGetColumnValues($tableName.'_mails', 'dbid'));
 
         $this->assertTrue($this->sut->deleteUser($user->userName));
         $this->assertSame([], $this->db->tableGetColumnValues($tableName, 'username'));
         $this->assertSame([], $this->db->tableGetColumnValues($tableName.'_password', 'dbid'));
         $this->assertSame([], $this->db->tableGetColumnValues($tableName.'_roles', 'dbid'));
-        $this->assertSame([], $this->db->tableGetColumnValues($this->dbObjectsManager->tablesPrefix.'token', 'dbid'));
+        $this->assertSame([], $this->db->tableGetColumnValues($this->dbObjectsManager->tablesPrefix.'token', 'userdbid'));
         $this->assertSame([], $this->db->tableGetColumnValues($tableName.'_mails', 'dbid'));
 
         // Test wrong values
@@ -1306,7 +1342,7 @@ class UsersManagerTest extends TestCase {
         $this->assertSame(['user1', 'user2', 'user3'], $this->db->tableGetColumnValues($tableName, 'username'));
         $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($tableName.'_password', 'dbid'));
         $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($tableName.'_roles', 'dbid'));
-        $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($this->dbObjectsManager->tablesPrefix.'token', 'dbid'));
+        $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($this->dbObjectsManager->tablesPrefix.'token', 'userdbid'));
         $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($tableName.'_mails', 'dbid'));
 
         // Call the method with a non existant user and make sure that none of the provided is deleted
@@ -1316,14 +1352,14 @@ class UsersManagerTest extends TestCase {
         $this->assertSame(['user1', 'user2', 'user3'], $this->db->tableGetColumnValues($tableName, 'username'));
         $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($tableName.'_password', 'dbid'));
         $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($tableName.'_roles', 'dbid'));
-        $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($this->dbObjectsManager->tablesPrefix.'token', 'dbid'));
+        $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($this->dbObjectsManager->tablesPrefix.'token', 'userdbid'));
         $this->assertSame(['1', '2', '3'], $this->db->tableGetColumnValues($tableName.'_mails', 'dbid'));
 
         $this->assertSame(2, $this->sut->deleteUsers([$user1->userName, $user2->userName]));
         $this->assertSame(['user3'], $this->db->tableGetColumnValues($tableName, 'username'));
         $this->assertSame(['3'], $this->db->tableGetColumnValues($tableName.'_password', 'dbid'));
         $this->assertSame(['3'], $this->db->tableGetColumnValues($tableName.'_roles', 'dbid'));
-        $this->assertSame(['3'], $this->db->tableGetColumnValues($this->dbObjectsManager->tablesPrefix.'token', 'dbid'));
+        $this->assertSame(['3'], $this->db->tableGetColumnValues($this->dbObjectsManager->tablesPrefix.'token', 'userdbid'));
         $this->assertSame(['3'], $this->db->tableGetColumnValues($tableName.'_mails', 'dbid'));
 
         // Test wrong values
@@ -1569,38 +1605,20 @@ class UsersManagerTest extends TestCase {
      */
     public function testDecodeUserName(){
 
-        // Test empty values
-        // TODO
+        $encoded = $this->sut->encodeUserAndPassword('user1', 'psw');
+        $this->assertSame('user1', $this->sut->decodeUserName($encoded));
 
-        // Test ok values
-        // TODO
-
-        // Test wrong values
-        // TODO
-
-        // Test exceptions
-        // TODO
-
-        $this->markTestIncomplete('This test has not been implemented yet.');
+        AssertUtils::throwsException(function() { $this->sut->decodeUserName('invalid encoded string'); }, '/Incorrectly encoded credentials/');
     }
 
 
     /** test */
     public function testDecodePassword(){
 
-        // Test empty values
-        // TODO
+        $encoded = $this->sut->encodeUserAndPassword('user1', 'psw');
+        $this->assertSame('psw', $this->sut->decodePassword($encoded));
 
-        // Test ok values
-        // TODO
-
-        // Test wrong values
-        // TODO
-
-        // Test exceptions
-        // TODO
-
-        $this->markTestIncomplete('This test has not been implemented yet.');
+        AssertUtils::throwsException(function() { $this->sut->decodePassword('invalid encoded string'); }, '/Incorrectly encoded credentials/');
     }
 
 
@@ -1613,10 +1631,11 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->login(); }, '/Too few arguments to function/');
         AssertUtils::throwsException(function() { $this->sut->login(null, null); }, '/Argument 1 passed to .*login.* must be of the type string, null given/');
         AssertUtils::throwsException(function() { $this->sut->login([], []); }, '/Argument 1 passed to .*login.* must be of the type string, array given/');
-
         AssertUtils::throwsException(function() { $this->sut->login('', ''); }, '/Authentication failed/');
 
         // Test ok values
+        $this->assertTrue($this->sut->isMultipleUserSessionsAllowed);
+
         $user = new UserObject();
         $user->userName = 'user';
         $this->sut->saveUser($user);
@@ -1641,60 +1660,225 @@ class UsersManagerTest extends TestCase {
 
         $this->assertSame([$login1Result->token, $login2Result->token], $this->db->tableGetColumnValues('usr_token', 'token'));
 
-        $this->assertSame(['1', '2'], $this->db->tableGetColumnValues('usr_token', 'dbid'));
+        $this->assertSame(['1', '2'], $this->db->tableGetColumnValues('usr_token', 'userdbid'));
 
-        // Validate that a token is reused and recycled when performing several logins for the same user
-        $this->sut->tokenLifeTime = 3;
-        $token1 = $this->sut->login('user', 'psw')->token;
-        $this->assertSame($token1, $login1Result->token);
-        $this->assertSame([$login1Result->token, $login2Result->token], $this->db->tableGetColumnValues('usr_token', 'token'));
-        sleep(1);
-        $token1 = $this->sut->login('user', 'psw')->token;
-        $this->assertSame($token1, $login1Result->token);
-        sleep(1);
-        $token1 = $this->sut->login('user', 'psw')->token;
-        $this->assertSame($token1, $login1Result->token);
-        sleep(1);
-        $token1 = $this->sut->login('user', 'psw')->token;
-        $this->assertSame($token1, $login1Result->token);
-        sleep(1);
-        $token1 = $this->sut->login('user', 'psw')->token;
-        $this->assertSame($token1, $login1Result->token);
-        $this->assertTrue($this->sut->isTokenValid($token1));
-        $token2 = $this->sut->login('user2', 'psw2')->token;
-        $this->assertSame($token2, $login2Result->token);
-        $this->assertSame([$login1Result->token, $login2Result->token], $this->db->tableGetColumnValues('usr_token', 'token'));
+        // Validate that all tokens are deleted once a new login is performed, and a new fresh one is generated
+        $tokensOnDB = $this->db->tableGetColumnValues('usr_token', 'token');
+        $this->assertSame(2, count($tokensOnDB));
+        $this->assertContains($login1Result->token, $tokensOnDB);
+        $this->assertContains($login2Result->token, $tokensOnDB);
+
+        $newToken1 = $this->sut->login('user', 'psw')->token;
+        $this->assertNotSame($newToken1, $login1Result->token);
+        $tokensOnDB = $this->db->tableGetColumnValues('usr_token', 'token');
+        $this->assertSame(3, count($tokensOnDB));
+        $this->assertContains($newToken1, $tokensOnDB);
+        $this->assertContains($login2Result->token, $tokensOnDB);
+
+        $newToken2 = $this->sut->login('user2', 'psw2')->token;
+        $this->assertNotSame($newToken2, $login2Result->token);
+        $tokensOnDB = $this->db->tableGetColumnValues('usr_token', 'token');
+        $this->assertSame(4, count($tokensOnDB));
+        $this->assertContains($newToken1, $tokensOnDB);
+        $this->assertContains($newToken2, $tokensOnDB);
 
         // Test wrong values
+        // Test exceptions
         AssertUtils::throwsException(function() { $this->sut->login('invalid user', 'invalid token'); }, '/Authentication failed/');
+        AssertUtils::throwsException(function() { $this->sut->login('user2', 'psw'); }, '/Authentication failed/');
 
         $user = new UserObject();
         $user->userName = 'user3';
         $this->sut->saveUser($user);
         AssertUtils::throwsException(function() { $this->sut->login('user3', 'psw'); }, '/Specified user does not have a stored password: user3/');
-        // TODO
+    }
 
-        // Test exceptions
-        // TODO
+
+    /**
+     * test
+     */
+    public function testLogin_with_multiple_user_sessions_disabled(){
+
+        // Disable multi session login
+        $this->sut->isMultipleUserSessionsAllowed = false;
+
+        // Create 2 test users
+        $user1 = new UserObject();
+        $user1->userName = 'user1';
+        $this->sut->saveUser($user1);
+        $this->sut->setUserPassword($user1->userName, 'psw');
+
+        $user2 = new UserObject();
+        $user2->userName = 'user2';
+        $this->sut->saveUser($user2);
+        $this->sut->setUserPassword($user2->userName, 'psw');
+
+        // Login first user two consecutive times and make sure session is destroyed
+        $usr1Token1 = $this->sut->login($user1->userName, 'psw')->token;
+        $this->assertSame([$usr1Token1], $this->db->tableGetColumnValues('usr_token', 'token'));
+
+        $usr1Token2 = $this->sut->login($user1->userName, 'psw')->token;
+        $this->assertNotSame($usr1Token1, $usr1Token2);
+        $this->assertSame([$usr1Token2], $this->db->tableGetColumnValues('usr_token', 'token'));
+
+        // Login second user two consecutive times, creating two different tokkens before second login and make sure
+        // all first session tokens are destroyed after second login
+        $usr2Token1 = $this->sut->login($user2->userName, 'psw')->token;
+        $this->assertSame([$usr1Token2, $usr2Token1], $this->db->tableGetColumnValues('usr_token', 'token'));
+
+        $usr2Token2 = $this->sut->createToken($user2->userName);
+        $usr2Token3 = $this->sut->createToken($user2->userName);
+        $tokensOnDb = $this->db->tableGetColumnValues('usr_token', 'token');
+        $this->assertSame(4, count($tokensOnDb));
+        $this->assertContains($usr1Token2, $tokensOnDb);
+        $this->assertContains($usr2Token1, $tokensOnDb);
+        $this->assertContains($usr2Token2, $tokensOnDb);
+        $this->assertContains($usr2Token3, $tokensOnDb);
+
+        $usr2Token4 = $this->sut->login($user2->userName, 'psw')->token;
+        $this->assertNotSame($usr2Token1, $usr2Token4);
+        $this->assertSame([$usr1Token2, $usr2Token4], $this->db->tableGetColumnValues('usr_token', 'token'));
+    }
+
+
+    /**
+     * test
+     */
+    public function testLogin_with_multiple_user_sessions_disabled_check_expirations_work_by_separate(){
+
+        // Create 2 test users
+        $user1 = new UserObject();
+        $user1->userName = 'user1';
+        $this->sut->saveUser($user1);
+        $this->sut->setUserPassword($user1->userName, 'psw');
+
+        $user2 = new UserObject();
+        $user2->userName = 'user2';
+        $this->sut->saveUser($user2);
+        $this->sut->setUserPassword($user2->userName, 'psw');
+
+        // Globally disable multi session login, disable token recycle
+        $this->sut->isMultipleUserSessionsAllowed = false;
+        $this->sut->isTokenLifeTimeRecycled = false;
+
+        // Login to both users with different token life times
+        $this->sut->tokenLifeTime = 1;
+        $usr1Token1 = $this->sut->login($user1->userName, 'psw')->token;
+
+        $this->sut->tokenLifeTime = 3;
+        $usr2Token1 = $this->sut->login($user2->userName, 'psw')->token;
+
+        // Wait 1 second and check that user 2 token is still alive
+        sleep(1);
+        $this->assertFalse($this->sut->isTokenValid($usr1Token1));
+        $this->assertTrue($this->sut->isTokenValid($usr2Token1));
+
+        sleep(2);
+        $this->assertFalse($this->sut->isTokenValid($usr1Token1));
+        $this->assertFalse($this->sut->isTokenValid($usr2Token1));
     }
 
 
     /** test */
     public function testLoginFromEncodedCredentials(){
 
+        // Create test user
+        $user1 = new UserObject();
+        $user1->userName = 'user1';
+        $this->sut->saveUser($user1);
+        $this->sut->setUserPassword($user1->userName, 'psw');
+
+        $encoded = $this->sut->encodeUserAndPassword($user1->userName, 'psw');
+        $this->sut->loginFromEncodedCredentials($encoded);
+
+        $wrong = $this->sut->encodeUserAndPassword($user1->userName, 'invalidpsw');
+        AssertUtils::throwsException(function() use ($wrong) { $this->sut->loginFromEncodedCredentials($wrong); }, '/Authentication failed/');
+
+        // Dummy assert to avoid phpunit warnings
+        $this->assertTrue(true);
+    }
+
+
+    /** test */
+    public function testCreateToken(){
+
         // Test empty values
-        // TODO
+        AssertUtils::throwsException(function() { $this->sut->createToken(); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut->createToken(''); }, '/username must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->createToken(null); }, '/Argument 1 .* must be of the type string, null given/');
+        AssertUtils::throwsException(function() { $this->sut->createToken([]); }, '/Argument 1 passed .* must be of the type string, array given/');
 
         // Test ok values
-        // TODO
+        $user = new UserObject();
+        $user->userName = 'user';
+        $this->sut->saveUser($user);
+        $this->sut->setUserPassword($user->userName, 'psw');
+
+        // Test a valid token is created with default values
+        $token1 = $this->sut->createToken($user->userName);
+        $this->assertTrue($this->sut->isTokenValid($token1));
+        $this->assertSame([$token1], $this->db->tableGetColumnValues('usr_token', 'token'));
+
+        // test a valid token is created with 2 seconds life time and expires after 3 seconds pass
+        $token2 = $this->sut->createToken($user->userName, ['lifeTime' => 2]);
+        $expectedTokens = [$token1, $token2];
+        $savedTokens = $this->db->tableGetColumnValues('usr_token', 'token');
+        sort($expectedTokens);
+        sort($savedTokens);
+        $this->assertSame($expectedTokens, $savedTokens);
+        $this->assertTrue($this->sut->isTokenValid($token2));
+        sleep(2);
+        $this->assertFalse($this->sut->isTokenValid($token2));
+        $this->assertSame([$token1], $this->db->tableGetColumnValues('usr_token', 'token'));
+
+        // test a valid token is created with only one use count
+        $token3 = $this->sut->createToken($user->userName, ['useCount' => 1]);
+        $this->assertTrue($this->sut->isTokenValid($token3));
+        $this->assertFalse($this->sut->isTokenValid($token3));
+
+        // test a valid token is created with 3 use count
+        $token4 = $this->sut->createToken($user->userName, ['useCount' => 3]);
+        $this->assertTrue($this->sut->isTokenValid($token4));
+        $this->assertTrue($this->sut->isTokenValid($token4));
+        $this->assertTrue($this->sut->isTokenValid($token4));
+        $this->assertFalse($this->sut->isTokenValid($token4));
+
+        // test a valid token is created with infinite use count
+        $token5 = $this->sut->createToken($user->userName, ['lifeTime' => 8000, 'useCount' => null]);
+
+        for ($i = 0; $i < 500; $i++) {
+
+            $this->assertTrue($this->sut->isTokenValid($token5));
+        }
+
+        // Test a valid token is created with recycle time disabled
+        $token6 = $this->sut->createToken($user->userName, ['lifeTime' => 2, 'isLifeTimeRecycled' => false]);
+
+        $this->assertTrue($this->sut->isTokenValid($token6));
+        sleep(2);
+        $this->assertFalse($this->sut->isTokenValid($token6));
+
+        // Test three tokens are correctly created and valid for the same user
+        $token71 = $this->sut->createToken($user->userName, ['lifeTime' => 2]);
+        $token72 = $this->sut->createToken($user->userName, ['useCount' => 1]);
+        $token73 = $this->sut->createToken($user->userName, ['isLifeTimeRecycled' => false]);
+        $this->assertTrue($this->sut->isTokenValid($token71));
+        $this->assertTrue($this->sut->isTokenValid($token72));
+        $this->assertTrue($this->sut->isTokenValid($token73));
+        $this->assertFalse($this->sut->isTokenValid($token72));
+        sleep(2);
+        $this->assertFalse($this->sut->isTokenValid($token71));
+        $this->assertTrue($this->sut->isTokenValid($token73));
 
         // Test wrong values
-        // TODO
-
         // Test exceptions
-        // TODO
-
-        $this->markTestIncomplete('This test has not been implemented yet.');
+        AssertUtils::throwsException(function() use ($user) { $this->sut->createToken($user->userName, 'astring'); }, '/must be of the type array, string given/');
+        AssertUtils::throwsException(function() use ($user) { $this->sut->createToken($user->userName, ['lifeTime' => 'a']); }, '/Invalid lifeTime value: a/');
+        AssertUtils::throwsException(function() use ($user) { $this->sut->createToken($user->userName, ['lifeTime' => null]); }, '/Invalid lifeTime value:/');
+        AssertUtils::throwsException(function() use ($user) { $this->sut->createToken($user->userName, ['useCount' => 'a']); }, '/Invalid useCount value: a/');
+        AssertUtils::throwsException(function() use ($user) { $this->sut->createToken($user->userName, ['isLifeTimeRecycled' => 'a']); }, '/Invalid isLifeTimeRecycled value: a/');
+        AssertUtils::throwsException(function() use ($user) { $this->sut->createToken($user->userName, ['isLifeTimeRecycled' => null]); }, '/Invalid isLifeTimeRecycled value:/');
+        AssertUtils::throwsException(function() use ($user) { $this->sut->createToken($user->userName, ['nonexistant' => 'a']); }, '/Invalid option: nonexistant/');
     }
 
 
@@ -1724,16 +1908,34 @@ class UsersManagerTest extends TestCase {
         $this->assertTrue($this->sut->isTokenValid($token2));
 
         $this->assertSame([$token1, $token2], $this->db->tableGetColumnValues('usr_token', 'token'));
-        $this->assertSame(['1', '2'], $this->db->tableGetColumnValues('usr_token', 'dbid'));
+        $this->assertSame(['1', '2'], $this->db->tableGetColumnValues('usr_token', 'userdbid'));
         $this->assertRegExp('/....-..-.. ..:..:../', $this->db->tableGetColumnValues('usr_token', 'expires')[1]);
-        // TODO
+
+        // Test that token is reused when set an expiry time of 3 seconds and token reuse is enabled,
+        // and then 3 seconds after last token verification it becomes invalid
+        $this->sut->tokenLifeTime = 3;
+        $this->assertTrue($this->sut->isTokenLifeTimeRecycled);
+
+        $token = $this->sut->login('user', 'psw')->token;
+        sleep(1);
+        $this->assertTrue($this->sut->isTokenValid($token));
+        sleep(1);
+        $this->assertTrue($this->sut->isTokenValid($token));
+        sleep(1);
+        $this->assertTrue($this->sut->isTokenValid($token));
+        sleep(3);
+        $this->assertFalse($this->sut->isTokenValid($token));
 
         // Test wrong values
-        $this->assertFalse($this->sut->isTokenValid('invalid token'));
-        // TODO
-
         // Test exceptions
-        // TODO
+        $this->assertFalse($this->sut->isTokenValid('invalid token'));
+    }
+
+
+    /** test */
+    public function testIsTokenValid_called_when_no_database_created_yet(){
+
+        $this->assertFalse($this->sut->isTokenValid('sometoken'));
     }
 
 
@@ -1744,17 +1946,27 @@ class UsersManagerTest extends TestCase {
         $user->userName = 'user';
         $this->sut->saveUser($user);
         $this->sut->setUserPassword($user->userName, 'psw');
+
         $token = $this->sut->login('user', 'psw')->token;
         $this->assertTrue($this->sut->isTokenValid($token));
+        $tokensOnDb = $this->db->tableGetColumnValues('usr_token', 'token');
+        $this->assertSame(1, count($tokensOnDb));
+        $this->assertSame($token, $tokensOnDb[0]);
 
         // Validate that when a token expires it gets removed from db
         $this->sut->tokenLifeTime = 2;
-        $this->assertSame($token, $this->sut->login('user', 'psw')->token);
-        $this->assertTrue($this->sut->isTokenValid($token));
-        $this->assertSame($token, $this->db->tableGetColumnValues('usr_token', 'token')[0]);
-        sleep(2);
-        $this->assertSame($token, $this->db->tableGetColumnValues('usr_token', 'token')[0]);
+        $this->sut->isMultipleUserSessionsAllowed = false;
+        $newToken = $this->sut->login('user', 'psw')->token;
+        $this->assertNotSame($token, $newToken);
+        $tokensOnDb = $this->db->tableGetColumnValues('usr_token', 'token');
+        $this->assertSame(1, count($tokensOnDb));
+        $this->assertSame($newToken, $tokensOnDb[0]);
         $this->assertFalse($this->sut->isTokenValid($token));
+        $this->assertTrue($this->sut->isTokenValid($newToken));
+        sleep(2);
+        $this->assertFalse($this->sut->isTokenValid($token));
+        $this->assertSame($newToken, $this->db->tableGetColumnValues('usr_token', 'token')[0]);
+        $this->assertFalse($this->sut->isTokenValid($newToken));
         $this->assertSame([], $this->db->tableGetColumnValues('usr_token', 'token'));
     }
 
@@ -1823,6 +2035,37 @@ class UsersManagerTest extends TestCase {
     /**
      * test
      */
+    public function testDeleteAllExpiredTokens(){
+
+        $user = new UserObject();
+        $user->userName = 'user';
+        $this->sut->saveUser($user);
+        $this->sut->setUserPassword($user->userName, 'psw');
+
+        // Create 3 tokens with different expiration settings and make sure 2 of them are deleted once expired
+        $token1 = $this->sut->createToken($user->userName);
+        $token2 = $this->sut->createToken($user->userName, ['useCount' => 1]);
+        $token3 = $this->sut->createToken($user->userName, ['lifeTime' => 2, 'isLifeTimeRecycled' => false]);
+
+        $this->assertSame(0, $this->sut->deleteAllExpiredTokens());
+
+        $this->assertTrue($this->sut->isTokenValid($token1));
+        $this->assertTrue($this->sut->isTokenValid($token2));
+        $this->assertTrue($this->sut->isTokenValid($token3));
+
+        sleep(3);
+
+        $this->assertSame(3, count($this->db->tableGetColumnValues('usr_token', 'token')));
+
+        $this->assertSame(2, $this->sut->deleteAllExpiredTokens());
+
+        $this->assertSame([$token1], $this->db->tableGetColumnValues('usr_token', 'token'));
+    }
+
+
+    /**
+     * test
+     */
     public function testLogout(){
 
         // Test empty values
@@ -1856,7 +2099,7 @@ class UsersManagerTest extends TestCase {
         sleep(3);
 
         $this->assertTrue($this->sut->logout($token1));
-        $this->assertSame([], $this->db->tableGetColumnValues('usr_token', 'token'));
+        $this->assertSame([$token2], $this->db->tableGetColumnValues('usr_token', 'token'));
 
         // Test wrong values
         $this->assertFalse($this->sut->logout('invalidtoken'));
@@ -1865,6 +2108,29 @@ class UsersManagerTest extends TestCase {
         AssertUtils::throwsException(function() { $this->sut->logout(123123); }, '/value is not a string/');
         AssertUtils::throwsException(function() { $this->sut->logout([1,2,3]); }, '/value is not a string/');
     }
-}
 
-?>
+
+    /**
+     * test
+     */
+    public function testLogout_multiple_sessions_disabled(){
+
+        $this->sut->isMultipleUserSessionsAllowed = false;
+
+        // Multiple user tokens are all destroyed when logout is performed if multiple sessions is disabled
+        $user = new UserObject();
+        $user->userName = 'user';
+        $this->sut->saveUser($user);
+        $this->sut->setUserPassword($user->userName, 'psw');
+
+        $token = $this->sut->login($user->userName, 'psw')->token;
+        $this->sut->createToken($user->userName);
+        $this->sut->createToken($user->userName, ['useCount' => 1]);
+
+        $this->assertSame(3, count($this->db->tableGetColumnValues('usr_token', 'token')));
+
+        $this->assertTrue($this->sut->logout($token));
+
+        $this->assertSame(0, count($this->db->tableGetColumnValues('usr_token', 'token')));
+    }
+}
