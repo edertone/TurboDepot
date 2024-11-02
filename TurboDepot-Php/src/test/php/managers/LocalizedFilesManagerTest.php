@@ -16,6 +16,7 @@ use PHPUnit\Framework\TestCase;
 use org\turbocommons\src\main\php\utils\ArrayUtils;
 use org\turbodepot\src\main\php\managers\FilesManager;
 use org\turbodepot\src\main\php\managers\LocalizedFilesManager;
+use org\turbotesting\src\main\php\utils\AssertUtils;
 
 
 /**
@@ -55,13 +56,7 @@ class LocalizedFilesManagerTest extends TestCase {
         $this->assertTrue($this->filesManager->isDirectoryEmpty($this->tempFolder));
         $this->assertFalse($this->filesManager->isFile($this->tempFolder));
 
-        $this->defaultLocations = [[
-            'label' => 'test-json',
-            'path' => $this->basePath.'/locales/test-json/$locale/$bundle.json',
-            'bundles' => ['Locales']
-        ]];
-
-        $this->sut = new LocalizedFilesManager($this->basePath.'/paths/test-1', ['en_US', 'es_ES'], $this->defaultLocations);
+        $this->sut = new LocalizedFilesManager($this->basePath.'/paths/test-1', ['en_US', 'es_ES'], [$this->basePath.'/locales']);
     }
 
 
@@ -74,11 +69,6 @@ class LocalizedFilesManagerTest extends TestCase {
 
         // Delete temporary folder
         $this->filesManager->deleteDirectory($this->tempFolder);
-
-        if($this->exceptionMessage != ''){
-
-            $this->fail($this->exceptionMessage);
-        }
     }
 
 
@@ -101,80 +91,19 @@ class LocalizedFilesManagerTest extends TestCase {
     public function testConstruct(){
 
         // Test empty values
-        try {
-            $this->sut = new LocalizedFilesManager(null);
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Too few arguments to function/', $e->getMessage());
-        }
-
-        try {
-            $this->sut = new LocalizedFilesManager(null, null);
-            $this->exceptionMessage = 'null null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Too few arguments to function/', $e->getMessage());
-        }
-
-        try {
-            $this->sut = new LocalizedFilesManager(null, null, null);
-            $this->exceptionMessage = 'null null null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/rootPath must be a string/', $e->getMessage());
-        }
-
-        try {
-            $this->sut = new LocalizedFilesManager('', '', '');
-            $this->exceptionMessage = '"" did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Specified rootPath does not exist/', $e->getMessage());
-        }
-
-        try {
-            $this->sut = new LocalizedFilesManager([], '', '');
-            $this->exceptionMessage = '[] did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/rootPath must be a string/', $e->getMessage());
-        }
-
-        try {
-            $this->sut = new LocalizedFilesManager($this->tempFolder, '', '');
-            $this->exceptionMessage = '$this->tempFolder, "" did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Locations must be an array of objects/', $e->getMessage());
-        }
-
-        try {
-            $this->sut = new LocalizedFilesManager($this->tempFolder, '', $this->defaultLocations);
-            $this->exceptionMessage = '$this->tempFolder, "", $this->defaultLocations did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/no locales defined/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function() { $this->sut = new LocalizedFilesManager(null); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut = new LocalizedFilesManager(null, null); }, '/Too few arguments to function/');
+        AssertUtils::throwsException(function() { $this->sut = new LocalizedFilesManager(null, null, null); }, '/rootPath must be a string/');
+        AssertUtils::throwsException(function() { $this->sut = new LocalizedFilesManager('', '', ''); }, '/Specified rootPath does not exist/');
+        AssertUtils::throwsException(function() { $this->sut = new LocalizedFilesManager([], '', ''); }, '/rootPath must be a string/');
 
         // Test ok values
-        $this->assertSame(DIRECTORY_SEPARATOR, (new LocalizedFilesManager($this->tempFolder, ['en_US'], $this->defaultLocations))->dirSep());
-        $this->assertSame(DIRECTORY_SEPARATOR, (new LocalizedFilesManager($this->tempFolder, ['en_US', 'es_ES'], $this->defaultLocations))->dirSep());
+        $this->assertSame(DIRECTORY_SEPARATOR, (new LocalizedFilesManager($this->tempFolder, ['en_US'], [$this->basePath.'/locales']))->dirSep());
+        $this->assertSame(DIRECTORY_SEPARATOR, (new LocalizedFilesManager($this->tempFolder, ['en_US', 'es_ES'], [$this->basePath.'/locales']))->dirSep());
 
         // Test wrong values
-        try {
-            $this->sut = new LocalizedFilesManager('nonexistant path', ['en_US'], $this->defaultLocations);
-            $this->exceptionMessage = 'nonexistant path did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Specified rootPath does not exist: nonexistant path/', $e->getMessage());
-        }
-
-        try {
-            $this->assertSame(DIRECTORY_SEPARATOR, (new LocalizedFilesManager($this->tempFolder, ['en_US', 'es_ES', 'ca_ES'], $this->defaultLocations))->dirSep());
-            $this->exceptionMessage = '"ca_ES" did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/File does not exist.*ca_ES/', $e->getMessage());
-        }
-
-        try {
-            $this->assertSame(DIRECTORY_SEPARATOR, (new LocalizedFilesManager($this->tempFolder, ['5345345'], $this->defaultLocations))->dirSep());
-            $this->exceptionMessage = '"5345345" did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/File does not exist.*5345345/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function() { $this->sut = new LocalizedFilesManager('nonexistant path', ['en_US'], [$this->basePath.'/locales']); }, '/Specified rootPath does not exist: nonexistant path/');
+        AssertUtils::throwsException(function() { $this->assertSame(DIRECTORY_SEPARATOR, (new LocalizedFilesManager($this->tempFolder, ['5345345'], [$this->basePath.'/locales']))->dirSep()); }, '/locale must be a valid xx_XX value/');
 
         // Test exceptions
         // Already tested
@@ -315,25 +244,20 @@ class LocalizedFilesManagerTest extends TestCase {
         }
 
         // Test empty values
-        try {
-            $this->sut->getDirectoryList(null);
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Path must be a string/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function() { $this->sut->getDirectoryList(null); }, '/Path must be a string/');
 
-        $this->assertTrue(ArrayUtils::isArray($this->sut->getDirectoryList('')));
-        $this->assertSame(3, count($this->sut->getDirectoryList('')));
+        $this->assertTrue(ArrayUtils::isArray($this->sut->getDirectoryList('', 'test-json/users')));
+        $this->assertSame(3, count($this->sut->getDirectoryList('', 'test-json/users')));
 
         // Test ok values
-        $list = $this->sut->getDirectoryList('', '', '', [], 'nameAsc');
+        $list = $this->sut->getDirectoryList('', 'test-json/users', [], 'nameAsc');
         $this->assertSame(3, count($list));
 
         assertLocalizedFilesObject($list[0], true, '', 'en_US', 'LOGIN', 'Login');
         assertLocalizedFilesObject($list[1], true, '', 'en_US', 'PASSWORD', 'Password');
         assertLocalizedFilesObject($list[2], true, '', 'en_US', 'TAG_NOT_EXISTING_ON_ES_ES', 'Missing tag');
 
-        $list = $this->sut->getDirectoryList('TAG_NOT_EXISTING_ON_ES_ES/LOGIN', '', '', [], 'nameAsc');
+        $list = $this->sut->getDirectoryList('TAG_NOT_EXISTING_ON_ES_ES/LOGIN', 'test-json/users', [], 'nameAsc');
         $this->assertSame(4, count($list));
 
         assertLocalizedFilesObject($list[0], false, '', 'en_US', 'non existant key', 'non existant key');
@@ -345,7 +269,7 @@ class LocalizedFilesManagerTest extends TestCase {
 
         $this->sut->setPrimaryLocale('es_ES');
 
-        $list = $this->sut->getDirectoryList('TAG_NOT_EXISTING_ON_ES_ES/LOGIN', '', '', [], 'nameAsc');
+        $list = $this->sut->getDirectoryList('TAG_NOT_EXISTING_ON_ES_ES/LOGIN', 'test-json/users', [], 'nameAsc');
         $this->assertSame(4, count($list));
 
         assertLocalizedFilesObject($list[0], false, '', 'es_ES', 'non existant key', 'non existant key');
@@ -353,14 +277,14 @@ class LocalizedFilesManagerTest extends TestCase {
 
         // Test non existant tags are translated with the next locale by preference
 
-        $list = $this->sut->getDirectoryList('TAG_NOT_EXISTING_ON_ES_ES', '', '', [], 'nameAsc');
+        $list = $this->sut->getDirectoryList('TAG_NOT_EXISTING_ON_ES_ES', 'test-json/users', [], 'nameAsc');
         $this->assertSame(2, count($list));
 
         assertLocalizedFilesObject($list[0], true, '', 'es_ES', 'LOGIN', 'Acceso');
         assertLocalizedFilesObject($list[1], false, 'txt', 'es_ES', 'TAG_NOT_EXISTING_ON_ES_ES', 'Missing tag.txt');
 
         $this->sut->setPrimaryLocale('en_US');
-        $list = $this->sut->getDirectoryList('TAG_NOT_EXISTING_ON_ES_ES', '', '', [], 'nameAsc');
+        $list = $this->sut->getDirectoryList('TAG_NOT_EXISTING_ON_ES_ES', 'test-json/users', [], 'nameAsc');
         $this->assertSame(2, count($list));
 
         assertLocalizedFilesObject($list[0], true, '', 'en_US', 'LOGIN', 'Login');
@@ -368,7 +292,7 @@ class LocalizedFilesManagerTest extends TestCase {
 
         // Test folder containing files with multiple localized contents
 
-        $list = $this->sut->getDirectoryList('LOGIN', '', '', [], 'nameAsc');
+        $list = $this->sut->getDirectoryList('LOGIN', 'test-json/users', [], 'nameAsc');
         $this->assertSame(3, count($list));
 
         assertLocalizedFilesObject($list[0], false, 'TXT', 'en_US', 'PASSWORD', 'Password.TXT');
@@ -377,7 +301,7 @@ class LocalizedFilesManagerTest extends TestCase {
 
         $this->sut->setPrimaryLocale('es_ES');
 
-        $list = $this->sut->getDirectoryList('LOGIN', '', '', [], 'nameAsc');
+        $list = $this->sut->getDirectoryList('LOGIN', 'test-json/users', [], 'nameAsc');
         $this->assertSame(3, count($list));
 
         assertLocalizedFilesObject($list[0], false, 'TXT', 'es_ES', 'PASSWORD', 'Contraseña.TXT');
@@ -386,50 +310,28 @@ class LocalizedFilesManagerTest extends TestCase {
 
         // Test folders with multiple localized contents
 
-        $this->sut = new LocalizedFilesManager($this->basePath.'/paths/test-2', ['en_US', 'es_ES'], $this->defaultLocations);
+        $this->sut = new LocalizedFilesManager($this->basePath.'/paths/test-2', ['en_US', 'es_ES'], [$this->basePath.'/locales']);
 
-        $list = $this->sut->getDirectoryList('2019', '', '', [], 'nameAsc');
+        $list = $this->sut->getDirectoryList('2019', 'test-json/users', [], 'nameAsc');
         $this->assertSame(1, count($list));
 
         assertLocalizedFilesObject($list[0], true, '', 'en_US', '10', '10');
 
-        $list = $this->sut->getDirectoryList('2019/10/29', '', '', [], 'nameAsc');
+        $list = $this->sut->getDirectoryList('2019/10/29', 'test-json/users', [], 'nameAsc');
         $this->assertSame(2, count($list));
 
         assertLocalizedFilesObject($list[0], true, '', 'en_US', 'some-folder-title', 'some-folder-title');
         assertLocalizedFilesObject($list[1], true, '', 'en_US', 'USER', 'User');
 
         // Test wrong values
-        $this->sut = new LocalizedFilesManager($this->basePath.'/paths/test-1', ['en_US', 'es_ES'], $this->defaultLocations, true);
+        $this->sut = new LocalizedFilesManager($this->basePath.'/paths/test-1', ['en_US', 'es_ES'], [$this->basePath.'/locales'], true);
 
-        try {
-            $list = $this->sut->getDirectoryList('TAG_NOT_EXISTING_ON_ES_ES/LOGIN', '', '', [], 'nameAsc');
-            $this->exceptionMessage = 'getDirectoryList did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/key <non existant key> not found on Locales/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function() { $this->sut->getDirectoryList('TAG_NOT_EXISTING_ON_ES_ES/LOGIN', 'test-json/users', [], 'nameAsc'); }, '/key <non existant key> not found on test-json.users/');
 
         // Test exceptions
-        try {
-            $list = $this->sut->getDirectoryList(34545435, '', '', [], 'nameAsc');
-            $this->exceptionMessage = '34545435 did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Path must be a string/', $e->getMessage());
-        }
-
-        try {
-            $list = $this->sut->getDirectoryList('LOGIN', 'nonexistantbundle', '', [], 'nameAsc');
-            $this->exceptionMessage = 'nonexistantbundle did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Bundle <nonexistantbundle> not loaded/', $e->getMessage());
-        }
-
-        try {
-            $list = $this->sut->getDirectoryList('LOGIN', '', 999999, [], 'nameAsc');
-            $this->exceptionMessage = '999999 did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/Location <999999> not loaded/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function() { $this->sut->getDirectoryList(34545435, 'test-json/users', [], 'nameAsc'); }, '/Path must be a string/');
+        AssertUtils::throwsException(function() { $this->sut->getDirectoryList('LOGIN', 'test-json/nonexistant', [], 'nameAsc'); }, '/key <PASSWORD> not found on test-json.nonexistant/');
+        AssertUtils::throwsException(function() { $this->sut->getDirectoryList('LOGIN', '999999/users', [], 'nameAsc'); }, '/key <PASSWORD> not found on 999999.users/');
     }
 
 
@@ -602,30 +504,13 @@ class LocalizedFilesManagerTest extends TestCase {
     public function testReadFile(){
 
         // Test empty values
-        try {
-            $this->sut->readFile(null);
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/pathOrObject is not a valid file/', $e->getMessage());
-        }
-
-        try {
-            $this->sut->readFile('');
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/File does not exist.*test-1/', $e->getMessage());
-        }
-
-        try {
-            $this->sut->readFile(0);
-            $this->exceptionMessage = 'null did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/pathOrObject is not a valid file/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function() { $this->sut->readFile(null); }, '/pathOrObject is not a valid file/');
+        AssertUtils::throwsException(function() { $this->sut->readFile(''); }, '/File does not exist.*test-1/');
+        AssertUtils::throwsException(function() { $this->sut->readFile(0); }, '/pathOrObject is not a valid file/');
 
         // Test ok values - Passing a LocalizedFilesObject instance
 
-        $list = $this->sut->getDirectoryList('LOGIN', '', '', [], 'nameAsc');
+        $list = $this->sut->getDirectoryList('LOGIN', 'test-json/users', [], 'nameAsc');
 
         $this->assertSame('0', $this->sut->readFile($list[0]));
         $this->assertSame('1', $this->sut->readFile($list[1]));
@@ -634,14 +519,14 @@ class LocalizedFilesManagerTest extends TestCase {
         $this->sut->setPrimaryLocale('es_ES');
         $this->assertSame('2-en_US', $this->sut->readFile($list[2]));
 
-        $list = $this->sut->getDirectoryList('LOGIN', '', '', [], 'nameAsc');
+        $list = $this->sut->getDirectoryList('LOGIN', 'test-json/users', [], 'nameAsc');
 
         $this->assertSame('0', $this->sut->readFile($list[0]));
         $this->assertSame('1', $this->sut->readFile($list[1]));
         $this->assertSame('2-es_ES', $this->sut->readFile($list[2]));
 
         $this->sut->setPrimaryLocale('en_US');
-        $list = $this->sut->getDirectoryList('PASSWORD/LOGIN', '', '', [], 'nameAsc');
+        $list = $this->sut->getDirectoryList('PASSWORD/LOGIN', 'test-json/users', [], 'nameAsc');
         $this->assertSame('1-en_US', $this->sut->readFile($list[0]));
         $this->assertSame('0', $this->sut->readFile($list[1]));
         $this->assertSame('2', $this->sut->readFile($list[2]));
@@ -649,14 +534,14 @@ class LocalizedFilesManagerTest extends TestCase {
         $this->sut->setPrimaryLocale('es_ES');
         $this->assertSame('1-en_US', $this->sut->readFile($list[0]));
 
-        $list = $this->sut->getDirectoryList('PASSWORD/LOGIN', '', '', [], 'nameAsc');
+        $list = $this->sut->getDirectoryList('PASSWORD/LOGIN', 'test-json/users', [], 'nameAsc');
         $this->assertSame('1-es_ES', $this->sut->readFile($list[0]));
         $this->assertSame('0', $this->sut->readFile($list[1]));
         $this->assertSame('2', $this->sut->readFile($list[2]));
 
         // Test ok values - Passing directly a path as a string
 
-        $this->sut = new LocalizedFilesManager($this->basePath.'/paths/test-2', ['en_US', 'es_ES'], $this->defaultLocations);
+        $this->sut = new LocalizedFilesManager($this->basePath.'/paths/test-2', ['en_US', 'es_ES'], [$this->basePath.'/locales']);
 
         $this->assertSame('some english text', $this->sut->readFile('2019/10/29/some-folder-title-en_US/text.md'));
         $this->assertSame('Un texto en español', $this->sut->readFile('2019/10/29/some-folder-title-es_ES/text.md'));
@@ -666,19 +551,8 @@ class LocalizedFilesManagerTest extends TestCase {
 
         // Test wrong values
         // Test exceptions
-        try {
-            $this->sut->readFile(9283498234);
-            $this->exceptionMessage = '9283498234 did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/pathOrObject is not a valid file/', $e->getMessage());
-        }
-
-        try {
-            $this->sut->readFile([12121, 454 , 4545]);
-            $this->exceptionMessage = '[12121, 454 , 4545] did not cause exception';
-        } catch (Throwable $e) {
-            $this->assertRegExp('/pathOrObject is not a valid file/', $e->getMessage());
-        }
+        AssertUtils::throwsException(function() { $this->sut->readFile(9283498234); }, '/pathOrObject is not a valid file/');
+        AssertUtils::throwsException(function() { $this->sut->readFile([12121, 454 , 4545]); }, '/pathOrObject is not a valid file/');
     }
 
 

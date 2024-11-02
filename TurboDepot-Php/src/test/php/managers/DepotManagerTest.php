@@ -244,11 +244,7 @@ class DepotManagerTest extends TestCase {
 
         $this->setup->depots[0]->localizedFiles->source = "localized_files_source";
         $this->setup->depots[0]->localizedFiles->locales = ['en_US', 'es_ES'];
-        $this->setup->depots[0]->localizedFiles->locations = [[
-            'label' => 'test-json',
-            'path' => __DIR__.'/../../resources/managers/localizedFilesManager/locales/test-json/$locale/$bundle.json',
-            'bundles' => ['Locales']
-        ]];
+        $this->setup->depots[0]->localizedFiles->localesPaths = [__DIR__.'/../../resources/managers/localizedFilesManager/locales'];
 
         $this->sut = new DepotManager($this->setup);
 

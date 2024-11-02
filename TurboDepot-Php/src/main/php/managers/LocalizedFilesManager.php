@@ -14,7 +14,6 @@ namespace org\turbodepot\src\main\php\managers;
 
 
 use UnexpectedValueException;
-use org\turbocommons\src\main\php\managers\LocalizationManager;
 use org\turbocommons\src\main\php\utils\StringUtils;
 use org\turbodepot\src\main\php\model\LocalizedFilesObject;
 
@@ -26,11 +25,11 @@ class LocalizedFilesManager extends FilesManager{
 
 
     /**
-     * A LocalizationManager class instance that is used by this class
+     * A LocalesManager class instance that is used by this class
      *
-     * @var LocalizationManager
+     * @var LocalesManager
      */
-    private $_localizationManager = null;
+    private $_localesManager = null;
 
 
     /**
@@ -41,15 +40,15 @@ class LocalizedFilesManager extends FilesManager{
      *
      * We can have a document that is translated into multiple languages or a folder with different contents depending on the language
      *
-     * @see LocalizationManager::initialize
+     * @see LocalesManager::initialize
      *
      * @param string $rootPath We need to specify an existing directory as the entry point where all the localized files and directories are stored. The full OS path must be provided.
-     * @param array $locales List of languages for which we want to load the translations (see TurboCommons LocalizationManager docs for more info)
-     * @param array $locations A list (sorted by preference) where each item defines a translations location (see TurboCommons LocalizationManager::initialize docs for more info)
+     * @param array $locales List of languages for which we want to load the translations (see TurboCommons LocalesManager docs for more info)
+     * @param array $localesPaths An array of filesystem paths where translations are stored
      * @param boolean $failIfKeyNotFound If set to true, any operation with a folder or file that is named without a translation key that is available for the currently
      *                defined list of translation locations, will throw an exception. If set to false, the key itself will be used as the folder or file name without throwing an error.
      */
-    public function __construct($rootPath, $locales, $locations, $failIfKeyNotFound = false){
+    public function __construct($rootPath, $locales, $localesPaths, $failIfKeyNotFound = false){
 
         if (!is_string($rootPath)){
 
@@ -65,79 +64,73 @@ class LocalizedFilesManager extends FilesManager{
 
         parent::__construct($rootPath);
 
-        $this->_localizationManager = new LocalizationManager();
+        $this->_localesManager = new LocalesManager();
 
-        $this->_localizationManager->missingKeyFormat = $failIfKeyNotFound ? '$exception' : '$key';
+        $this->_localesManager->setMissingKeyFormat($failIfKeyNotFound ? '$exception' : '$key');
 
-        $this->_localizationManager->initialize(new FilesManager(), $locales, $locations, function($errors) {
-
-            if(count($errors) > 0){
-
-                throw new UnexpectedValueException($errors[0]['errorMsg']);
-            }
-        });
+        $this->_localesManager->initialize($locales, $localesPaths);
     }
 
 
     /**
-     * Same behaviour as LocalizationManager::setPrimaryLocale
+     * Same behaviour as LocalesManager::setPrimaryLocale
      *
-     * @see LocalizationManager::setPrimaryLocale
+     * @see LocalesManager::setPrimaryLocale
      *
-     * @param string $locale see LocalizationManager::setPrimaryLocale
+     * @param string $locale see LocalesManager::setPrimaryLocale
      *
      * @return void
      */
     public function setPrimaryLocale(string $locale){
 
-        $this->_localizationManager->setPrimaryLocale($locale);
+        $this->_localesManager->setPrimaryLocale($locale);
     }
 
 
     /**
-     * Same behaviour as LocalizationManager::setPrimaryLocales
+     * Same behaviour as LocalesManager::setPrimaryLocales
      *
-     * @see LocalizationManager::setPrimaryLocales()
+     * @see LocalesManager::setPrimaryLocales()
      *
-     * @param array $locales see LocalizationManager::setPrimaryLocales
+     * @param array $locales see LocalesManager::setPrimaryLocales
      *
      * @return void
      */
     public function setPrimaryLocales(array $locales){
 
-        $this->_localizationManager->setPrimaryLocales($locales);
+        $this->_localesManager->setPrimaryLocales($locales);
     }
 
 
     /**
-     * Same behaviour as LocalizationManager::setPrimaryLanguage
+     * Same behaviour as LocalesManager::setPrimaryLanguage
      *
-     * @see LocalizationManager::setPrimaryLanguage()
+     * @see LocalesManager::setPrimaryLanguage()
      *
-     * @param string $language see LocalizationManager::setPrimaryLanguage
+     * @param string $language see LocalesManager::setPrimaryLanguage
      *
      * @return void
      */
     public function setPrimaryLanguage(string $language){
 
-        $this->_localizationManager->setPrimaryLanguage($language);
+        $this->_localesManager->setPrimaryLanguage($language);
     }
 
 
     /**
-     * Same behaviour as LocalizationManager::setPrimaryLanguages
+     * Same behaviour as LocalesManager::setPrimaryLanguages
      *
-     * @see LocalizationManager::setPrimaryLanguages()
-     * @see LocalizationManager::setPrimaryLocale()
-     * @see LocalizationManager::setPrimaryLanguage()
+     * @see LocalesManager::setPrimaryLanguages()
+     * @see LocalesManager::setPrimaryLocale()
+     * @see LocalesManager::setPrimaryLanguage()
      *
-     * @param array $languages see LocalizationManager::setPrimaryLanguages()
+     * @param array $languages see LocalesManager::setPrimaryLanguages()
      *
      * @return void
      */
     public function setPrimaryLanguages(array $languages){
 
-        $this->_localizationManager->setPrimaryLanguages($languages);
+        $this->_localesManager->setPrimaryLanguages($languages);
     }
 
 
@@ -164,17 +157,16 @@ class LocalizedFilesManager extends FilesManager{
      * (The method ignores the . and .. items if exist).
      *
      * @see FilesManager::getDirectoryList
-     * @see LocalizationManager::get
+     * @see LocalesManager::get
      *
      * @param string $path Absolute or relative path to the directory we want to list
-     * @param string $bundle The name for the resource bundle file. See LocalizationManager::get for more info
-     * @param string $location A location label to uniquely reference the location and resolve possible conflicts. See LocalizationManager::get for more info
-     * @param mixed $toReplace A list of values that will replace the wildcards that are found on the translated text. See LocalizationManager::get for more info
+     * @param string $bundlePath A string with the format 'library_name/bundle_name' that is used to locate the bundle were the key to translate is found
+     * @param mixed $toReplace A list of values that will replace the wildcards that are found on the translated text. See LocalesManager::get for more info
      * @param string $sort See FilesManager::getDirectoryList
      *
      * @return array The list of LocalizedFilesObject items inside the specified path sorted as requested, or an empty array if no items found inside the folder.
      */
-    public function getDirectoryList($path, string $bundle = '', string $location = '', $toReplace = [], string $sort = ''){
+    public function getDirectoryList($path, string $bundlePath = '', $toReplace = [], string $sort = ''){
 
         $fullPath = $this->_composePath($path);
 
@@ -183,8 +175,8 @@ class LocalizedFilesManager extends FilesManager{
         $fileKeys = [];
 
         $list = parent::getDirectoryList($path, $sort);
-        $language = $this->_localizationManager->languages()[0];
-        $locale = $this->_localizationManager->locales()[0];
+        $language = $this->_localesManager->getLanguages()[0];
+        $locale = $this->_localesManager->getLocales()[0];
 
         foreach ($list as $item) {
 
@@ -193,7 +185,7 @@ class LocalizedFilesManager extends FilesManager{
                 $isDirectory = true;
                 $extension = '';
                 $key = preg_replace("/(.*)-[a-z][a-z]_[A-Z][A-Z]$/", '${1}', $item, 1);
-                $translation = $this->_localizationManager->get($key, $bundle, $location, $toReplace);
+                $translation = $this->_localesManager->t($key, $bundlePath, $toReplace);
 
                 // If the folder contains multiple localized contents, the key is duplicate, so we won't add it to the result
                 if(in_array($key, $dirKeys)){
@@ -210,11 +202,11 @@ class LocalizedFilesManager extends FilesManager{
                 $extensionWithDot = $extension === '' ? '' : '.'.$extension;
                 $elementNoExt = StringUtils::getPathElementWithoutExt($item);
                 $key = preg_replace("/(.*)-[a-z][a-z]_[A-Z][A-Z]$/", '${1}', $elementNoExt, 1);
-                $translation = $this->_localizationManager->get($key, $bundle, $location, $toReplace).$extensionWithDot;
+                $translation = $this->_localesManager->t($key, $bundlePath, $toReplace).$extensionWithDot;
 
                 if(preg_match("/.*-[a-z][a-z]_[A-Z][A-Z]$/", $elementNoExt)){
 
-                    foreach ($this->_localizationManager->locales() as $managerLocale) {
+                    foreach ($this->_localesManager->getLocales() as $managerLocale) {
 
                         if(in_array($key.'-'.$managerLocale.$extensionWithDot, $list)){
 

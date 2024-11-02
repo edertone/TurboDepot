@@ -248,7 +248,7 @@ class DepotManager extends BaseStrictClass{
             }
 
             $this->_localizedFilesManager = new LocalizedFilesManager($localizedFilesSource->path,
-                $this->_loadedDepotSetup->localizedFiles->locales, $this->_loadedDepotSetup->localizedFiles->locations,
+                $this->_loadedDepotSetup->localizedFiles->locales, $this->_loadedDepotSetup->localizedFiles->localesPaths,
                 $this->_loadedDepotSetup->localizedFiles->failIfKeyNotFound);
         }
 
