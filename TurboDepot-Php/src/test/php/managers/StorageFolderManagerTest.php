@@ -32,7 +32,7 @@ class StorageFolderManagerTest extends TestCase {
      *
      * @return void
      */
-    public static function setUpBeforeClass(){
+    public static function setUpBeforeClass(): void{
 
         // Nothing necessary here
     }
@@ -43,7 +43,7 @@ class StorageFolderManagerTest extends TestCase {
      *
      * @return void
      */
-    protected function setUp(){
+    protected function setUp(): void{
 
         $this->emptyValues = [null, '', [], new stdClass(), '     ', "\n\n\n", 0];
 
@@ -69,7 +69,7 @@ class StorageFolderManagerTest extends TestCase {
      *
      * @return void
      */
-    protected function tearDown(){
+    protected function tearDown(): void{
 
         // Delete temporary folder
         $this->filesManager->deleteDirectory($this->tempFolder);
@@ -81,7 +81,7 @@ class StorageFolderManagerTest extends TestCase {
      *
      * @return void
      */
-    public static function tearDownAfterClass(){
+    public static function tearDownAfterClass(): void{
 
         // Nothing necessary here
     }

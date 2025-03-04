@@ -40,7 +40,7 @@ class ZipObjectTest extends TestCase {
      *
      * @return void
      */
-    public static function setUpBeforeClass(){
+    public static function setUpBeforeClass(): void{
 
         self::$basePath = __DIR__.'/../../resources/model/zipObject';
 
@@ -53,7 +53,7 @@ class ZipObjectTest extends TestCase {
      *
      * @return void
      */
-    protected function setUp(){
+    protected function setUp(): void{
 
         $this->sut = new ZipObject();
     }
@@ -64,7 +64,7 @@ class ZipObjectTest extends TestCase {
      *
      * @return void
      */
-    protected function tearDown(){
+    protected function tearDown(): void{
 
         $this->assertSame(false, $this->sut->isLoaded());
     }
@@ -75,7 +75,7 @@ class ZipObjectTest extends TestCase {
      *
      * @return void
      */
-    public static function tearDownAfterClass(){
+    public static function tearDownAfterClass(): void{
         // Nothing necessary here
     }
 

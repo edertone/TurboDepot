@@ -29,7 +29,7 @@ class DataBaseObjectsManager_Objects_read_and_list_MariaDb_Test extends TestCase
      *
      * @return void
      */
-    public static function setUpBeforeClass(){
+    public static function setUpBeforeClass(): void{
     }
 
 
@@ -38,7 +38,7 @@ class DataBaseObjectsManager_Objects_read_and_list_MariaDb_Test extends TestCase
      *
      * @return void
      */
-    protected function setUp(){
+    protected function setUp(): void{
 
         $this->sut = DataBaseManager_MariaDb_Test::createAndConnectToTestingMariaDb();
         $this->db = $this->sut->getDataBaseManager();
@@ -51,7 +51,7 @@ class DataBaseObjectsManager_Objects_read_and_list_MariaDb_Test extends TestCase
      *
      * @return void
      */
-    protected function tearDown(){
+    protected function tearDown(): void{
 
         DataBaseManager_MariaDb_Test::deleteAndDisconnectFromTestingMariaDb($this->sut);
     }
@@ -62,7 +62,7 @@ class DataBaseObjectsManager_Objects_read_and_list_MariaDb_Test extends TestCase
      *
      * @return void
      */
-    public static function tearDownAfterClass(){
+    public static function tearDownAfterClass(): void{
     }
 
 

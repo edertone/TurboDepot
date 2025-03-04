@@ -31,7 +31,7 @@ class MarkDownBlogManagerTest extends TestCase {
      *
      * @return void
      */
-    public static function setUpBeforeClass(){
+    public static function setUpBeforeClass(): void{
 
         // Nothing necessary here
     }
@@ -42,7 +42,7 @@ class MarkDownBlogManagerTest extends TestCase {
      *
      * @return void
      */
-    protected function setUp(){
+    protected function setUp(): void{
 
         $this->filesManager = new FilesManager();
         $this->tempFolder = $this->filesManager->createTempDirectory('TurboSitePhp-MarkDownBlogManagerTest');
@@ -59,7 +59,7 @@ class MarkDownBlogManagerTest extends TestCase {
      *
      * @return void
      */
-    protected function tearDown(){
+    protected function tearDown(): void{
 
         $this->filesManager->deleteDirectory($this->tempFolder);
     }
@@ -70,7 +70,7 @@ class MarkDownBlogManagerTest extends TestCase {
      *
      * @return void
      */
-    public static function tearDownAfterClass(){
+    public static function tearDownAfterClass(): void{
 
         // Nothing necessary here
     }

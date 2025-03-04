@@ -31,7 +31,7 @@ class TmpFilesManagerTest extends TestCase {
      *
      * @return void
      */
-    public static function setUpBeforeClass(){
+    public static function setUpBeforeClass(): void{
 
         // Nothing necessary here
     }
@@ -42,7 +42,7 @@ class TmpFilesManagerTest extends TestCase {
      *
      * @return void
      */
-    protected function setUp(){
+    protected function setUp(): void{
 
         $this->exceptionMessage = '';
 
@@ -63,7 +63,7 @@ class TmpFilesManagerTest extends TestCase {
      *
      * @return void
      */
-    protected function tearDown(){
+    protected function tearDown(): void{
 
         // Delete temporary folder
         $this->filesManager->deleteDirectory($this->tempFolder);
@@ -80,7 +80,7 @@ class TmpFilesManagerTest extends TestCase {
      *
      * @return void
      */
-    public static function tearDownAfterClass(){
+    public static function tearDownAfterClass(): void{
 
         // Nothing necessary here
     }

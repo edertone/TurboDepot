@@ -29,7 +29,7 @@ class LocalesManagerTest extends TestCase {
      *
      * @return void
      */
-    protected function setUp(){
+    protected function setUp(): void{
 
         // Create some pointers to useful paths
         $this->basePath = __DIR__.'/../../resources/managers/localesManager/';

@@ -168,7 +168,9 @@ class LocalesManager {
 
 
     /**
-     * Initializes the translation system by loading and parsing bundle files for the specified source paths
+     * Initializes the translation system by loading and parsing bundle files from the specified source paths.
+     * After the method finishes, the class will contain all the translation data and will be ready to translate any
+     * provided key.
      *
      * This method performs the following operations:
      * 1. Sets up the initial translation structure for each locale

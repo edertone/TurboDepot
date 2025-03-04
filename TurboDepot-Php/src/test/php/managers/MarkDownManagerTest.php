@@ -30,7 +30,7 @@ class MarkDownManagerTest extends TestCase {
      *
      * @return void
      */
-    protected function setUp(){
+    protected function setUp(): void{
 
         $this->filesManager = new FilesManager();
         $this->sut = new MarkDownManager();
