@@ -50,13 +50,14 @@ class DataBaseManager extends BaseStrictClass {
     /**
      * Defines the charset encoding that will be forced by the database connection: utf8, utf8mb4
      */
-    private $characterSet = 'utf8';
+    private $characterSet = 'utf8mb4';
 
 
     /**
-     * Defines the collate that will be forced by the database connection: utf8_general_ci, utf8mb4_general_ci
+     * Defines the collate that will be forced by the database connection: utf8_general_ci, utf8mb4_general_ci, utf8mb4_0900_as_cs
+     * (as_cs means case sensitive and accent sensitive)
      */
-    private $collate = 'utf8_general_ci';
+    private $collate = 'utf8mb4_0900_as_cs';
 
 
     /**
@@ -1279,12 +1280,14 @@ class DataBaseManager extends BaseStrictClass {
      * @param string $columnValues Associative array where keys are column names and values are column values that must be
      *        found on the rows to be returned. Passing an empty array will return all existing rows on the table.
      *
+     * @param string $orderBy Optional order by clause to sort the results, like for example 'column1 ASC, column2 DESC'
+     *
      * @throws UnexpectedValueException
      *
      * @return array An array of associative arrays with the query result data. Note that in PHP all query result values are returned as strings
      *         which must be casted to the appropiate types by the user
      */
-    public function tableGetRows($tableName, array $columnValues){
+    public function tableGetRows($tableName, array $columnValues, string $orderBy = ''){
 
         $sqlWherePart = [];
 
@@ -1300,7 +1303,7 @@ class DataBaseManager extends BaseStrictClass {
                 return $this->query('SELECT * FROM '.$tableName);
             }
 
-            return $this->query('SELECT * FROM '.$tableName.' WHERE '.implode(' AND ', $sqlWherePart));
+            return $this->query('SELECT * FROM '.$tableName.' WHERE '.implode(' AND ', $sqlWherePart).($orderBy !== '' ? ' ORDER BY '.$orderBy : ''));
 
         } catch (Throwable $e) {
 

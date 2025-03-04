@@ -864,7 +864,7 @@ class UsersManager extends BaseStrictClass{
 
 
     /**
-     * Get a list with all the email accounts that are linked to the specified user
+     * Get a list with all the email accounts that are linked to the specified user, sorted by mail address ascending
      *
      * @param string $userName The username for the user from which we want to obtain the emails
      * @param string $filter Set to ALL to get all the user emails, VERIFIED to get only the verified emails and NONVERIFIED to get only the non verified ones
@@ -884,7 +884,7 @@ class UsersManager extends BaseStrictClass{
 
         $result = [];
 
-        foreach ($this->_db->tableGetRows($this->_tableUserMail, ['dbid' => $this->_getUserDBId($userName)]) as $row) {
+        foreach ($this->_db->tableGetRows($this->_tableUserMail, ['dbid' => $this->_getUserDBId($userName)], 'mail ASC') as $row) {
 
             if($filter === 'ALL' ||
                ($filter === 'VERIFIED' && $row['isverified'] === '1') ||
@@ -953,6 +953,9 @@ class UsersManager extends BaseStrictClass{
     /**
      * Get a user instance from the database using the provided token.
      *
+     * Important to notice that calling this method will trigger a token validation. This means that if a token for example
+     * is setup to be used a single time and it is still valid, after calling this method it won't be valid anymore.
+     *
      * @param string $token The previously obtained token that represents the user we want to retrieve
      *
      * @throws UnexpectedValueException If the token is not valid
@@ -961,14 +964,12 @@ class UsersManager extends BaseStrictClass{
      */
     public function findUserByToken(string $token){
 
-        StringUtils::forceNonEmptyString($token, 'token');
-
-        $tokenData = $this->_db->tableGetRows($this->_tableToken, ['token' => $token]);
-
-        if(empty($tokenData)){
+        if(!$this->isTokenValid($token)){
 
             throw new UnexpectedValueException('Invalid token: '.$token);
         }
+
+        $tokenData = $this->_db->tableGetRows($this->_tableToken, ['token' => $token]);
 
         return $this->_databaseObjectsManager->findByDbId(UserObject::class, $tokenData[0]['userdbid']);
     }
@@ -1181,6 +1182,7 @@ class UsersManager extends BaseStrictClass{
 
     /**
      * Specify which user roles are allowed to perform the specified operation.
+     * Notice that this method does not disable other roles that may have been previously assigned to this operation
      *
      * @param string $operation The name for the operation
      * @param array $roles A list of user roles that will be allowed to perform the specified operation. An empty array will allow any role
@@ -1508,7 +1510,7 @@ class UsersManager extends BaseStrictClass{
                 'primaryKey' => ['token'],
                 'foreignKey' => [[$this->_tableToken.'_'.$this->_tableUserObject.'_fk', ['userdbid'], $this->_tableUserObject, ['dbid']]]])){
 
-                return $this->createToken($userName);
+                return $this->createToken($userName, $options);
             }
 
             throw new UnexpectedValueException('Could not create '.$this->_tableToken.' table: '.$e->getMessage());
@@ -1522,6 +1524,10 @@ class UsersManager extends BaseStrictClass{
      * Test that the current token is active and valid.
      * This won't give us any other info like which user or which access level this token has. It is only used
      * to verify that a token exists and is active.
+     *
+     * Notice that calling this method will update the token use count and any other expiration related properties. So if a token
+     * is setup for example to be used a single time, after calling this validation it won't be valid anymore, and will stop working
+     * on any method of this class that requires token verification
      *
      * @param string $token An active and valid user token
      *

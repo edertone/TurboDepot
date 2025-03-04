@@ -245,7 +245,7 @@ class DataBaseObjectsManager_Objects_delete_MariaDb_Test extends TestCase {
         // Test Objects with invalid foreign object properties definitions
         $object = new ObjectWithWrongForeignPropertiesDefined();
         $this->sut->save($object);
-        AssertUtils::throwsException(function() use ($object) { $this->sut->deleteByInstances([$object]); }, '/Error deleting objects: Unknown column .nonexistant. in .where clause/');
+        AssertUtils::throwsException(function() use ($object) { $this->sut->deleteByInstances([$object]); }, '/Error deleting objects: Unknown column .nonexistant. in .WHERE/');
 
         $object = new ObjectWithWrongForeignPropertiesDefined2();
         $this->sut->save($object);

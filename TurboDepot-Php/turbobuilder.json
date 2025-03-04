@@ -8,7 +8,7 @@
     "containers": {
         "docker":[
             {
-                "path": "php7-4_apache2-4_mariadb10-4-dev",
+                "path": "php7-4_apache2-4_mariadb11-7-2-dev",
                 "startPolicy": "lazy"
             }
         ]

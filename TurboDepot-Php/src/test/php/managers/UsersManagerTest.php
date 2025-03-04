@@ -736,24 +736,24 @@ class UsersManagerTest extends TestCase {
 
         $this->sut->saveUserMail('user', 'test2@email2.com', 'comments2');
         $this->assertSame([
-            ['dbid' => '1', 'mail' => 'test2@email2.com', 'isverified' => '0',
-                'verificationhash' => $this->sut->getUserMailVerificationHash('user', 'test2@email2.com'), 'comments' => 'comments2', 'data' => ''],
             ['dbid' => '1', 'mail' => 'test@email.com', 'isverified' => '0',
-                'verificationhash' => $this->sut->getUserMailVerificationHash('user', 'test@email.com'), 'comments' => '', 'data' => 'data1']
-        ], $this->db->tableGetRows('usr_userobject_mails', ['dbid' => 1]));
+                'verificationhash' => $this->sut->getUserMailVerificationHash('user', 'test@email.com'), 'comments' => '', 'data' => 'data1'],
+            ['dbid' => '1', 'mail' => 'test2@email2.com', 'isverified' => '0',
+                'verificationhash' => $this->sut->getUserMailVerificationHash('user', 'test2@email2.com'), 'comments' => 'comments2', 'data' => '']
+        ], $this->db->tableGetRows('usr_userobject_mails', ['dbid' => 1], 'mail ASC'));
 
         $this->sut->saveUserMail('user', 'test2@email2.com');
         $this->assertSame(2, count($this->db->tableGetRows('usr_userobject_mails', ['dbid' => 1])));
 
         $this->sut->saveUserMail('user', 'test3@email3.com', 'comments3', 'data3');
         $this->assertSame([
+            ['dbid' => '1', 'mail' => 'test@email.com', 'isverified' => '0',
+                'verificationhash' => $this->sut->getUserMailVerificationHash('user', 'test@email.com'), 'comments' => '', 'data' => 'data1'],
             ['dbid' => '1', 'mail' => 'test2@email2.com', 'isverified' => '0',
                 'verificationhash' => $this->sut->getUserMailVerificationHash('user', 'test2@email2.com'), 'comments' => '', 'data' => ''],
             ['dbid' => '1', 'mail' => 'test3@email3.com', 'isverified' => '0',
-                'verificationhash' => $this->sut->getUserMailVerificationHash('user', 'test3@email3.com'), 'comments' => 'comments3', 'data' => 'data3'],
-            ['dbid' => '1', 'mail' => 'test@email.com', 'isverified' => '0',
-                'verificationhash' => $this->sut->getUserMailVerificationHash('user', 'test@email.com'), 'comments' => '', 'data' => 'data1']
-        ], $this->db->tableGetRows('usr_userobject_mails', ['dbid' => 1]));
+                'verificationhash' => $this->sut->getUserMailVerificationHash('user', 'test3@email3.com'), 'comments' => 'comments3', 'data' => 'data3']
+        ], $this->db->tableGetRows('usr_userobject_mails', ['dbid' => 1], 'mail ASC'));
 
         // Test wrong values
         AssertUtils::throwsException(function() { $this->sut->saveUserMail('nonexistantuser', 'test@email.com', 'comments', 'data'); }, '/Trying to add an email account to a non existing user: nonexistantuser on domain /');
@@ -1038,10 +1038,17 @@ class UsersManagerTest extends TestCase {
         $this->sut->saveUserMail('user', 'test3@email3.com');
 
         // Get verified and non verified emails
-        $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => false], ['mail' => 'test3@email3.com', 'isverified' => false],
-            ['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user'));
-        $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => false], ['mail' => 'test3@email3.com', 'isverified' => false],
-            ['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user', 'NONVERIFIED'));
+        $this->assertSame([
+                            ['mail' => 'test@email.com', 'isverified' => false],
+                            ['mail' => 'test2@email2.com', 'isverified' => false],
+                            ['mail' => 'test3@email3.com', 'isverified' => false]
+                          ], $this->sut->getUserMails('user'));
+
+        $this->assertSame([
+                            ['mail' => 'test@email.com', 'isverified' => false],
+                            ['mail' => 'test2@email2.com', 'isverified' => false],
+                            ['mail' => 'test3@email3.com', 'isverified' => false]
+                          ], $this->sut->getUserMails('user', 'NONVERIFIED'));
 
         // get only verified emails
         $this->assertSame([], $this->sut->getUserMails('user', 'VERIFIED'));
@@ -1051,8 +1058,13 @@ class UsersManagerTest extends TestCase {
         $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => true], ['mail' => 'test3@email3.com', 'isverified' => true]],
             $this->sut->getUserMails('user', 'VERIFIED'));
         $this->assertTrue($this->sut->setUserMailVerified('user', 'test@email.com', true));
-        $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => true], ['mail' => 'test3@email3.com', 'isverified' => true],
-            ['mail' => 'test@email.com', 'isverified' => true]], $this->sut->getUserMails('user', 'VERIFIED'));
+
+        $this->assertSame([
+                            ['mail' => 'test@email.com', 'isverified' => true],
+                            ['mail' => 'test2@email2.com', 'isverified' => true],
+                            ['mail' => 'test3@email3.com', 'isverified' => true]
+                          ], $this->sut->getUserMails('user', 'VERIFIED'));
+
         $this->assertTrue($this->sut->setUserMailVerified('user', 'test@email.com', false));
         $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => true], ['mail' => 'test3@email3.com', 'isverified' => true]],
             $this->sut->getUserMails('user', 'VERIFIED'));
@@ -1062,11 +1074,21 @@ class UsersManagerTest extends TestCase {
         $this->assertTrue($this->sut->setUserMailVerified('user', 'test2@email2.com', false));
         $this->assertTrue($this->sut->setUserMailVerified('user', 'test3@email3.com', false));
         $this->assertTrue($this->sut->setUserMailVerified('user', 'test@email.com', false));
-        $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => false], ['mail' => 'test3@email3.com', 'isverified' => false],
-            ['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user', 'NONVERIFIED'));
+
+        $this->assertSame([
+                            ['mail' => 'test@email.com', 'isverified' => false],
+                            ['mail' => 'test2@email2.com', 'isverified' => false],
+                            ['mail' => 'test3@email3.com', 'isverified' => false]
+
+                          ], $this->sut->getUserMails('user', 'NONVERIFIED'));
+
         $this->assertTrue($this->sut->setUserMailVerified('user', 'test2@email2.com', true));
-        $this->assertSame([['mail' => 'test3@email3.com', 'isverified' => false], ['mail' => 'test@email.com', 'isverified' => false]],
-            $this->sut->getUserMails('user', 'NONVERIFIED'));
+
+        $this->assertSame([
+                            ['mail' => 'test@email.com', 'isverified' => false],
+                            ['mail' => 'test3@email3.com', 'isverified' => false]
+                          ], $this->sut->getUserMails('user', 'NONVERIFIED'));
+
         $this->assertTrue($this->sut->setUserMailVerified('user', 'test3@email3.com', true));
         $this->assertSame([['mail' => 'test@email.com', 'isverified' => false]], $this->sut->getUserMails('user', 'NONVERIFIED'));
         $this->assertTrue($this->sut->setUserMailVerified('user', 'test@email.com', true));
@@ -1079,10 +1101,18 @@ class UsersManagerTest extends TestCase {
         $this->sut->saveUserMail('user2', 'user@email.com');
         $this->sut->saveUserMail('user2', 'user2@email2.com');
         $this->sut->saveUserMail('user2', 'user3@email3.com');
-        $this->assertSame([['mail' => 'test2@email2.com', 'isverified' => true], ['mail' => 'test3@email3.com', 'isverified' => true],
-            ['mail' => 'test@email.com', 'isverified' => true]], $this->sut->getUserMails('user'));
-        $this->assertSame([['mail' => 'user2@email2.com', 'isverified' => false], ['mail' => 'user3@email3.com', 'isverified' => false],
-            ['mail' => 'user@email.com', 'isverified' => false]], $this->sut->getUserMails('user2'));
+
+        $this->assertSame([
+                            ['mail' => 'test@email.com', 'isverified' => true],
+                            ['mail' => 'test2@email2.com', 'isverified' => true],
+                            ['mail' => 'test3@email3.com', 'isverified' => true]
+                          ], $this->sut->getUserMails('user'));
+
+        $this->assertSame([
+                            ['mail' => 'user@email.com', 'isverified' => false],
+                            ['mail' => 'user2@email2.com', 'isverified' => false],
+                            ['mail' => 'user3@email3.com', 'isverified' => false]
+                          ], $this->sut->getUserMails('user2'));
 
         // Test wrong values
         // Test exceptions
@@ -1171,8 +1201,8 @@ class UsersManagerTest extends TestCase {
         // Test empty values
         AssertUtils::throwsException(function() { $this->sut->findUserByToken(); }, '/Too few arguments to function/');
         AssertUtils::throwsException(function() { $this->sut->findUserByToken(null); }, '/must be of the type string, null given/');
-        AssertUtils::throwsException(function() { $this->sut->findUserByToken(''); }, '/token must be a non empty string/');
-        AssertUtils::throwsException(function() { $this->sut->findUserByToken('', ''); }, '/token must be a non empty string/');
+        AssertUtils::throwsException(function() { $this->sut->findUserByToken(''); }, '/token must have a value/');
+        AssertUtils::throwsException(function() { $this->sut->findUserByToken('', ''); }, '/token must have a value/');
 
         // Test ok values
         $user = new UserObject();
@@ -1198,6 +1228,26 @@ class UsersManagerTest extends TestCase {
         // Test wrong values
         // Test exceptions
         AssertUtils::throwsException(function() { $this->sut->findUserByToken('nonexistanttoken'); }, '/Invalid token: nonexistanttoken/');
+    }
+
+
+    public function testfindUserByToken_calling_two_times_for_a_single_use_token_causes_error(){
+
+        // Create a user
+        $user = new UserObject();
+        $user->userName = 'user';
+        $this->sut->saveUser($user);
+        $this->sut->setUserPassword($user->userName, 'psw');
+
+        // Obtain a single use token for that user
+        $token = $this->sut->createToken($user->userName, ['useCount' => 1]);
+
+        // Call the find method two times, and verify it fails the second one
+        $userRead = $this->sut->findUserByToken($token);
+        $this->assertSame($user->userName, $userRead->userName);
+        $this->assertSame($user->getDbId(), $userRead->getDbId());
+
+        AssertUtils::throwsException(function() use ($token) { $this->sut->findUserByToken($token); }, "/Invalid token: $token/");
     }
 
 
@@ -1489,6 +1539,41 @@ class UsersManagerTest extends TestCase {
 
 
     /** test */
+    public function testSaveOperation_update_already_existing_operation_to_add_a_description_and_roles(){
+
+        // Create a new operation
+        $this->assertTrue($this->sut->saveOperation('operation1', ''));
+        $this->assertSame(['operation1'], $this->db->tableGetColumnValues('usr_operation', 'name'));
+        $this->assertSame([''], $this->db->tableGetColumnValues('usr_operation', 'description'));
+
+        // Update the description for the operation
+        $this->assertTrue($this->sut->saveOperation('operation1', 'new descrition'));
+        $this->assertSame(['operation1'], $this->db->tableGetColumnValues('usr_operation', 'name'));
+        $this->assertSame(['new descrition'], $this->db->tableGetColumnValues('usr_operation', 'description'));
+
+        // Create a new role and assign it to the operation
+        $this->sut->saveRole('role1');
+        $this->assertTrue($this->sut->setOperationEnabledForRoles('operation1', ['role1']));
+
+        // Update the description for the operation again
+        $this->assertTrue($this->sut->saveOperation('operation1', 'new descrition 2'));
+        $this->assertSame(['operation1'], $this->db->tableGetColumnValues('usr_operation', 'name'));
+        $this->assertSame(['new descrition 2'], $this->db->tableGetColumnValues('usr_operation', 'description'));
+
+        // Create a new role and assign it to the operation
+        $this->sut->saveRole('role2');
+        $this->assertTrue($this->sut->setOperationEnabledForRoles('operation1', ['role2']));
+
+        // Verify both roles are allowed for the operation
+        $this->assertSame(2, $this->db->tableCountRows('usr_operation_roles'));
+        $this->assertSame(['role1', 'role2'], $this->db->tableGetColumnValues('usr_operation_roles', 'role'));
+
+        // Verify only one operation exists on database
+        $this->assertSame(1, $this->db->tableCountRows('usr_operation'));
+    }
+
+
+    /** test */
     public function testIsOperation(){
 
         // Test empty values
@@ -1686,6 +1771,9 @@ class UsersManagerTest extends TestCase {
         // Test exceptions
         AssertUtils::throwsException(function() { $this->sut->login('invalid user', 'invalid token'); }, '/Authentication failed/');
         AssertUtils::throwsException(function() { $this->sut->login('user2', 'psw'); }, '/Authentication failed/');
+        AssertUtils::throwsException(function() { $this->sut->login('User', 'psw'); }, '/Authentication failed/');
+        AssertUtils::throwsException(function() { $this->sut->login('user', 'Psw'); }, '/Authentication failed/');
+        AssertUtils::throwsException(function() { $this->sut->login('User', 'Psw'); }, '/Authentication failed/');
 
         $user = new UserObject();
         $user->userName = 'user3';

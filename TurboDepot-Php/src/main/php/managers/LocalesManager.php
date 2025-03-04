@@ -380,8 +380,8 @@ class LocalesManager {
      * @param string $key The key we want to read from the specified resource bundle
      * @param string $bundlePath A string with the format 'library_name/bundle_name' that is used to locate the bundle were the key to translate is found
      * @param array $replaceWildcards A list of values that will replace wildcards that may be found on the translated text. Each wildcard
-     *        will be replaced with the element whose index on toReplace matches it. Check the documentation for this.setWildCardsFormat
-     *        property to know more about how to setup wildcards.
+     *        will be replaced with the element whose index on $replaceWildcards matches it. Check the documentation for this.setWildCardsFormat
+     *        property to know more about how to setup wildcards on your translations.
      *
      * @see LocalesManager::setWildCardsFormat()
      *
