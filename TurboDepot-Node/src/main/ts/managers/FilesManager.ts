@@ -1284,9 +1284,9 @@ export class FilesManager{
      *        by the OS or temporarily not accessible. If the file can't be deleted after the given amount of seconds, an exception
      *        will be thrown.
      *
-     * @throws Error if the file cannot be deleted, an exception will be thrown
+     * @throws Error If the file cannot be deleted or does not exist
      *
-     * @return True on success
+     * @return True on success ONLY if the file existed and was deleted.
      */
     deleteFile(pathToFile: string, timeout = 15){
 
@@ -1294,24 +1294,33 @@ export class FilesManager{
 
         let lastError = '';
         let passedTime = 0;
-        let deleteStartTime = Math.floor(Date.now() / 1000);
+        let deleteStartTime = Date.now();
 
-        do {
+        if(this.fs.existsSync(pathToFile)){
 
-            try {
+            do {
+                
+                try {
+    
+                    this.fs.unlinkSync(pathToFile);
+                    
+                    return true;
+                    
+                } catch (e) {
+                    
+                    lastError = e.toString();
+                }
+                
+                // TODO - should be interesting to use some kind of sleep here
+                
+                passedTime = Date.now() - deleteStartTime;
+                
+            } while (passedTime < timeout * 1000);
 
-                this.fs.unlinkSync(pathToFile);
-                
-                return true;
-                
-            } catch (e) {
-                
-                lastError = e.toString();
-            }
+        }else{
             
-            passedTime = Math.floor(Date.now() / 1000) - deleteStartTime;
-            
-        } while (passedTime < timeout);
+            lastError = 'File does not exist';
+        }       
 
         throw new Error(`Error deleting file (${passedTime} seconds timeout):\n${pathToFile}\n${lastError}`);
     }

@@ -1339,29 +1339,42 @@ class FilesManager extends BaseStrictClass{
      *            by the OS or temporarily not accessible. If the file can't be deleted after the given amount of seconds, an exception
      *            will be thrown.
      *
-     * @throws UnexpectedValueException If the file cannot be deleted, an exception will be thrown
+     * @throws UnexpectedValueException If the file cannot be deleted or does not exist
      *
-     * @return boolean True on success
+     * @return boolean True on success ONLY if the file existed and was deleted.
      */
     public function deleteFile(string $pathToFile, int $timeout = 15){
 
         $pathToFile = $this->_composePath($pathToFile, false, true);
 
+        $lastError = '';
         $passedTime = 0;
         $deleteStartTime = time();
 
-        do {
+        if(is_file($pathToFile)){
 
-            if(unlink($pathToFile) === true){
+            do {
 
-                return true;
-            }
+                if(unlink($pathToFile) === true){
 
-            $passedTime = time() - $deleteStartTime;
+                    return true;
+                }
 
-        } while ($passedTime < $timeout);
+                // Add one second delay before retrying
+                sleep(1);
 
-        throw new UnexpectedValueException("Error deleting file ($passedTime seconds timeout):\n$pathToFile\n".error_get_last()['message']);
+                $passedTime = time() - $deleteStartTime;
+
+            } while ($passedTime < $timeout);
+
+            $lastError = error_get_last()['message'];
+
+        }else{
+
+            $lastError = 'File does not exist';
+        }
+
+        throw new UnexpectedValueException("Error deleting file ($passedTime seconds timeout):\n$pathToFile\n".$lastError);
     }
 
 
