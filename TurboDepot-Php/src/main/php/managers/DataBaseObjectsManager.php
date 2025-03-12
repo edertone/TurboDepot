@@ -1370,11 +1370,24 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
 
     /**
-     * TODO
+     * Search a database object that has the specified dbId value and return an associative array.
+     * This is normally useful if we want to directly serialize the result as a json string
+     *
+     * @param mixed $class The class (which extends DataBaseObject) for the object type that we want to obtain. Fo example: User::class
+     * @param int $dbid Integer with the dbId value we are looking for
+     *
+     * @return array A database object but serialized as an associative array instead of a DataBaseObject instance, or null if object not found.
      */
     public function findByDbIdToArray($class, int $dbid) {
 
-        // TODO
+        if($dbid === null || !NumericUtils::isInteger($dbid)){
+
+            throw new UnexpectedValueException('dbid non integer value: '.$dbid);
+        }
+
+        $result = $this->findByDbIdsToArray($class, [$dbid]);
+
+        return $result === [] ? null : $result[0];
     }
 
 
@@ -1387,6 +1400,36 @@ class DataBaseObjectsManager extends BaseStrictClass{
      * @return DataBaseObject[] An array of object instances with all the objects that match the specified ids, or empty array if no objects found.
      */
     public function findByDbIds($class, array $dbids) {
+
+        return $this->_findByDbIdsAux($class, $dbids, 'DataBaseObject');
+    }
+
+
+    /**
+     * Search database objects which have the specified dbId values and return an associative array.
+     * This is normally useful if we want to directly serialize the result as a json string
+     *
+     * @param mixed $class The class (which extends DataBaseObject) for the object types that we want to obtain. Fo example: User::class
+     * @param array $dbids Array of integers with all the dbId values we are looking for
+     *
+     * @return  array An array were each element is a database object but serialized as an associative array instead of a DataBaseObject instance, or empty array if no objects found.
+     */
+    public function findByDbIdsToArray($class, array $dbids) {
+
+        return $this->_findByDbIdsAux($class, $dbids, 'associative');
+    }
+
+
+    /**
+     * Auxiliary method to find values by dbid and return the data in different possible formats
+     *
+     * @param mixed $class See findByDbIds() method
+     * @param array $dbids See findByDbIds() method
+     * @param string $format Specifies which format will be returned by this method: 'DataBaseObject' or 'associative'
+     *
+     * @return array See findByDbIds() method
+     */
+    private function _findByDbIdsAux($class, array $dbids, string $format) {
 
         $dbidsArray = [];
 
@@ -1409,16 +1452,9 @@ class DataBaseObjectsManager extends BaseStrictClass{
             return [];
         }
 
-        return $this->_generateObjectsFromDbTableData($class, $data);
-    }
-
-
-    /**
-     * TODO
-     */
-    public function findByDbIdsToArray($class, array $dbids) {
-
-        // TODO
+        return $format === 'DataBaseObject' ?
+            $this->_generateObjectsFromDbTableData($class, $data) :
+            $this->_generateAssociativeFromDbTableData($class, $data);
     }
 
 
@@ -1462,7 +1498,7 @@ class DataBaseObjectsManager extends BaseStrictClass{
      *
      * @return array See findByPropertyValues() method
      */
-    public function _findByPropertyValuesAux($class, array $propertyValues, string $format) {
+    private function _findByPropertyValuesAux($class, array $propertyValues, string $format) {
 
         $columns = [];
 
@@ -1522,21 +1558,22 @@ class DataBaseObjectsManager extends BaseStrictClass{
         // Generate the object instance for each of the table rows
         $basicProperties = $this->getBasicProperties(new $class(), false);
 
-        $result = array_map(function ($r) use ($class, $basicProperties) {
+        $result = [];
+
+        foreach ($data as $row) {
 
             $object = new $class();
-            $this->_setPrivatePropertyValue($object, 'dbId', (int)$r['dbid']);
-            $this->_setPrivatePropertyValue($object, 'dbCreationDate', $r['dbcreationdate'].'+00:00');
-            $this->_setPrivatePropertyValue($object, 'dbModificationDate', $r['dbmodificationdate'].'+00:00');
+            $this->_setPrivatePropertyValue($object, 'dbId', (int)$row['dbid']);
+            $this->_setPrivatePropertyValue($object, 'dbCreationDate', $row['dbcreationdate'] . '+00:00');
+            $this->_setPrivatePropertyValue($object, 'dbModificationDate', $row['dbmodificationdate'] . '+00:00');
 
             foreach ($basicProperties as $property) {
 
-                $object->{$property} = $this->_castDbValueToPropertyType($r[strtolower($property)], $object, $property);
+                $object->{$property} = $this->_castDbValueToPropertyType($row[strtolower($property)], $object, $property);
             }
 
-            return $object;
-
-        }, $data);
+            $result[] = $object;
+        }
 
         // Add the array typed property values if necessary
         $tableName = $this->getTableNameFromObject($result[0]).'_';
@@ -1587,10 +1624,11 @@ class DataBaseObjectsManager extends BaseStrictClass{
 
         $result = array_map(function ($row) use ($basicProperties, $objectDummyInstance) {
 
-            $array = [];
-            $array['dbId'] = (int)$row['dbid'];
-            $array['dbCreationDate'] = $row['dbcreationdate'].'+00:00';
-            $array['dbModificationDate'] = $row['dbmodificationdate'].'+00:00';
+            $array = [
+                'dbId' => (int)$row['dbid'],
+                'dbCreationDate' => $row['dbcreationdate'] . '+00:00',
+                'dbModificationDate' => $row['dbmodificationdate'] . '+00:00'
+            ];
 
             foreach ($basicProperties as $property) {
 
