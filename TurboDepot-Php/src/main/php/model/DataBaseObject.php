@@ -22,7 +22,11 @@ abstract class DataBaseObject extends BaseStrictClass{
 
 
     /**
-     * Boolean type that can be used to constrain object properties
+     * Boolean type that can be used to constrain object properties (true or false possible values).
+     *
+     * Note: A boolean type is internally stored as a TINYINT(1) on the database, so it can only store 0 or 1 values.
+     * This is transparent to how you use this type on your DataBaseObject. You will set true or false as a regular boolean
+     * type, but it is important to know this techical detail that happens under the hood.
      */
     const BOOL = 'BOOL';
 
@@ -43,6 +47,7 @@ abstract class DataBaseObject extends BaseStrictClass{
 
     /**
      * Text type that can be used to constrain object properties
+     * If you set a size bigger than 65500, it will be internally stored as a text type, otherwise it will be stored as a varchar with the specified size.
      */
     const STRING = 'STRING';
 

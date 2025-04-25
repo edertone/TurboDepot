@@ -349,7 +349,7 @@ class DepotManager extends BaseStrictClass{
      *
      * @param string $sourceName The name for a valid database source, or empty string if we want to use the default source specified at "objects" on the turbodepot setup file.
      * @param string $prefix the database tables prefix that we want to use with the obtained instance. If set to null, the default one for
-     *        the DataBaseObjectsManager class will be used
+     *        the DataBaseObjectsManager class will be used. Note that if we specify a source name this value will be obtained from the source setup.
      *
      * @see DataBaseObjectsManager::__construct
      *
