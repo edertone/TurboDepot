@@ -175,6 +175,16 @@ class XlsxObjectTest extends TestCase {
         $this->assertSame('6500', $this->sut->getCell(16, 4));
         $this->assertSame('20', $this->sut->getCell(45, 4));
 
+        $this->sut = new XlsxObject(self::$filesManager->readFile(self::$basePath.DIRECTORY_SEPARATOR.'1 sheet with complex cells 2.xlsx'));
+        $this->assertInstanceOf(XlsxObject::class, $this->sut);
+        $this->assertSame(1048576, $this->sut->countRows());
+        $this->assertSame(8, $this->sut->countColumns());
+        $this->assertSame(8388608, $this->sut->countCells());
+        $this->assertSame('Pedidos Compra', $this->sut->getCell(0, 0));
+        $this->assertSame(null, $this->sut->getCell(100000, 0));
+        $this->assertSame('79.2146 32', $this->sut->getCell(10, 4));
+        $this->assertSame('UN140180 ertENOVA', $this->sut->getCell(14, 6));
+
         // Test wrong values
         // Test exceptions
         AssertUtils::throwsException(function() { $c = new XlsxObject(123123); }, '/constructor expects a string value/');

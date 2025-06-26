@@ -13,6 +13,7 @@ namespace org\turbodepot\src\main\php\model;
 
 use SimpleXMLElement;
 use Throwable;
+use ReflectionClass;
 use UnexpectedValueException;
 use org\turbocommons\src\main\php\model\TableObject;
 use org\turbocommons\src\main\php\utils\StringUtils;
@@ -122,25 +123,24 @@ class XlsxObject extends TableObject{
         // Reset the current xlsx table underlying data
         parent::__construct();
 
-        $sheetRows = $this->_sheets[$index]->countRows();
-        $sheetCols = $this->_sheets[$index]->countColumns();
+        // Use reflection to access the protected properties directly
+        $sourceSheet = $this->_sheets[$index];
+        $reflection = new ReflectionClass(get_parent_class($this));
 
-        // Copy all the data on the sheet at the specified index to this actual xlsx instance
-        if($sheetRows > 0 && $sheetCols > 0){
+        // Clone all the data on the sheet at the specified index to this actual xlsx instance
+        // This is very important for performance reasons, as it avoids copying the data cell by cell
+        $columnNamesProperty = $reflection->getProperty('_columnNames');
+        $columnNamesProperty->setAccessible(true);
+        $this->_columnNames = clone $columnNamesProperty->getValue($sourceSheet);
 
-            parent::addRows($sheetRows);
-            parent::addColumns($sheetCols);
+        $cellsProperty = $reflection->getProperty('_cells');
+        $cellsProperty->setAccessible(true);
+        $this->_cells = clone $cellsProperty->getValue($sourceSheet);
 
-            for ($i = 0; $i < $sheetRows; $i++) {
-
-                for ($j = 0; $j < $sheetCols; $j++) {
-
-                    parent::setCell($i, $j, $this->_sheets[$index]->getCell($i, $j));
-                }
-            }
-        }
-
+        $this->_columnsCount = $this->_sheets[$index]->countColumns();
+        $this->_rowsCount = $this->_sheets[$index]->countRows();
         $this->_activeSheet = $index;
+
         return true;
     }
 
