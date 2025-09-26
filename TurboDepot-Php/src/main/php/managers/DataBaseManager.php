@@ -56,8 +56,9 @@ class DataBaseManager extends BaseStrictClass {
     /**
      * Defines the collate that will be forced by the database connection: utf8_general_ci, utf8mb4_general_ci, utf8mb4_0900_as_cs
      * (as_cs means case sensitive and accent sensitive)
+     * We use case insensitive by default. Columns that must be case sensitive should be created with the utf8mb4_0900_as_cs collate
      */
-    private $collate = 'utf8mb4_0900_as_cs';
+    private $collate = 'utf8mb4_general_ci';
 
 
     /**
@@ -650,7 +651,7 @@ class DataBaseManager extends BaseStrictClass {
             }
 
             if(is_string($value)){
-
+                // TODO Having to obtain the length of the string is not very efficient. We should receive the expected length as a parameter to this method
                 $valueLen = max(1, strlen($value));
                 return $valueLen > 65500 ? 'longtext' : 'varchar('.$valueLen.')'.$sqlNotNull;
             }
